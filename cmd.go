@@ -16,4 +16,9 @@ var RegisteredCmds = []Cmd{
 	ScanCmd{},
 	ListStoresCmd{},
 	PutCmd{},
+	BenchCmd{
+		Workloads: []BenchWorkload{
+			NewYcsbBench(),
+		},
+	},
 }

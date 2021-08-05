@@ -12,5 +12,5 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/tikv/client-go/v2 v2.0.0-alpha
 	github.com/tikv/pd v1.1.0-beta.0.20210323121136-78679e5e209d
-	github.com/xhit/go-str2duration/v2 v2.0.0 // indirect
+	golang.org/x/net v0.0.0-20210316092652-d523dce5a7f4
 )
