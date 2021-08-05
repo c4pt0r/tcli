@@ -15,4 +15,5 @@ var RegisteredCmds = []Cmd{
 	ConnectCmd{},
 	ScanCmd{},
 	ListStoresCmd{},
+	PutCmd{},
 }

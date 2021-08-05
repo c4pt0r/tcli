@@ -89,3 +89,40 @@ func (c *TikvClient) GetStores() ([]StoreInfo, error) {
 func (c *TikvClient) GetPDClient() pd.Client {
 	return c.client.GetPDClient()
 }
+
+func (c *TikvClient) Put(kv KV) error {
+	tx, err := c.client.Begin()
+	if err != nil {
+		return err
+	}
+
+	tx.Set(kv.K, kv.V)
+
+	err = tx.Commit(context.TODO())
+	if err != nil {
+		err = tx.Rollback()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *TikvClient) Scan(keyPrefix []byte, limit int) (KVS, error) {
+	tx, err := c.client.Begin()
+	if err != nil {
+		return nil, err
+	}
+	it, err := tx.Iter(keyPrefix, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer it.Close()
+	var ret []KV
+	for it.Valid() && limit > 0 {
+		ret = append(ret, KV{K: it.Key()[:], V: it.Value()[:]})
+		limit--
+		it.Next()
+	}
+	return ret, nil
+}

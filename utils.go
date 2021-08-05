@@ -13,8 +13,7 @@ import (
 )
 
 var (
-	logo string = `
-                   /                   
+	logo string = `                   /                   
                 %#######%               
            .#################           
        ##########################*      
@@ -33,7 +32,6 @@ var (
           ####################%         
               %###########(             
                   /###,   
-
 `
 )
 
@@ -56,7 +54,7 @@ func showWelcomeMessage() {
 	for _, member := range members {
 		fmt.Println(member)
 	}
-	fmt.Println("Welcome, Cluster ID:", pdClient.GetClusterID(context.TODO()))
+	color.Green("Welcome, TiKV Cluster ID: %d", pdClient.GetClusterID(context.TODO()))
 
 }
 
