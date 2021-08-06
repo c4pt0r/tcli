@@ -6,10 +6,11 @@ import (
 	"os"
 	"time"
 
+	"log"
+
 	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pingcap/log"
-	"github.com/tikv/client-go/v2/logutil"
+	plog "github.com/pingcap/log"
 )
 
 var (
@@ -37,9 +38,9 @@ var (
 
 func initLog() {
 	// keep pingcap's log silent
-	conf := &log.Config{Level: *clientLogLevel, File: log.FileLogConfig{Filename: *clientLog}}
-	lg, r, _ := log.InitLogger(conf)
-	log.ReplaceGlobals(lg, r)
+	conf := &plog.Config{Level: *clientLogLevel, File: plog.FileLogConfig{Filename: *clientLog}}
+	lg, r, _ := plog.InitLogger(conf)
+	plog.ReplaceGlobals(lg, r)
 }
 
 func showWelcomeMessage() {
@@ -48,7 +49,7 @@ func showWelcomeMessage() {
 	// show pd members
 	members, err := pdClient.GetAllMembers(context.TODO())
 	if err != nil {
-		logutil.BgLogger().Fatal(err.Error())
+		log.Fatalf("%v", err)
 	}
 	fmt.Println("PD Peers:")
 	for _, member := range members {

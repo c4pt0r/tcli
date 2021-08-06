@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/tikv/client-go/v2/logutil"
 	"github.com/tikv/client-go/v2/tikv"
 	pd "github.com/tikv/pd/client"
 )
@@ -56,7 +55,7 @@ func GetTikvClient() *TikvClient {
 func NewTikvClient(pdAddr []string) *TikvClient {
 	client, err := tikv.NewTxnClient(pdAddr)
 	if err != nil {
-		logutil.BgLogger().Fatal(err.Error())
+		//logutil.BgLogger().Fatal(err.Error())
 	}
 	return &TikvClient{
 		client: client,

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/abiosoft/ishell"
-	"github.com/tikv/client-go/v2/logutil"
 )
 
 type ConnectCmd struct{}
@@ -54,7 +53,6 @@ func (c ListStoresCmd) Handler() func(ctx context.Context) {
 		outputWithElapse(func() error {
 			stores, err := GetTikvClient().GetStores()
 			if err != nil {
-				logutil.BgLogger().Error(err.Error())
 				return err
 			}
 

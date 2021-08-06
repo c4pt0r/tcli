@@ -25,7 +25,7 @@ func (kvs KVS) Print(formatter KVSFormatter) {
 	case TableFormat:
 		{
 			data := [][]string{
-				[]string{"Key", "Value"},
+				{"Key", "Value"},
 			}
 			for _, kv := range kvs {
 				row := []string{string(kv.K), string(kv.V)}
