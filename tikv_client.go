@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 
@@ -35,6 +36,10 @@ type TikvClient struct {
 	pdAddr []string
 }
 
+// Make sure TikvClient implements Client interface
+var _ Client = (*TikvClient)(nil)
+
+// Global client instance, safe to use concurrently
 var (
 	_globalKvClient atomic.Value
 )
@@ -125,4 +130,20 @@ func (c *TikvClient) Scan(keyPrefix []byte, limit int) (KVS, error) {
 		it.Next()
 	}
 	return ret, nil
+}
+
+func (c *TikvClient) BatchPut(kv []KV) error {
+	return errors.New("not implemented")
+}
+
+func (c *TikvClient) Get(k Key) (KV, error) {
+	return KV{}, errors.New("not implemented")
+}
+
+func (c *TikvClient) Delete(k Key) error {
+	return errors.New("not implemented")
+}
+
+func (c *TikvClient) DeleteRange(start, end Key, opt ...interface{}) error {
+	return errors.New("not implemented")
 }
