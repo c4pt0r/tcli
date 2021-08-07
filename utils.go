@@ -3,14 +3,17 @@ package main
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"log"
 
 	"github.com/fatih/color"
+	"github.com/magiconair/properties"
 	"github.com/olekukonko/tablewriter"
 	plog "github.com/pingcap/log"
 )
@@ -117,4 +120,17 @@ func getStringLit(raw string) (StrLitType, []byte, error) {
 		return StrLitHex, b, nil
 	}
 	return StrLitNormal, []byte(raw), nil
+}
+
+func setOptByString(s string, prop *properties.Properties) error {
+	// s:  opt1=val1,opt2=val2,opt3=val3
+	fields := strings.Split(s, ",")
+	for _, field := range fields {
+		opt := strings.Split(field, "=")
+		if len(opt) != 2 {
+			return errors.New("option format error")
+		}
+		prop.Set(opt[0], opt[1])
+	}
+	return nil
 }

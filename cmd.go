@@ -21,7 +21,7 @@ type Cmd interface {
 // the Cmd objects inside this array can only be used
 var RegisteredCmds = []Cmd{
 	ConnectCmd{},
-	ScanCmd{},
+	NewScanCmd(),
 	ListStoresCmd{},
 	PutCmd{},
 	EchoCmd{},

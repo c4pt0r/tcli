@@ -5,12 +5,16 @@ import (
 	"flag"
 
 	"github.com/abiosoft/ishell"
+	"github.com/magiconair/properties"
 )
 
 var (
 	pdAddr         = flag.String("pd", "localhost:2379", "pd addr")
 	clientLog      = flag.String("log-file", "/dev/null", "tikv client log file")
 	clientLogLevel = flag.String("log-level", "info", "tikv client log level")
+
+	//TODO
+	globalProps *properties.Properties
 )
 
 func main() {

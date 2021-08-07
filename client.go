@@ -24,6 +24,9 @@ func (kvs KVS) Print(formatter KVSFormatter) {
 	switch formatter {
 	case TableFormat:
 		{
+			if len(kvs) == 0 {
+				return
+			}
 			data := [][]string{
 				{"Key", "Value"},
 			}

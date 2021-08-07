@@ -3,17 +3,33 @@ package main
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/abiosoft/ishell"
+	"github.com/magiconair/properties"
 )
 
-type ScanCmd struct{}
+var (
+	ScanOptKeyOnly   string = "key-only"
+	ScanOptCountOnly string = "count-only"
+	ScanOptLimit     string = "limit"
+)
+
+type ScanCmd struct {
+	scanOpt *properties.Properties
+}
+
+func NewScanCmd() ScanCmd {
+	return ScanCmd{scanOpt: properties.NewProperties()}
+}
 
 func (c ScanCmd) Name() string    { return "scan" }
 func (c ScanCmd) Alias() []string { return []string{"scan"} }
 func (c ScanCmd) Help() string {
-	return `scan key-value pairs in range, usage: scan [start key] [limit]`
+	return `Scan key-value pairs in range, usage: scan [start key] [opts]
+                opt format: key1=value1,key2=value2,key3=value3, scan options:
+                limit: integer, default:100
+                key-only: true|false
+                count-only: true|false`
 }
 
 func (c ScanCmd) Handler() func(ctx context.Context) {
@@ -26,19 +42,18 @@ func (c ScanCmd) Handler() func(ctx context.Context) {
 			}
 			s := ic.RawArgs[1]
 			// it's a hex string literal
-
 			_, startKey, err := getStringLit(s)
 			if err != nil {
 				return err
 			}
-
-			limit := 100
 			if len(ic.Args) > 1 {
-				limit, err = strconv.Atoi(ic.Args[1])
+				err := setOptByString(ic.Args[1], c.scanOpt)
 				if err != nil {
 					return err
 				}
 			}
+			limit := c.scanOpt.GetInt(ScanOptLimit, 100)
+			//keyOnly := c.scanOpt.GetBool(ScanOptKeyOnly, false)
 			kvs, err := GetTikvClient().Scan(startKey, limit)
 			if err != nil {
 				return err

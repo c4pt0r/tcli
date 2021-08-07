@@ -22,9 +22,8 @@ import (
 )
 
 type YcsbBench struct {
-	Context context.Context
-	Cancel  context.CancelFunc
-
+	Context  context.Context
+	Cancel   context.CancelFunc
 	DB       ycsb.DB
 	Workload ycsb.Workload
 	Props    *properties.Properties
