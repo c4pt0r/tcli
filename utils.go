@@ -134,3 +134,15 @@ func setOptByString(s string, prop *properties.Properties) error {
 	}
 	return nil
 }
+
+func contextWithProp(ctx context.Context, p *properties.Properties) context.Context {
+	return context.WithValue(ctx, propertiesKey, p)
+}
+
+func propFromContext(ctx context.Context) *properties.Properties {
+	prop := ctx.Value(propertiesKey).(*properties.Properties)
+	if prop == nil {
+		return properties.NewProperties()
+	}
+	return prop
+}

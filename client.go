@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 )
 
@@ -46,12 +47,12 @@ func (kvs KVS) Print(formatter KVSFormatter) {
 }
 
 type Client interface {
-	Put(kv KV) error
-	BatchPut(kv []KV) error
+	Put(ctx context.Context, kv KV) error
+	BatchPut(ctx context.Context, kv []KV) error
 
-	Get(k Key) (KV, error)
-	Scan(prefix []byte, limit int) (KVS, error)
+	Get(ctx context.Context, k Key) (KV, error)
+	Scan(ctx context.Context, prefix []byte) (KVS, error)
 
-	Delete(k Key) error
-	DeleteRange(start, end Key, opt ...interface{}) error
+	Delete(ctx context.Context, k Key) error
+	DeleteRange(ctx context.Context, start, end Key) error
 }

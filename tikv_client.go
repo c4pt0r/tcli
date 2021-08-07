@@ -10,6 +10,10 @@ import (
 	pd "github.com/tikv/pd/client"
 )
 
+var (
+	propertiesKey = "property"
+)
+
 type StoreInfo struct {
 	ID      string
 	Version string
@@ -94,7 +98,7 @@ func (c *TikvClient) GetPDClient() pd.Client {
 	return c.client.GetPDClient()
 }
 
-func (c *TikvClient) Put(kv KV) error {
+func (c *TikvClient) Put(ctx context.Context, kv KV) error {
 	tx, err := c.client.Begin()
 	if err != nil {
 		return err
@@ -112,11 +116,21 @@ func (c *TikvClient) Put(kv KV) error {
 	return nil
 }
 
-func (c *TikvClient) Scan(keyPrefix []byte, limit int) (KVS, error) {
+func (c *TikvClient) Scan(ctx context.Context, keyPrefix []byte) (KVS, error) {
+	scanOpts := propFromContext(ctx)
 	tx, err := c.client.Begin()
 	if err != nil {
 		return nil, err
 	}
+
+	keyOnly := false
+	if scanOpts != nil {
+		keyOnly = scanOpts.GetBool(ScanOptKeyOnly, false)
+	}
+
+	limit := scanOpts.GetInt(ScanOptLimit, 100)
+	tx.GetSnapshot().SetKeyOnly(keyOnly)
+
 	it, err := tx.Iter(keyPrefix, nil)
 	if err != nil {
 		return nil, err
@@ -131,18 +145,18 @@ func (c *TikvClient) Scan(keyPrefix []byte, limit int) (KVS, error) {
 	return ret, nil
 }
 
-func (c *TikvClient) BatchPut(kv []KV) error {
+func (c *TikvClient) BatchPut(ctx context.Context, kv []KV) error {
 	return errors.New("not implemented")
 }
 
-func (c *TikvClient) Get(k Key) (KV, error) {
+func (c *TikvClient) Get(ctx context.Context, k Key) (KV, error) {
 	return KV{}, errors.New("not implemented")
 }
 
-func (c *TikvClient) Delete(k Key) error {
+func (c *TikvClient) Delete(ctx context.Context, k Key) error {
 	return errors.New("not implemented")
 }
 
-func (c *TikvClient) DeleteRange(start, end Key, opt ...interface{}) error {
+func (c *TikvClient) DeleteRange(ctx context.Context, start, end Key) error {
 	return errors.New("not implemented")
 }

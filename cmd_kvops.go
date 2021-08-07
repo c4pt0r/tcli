@@ -52,9 +52,7 @@ func (c ScanCmd) Handler() func(ctx context.Context) {
 					return err
 				}
 			}
-			limit := c.scanOpt.GetInt(ScanOptLimit, 100)
-			//keyOnly := c.scanOpt.GetBool(ScanOptKeyOnly, false)
-			kvs, err := GetTikvClient().Scan(startKey, limit)
+			kvs, err := GetTikvClient().Scan(contextWithProp(context.TODO(), c.scanOpt), startKey)
 			if err != nil {
 				return err
 			}
@@ -82,7 +80,7 @@ func (c PutCmd) Handler() func(ctx context.Context) {
 			}
 			k, v := []byte(ic.Args[0]), []byte(ic.Args[1])
 
-			err := GetTikvClient().Put(KV{k, v})
+			err := GetTikvClient().Put(context.TODO(), KV{k, v})
 			if err != nil {
 				return err
 			}
