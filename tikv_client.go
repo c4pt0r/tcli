@@ -123,14 +123,10 @@ func (c *TikvClient) Scan(ctx context.Context, keyPrefix []byte) (KVS, error) {
 		return nil, err
 	}
 
-	keyOnly := false
-	if scanOpts != nil {
-		keyOnly = scanOpts.GetBool(ScanOptKeyOnly, false)
-	}
-
-	limit := scanOpts.GetInt(ScanOptLimit, 100)
+	keyOnly := scanOpts.GetBool(ScanOptKeyOnly, false)
 	tx.GetSnapshot().SetKeyOnly(keyOnly)
 
+	limit := scanOpts.GetInt(ScanOptLimit, 100)
 	it, err := tx.Iter(keyPrefix, nil)
 	if err != nil {
 		return nil, err

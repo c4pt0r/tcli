@@ -87,6 +87,7 @@ func NewYcsbBench() BenchWorkload {
 	ret.init()
 	return ret
 }
+
 func (y *YcsbBench) Name() string                                           { return "ycsb" }
 func (y *YcsbBench) SetOpt(optKey string, optVal interface{}) BenchWorkload { return y }
 func (y *YcsbBench) GetOpt(optKey string) interface{}                       { return nil }
