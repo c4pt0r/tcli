@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"os"
+	"regexp"
 	"time"
 
 	"log"
@@ -77,4 +79,42 @@ func outputWithElapse(f func() error) error {
 		fmt.Printf("Success, Elapse: %d ms\n", time.Since(tt)/time.Millisecond)
 	}
 	return err
+}
+
+func hexstr2bytes(hexStr string) ([]byte, error) {
+	return hex.DecodeString(hexStr)
+}
+
+func bytes2hex(s []byte) string {
+	return hex.EncodeToString(s)
+}
+
+// String Literal Parsing
+// h'12332321' <---- Hex string
+type StrLitType int
+
+const (
+	StrLitHex StrLitType = iota
+	StrLitNormal
+)
+
+var (
+	_reHexStr *regexp.Regexp
+)
+
+func init() {
+	_reHexStr, _ = regexp.Compile(`h"([^"\\]|\\[\s\S])*"|h'([^'\\]|\\[\s\S])*'`)
+}
+
+func getStringLit(raw string) (StrLitType, []byte, error) {
+	if _reHexStr.MatchString(raw) {
+		out := _reHexStr.FindString(raw)
+		val := string(out[2 : len(out)-1])
+		b, err := hexstr2bytes(val)
+		if err != nil {
+			return StrLitNormal, nil, err
+		}
+		return StrLitHex, b, nil
+	}
+	return StrLitNormal, []byte(raw), nil
 }

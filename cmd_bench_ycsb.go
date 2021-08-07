@@ -38,9 +38,7 @@ func (y *YcsbBench) init() {
 	go func() {
 		http.ListenAndServe(addr, nil)
 	}()
-
 	measurement.InitMeasure(y.Props)
-
 	// TODO only support core for now
 	//workloadName := y.Props.GetString(prop.Workload, "core")
 	workloadCreator := ycsb.GetWorkloadCreator("core")
@@ -51,6 +49,9 @@ func (y *YcsbBench) init() {
 	}
 
 	dbCreator := ycsb.GetDBCreator("tikv")
+	// FIXME hacking...
+	y.Props.Set("tikv.type", "txn")
+
 	if dbCreator == nil {
 		log.Fatalf("tikv is not registered")
 	}
@@ -62,9 +63,9 @@ func (y *YcsbBench) init() {
 
 func (y *YcsbBench) Start() {
 	// FIXME
-	y.Props.Set(prop.DoTransactions, "true")
+	y.Props.Set(prop.DoTransactions, "false")
 	y.Props.Set(prop.ThreadCount, "10")
-	y.Props.Set(prop.OperationCount, "100000000000000")
+	y.Props.Set(prop.OperationCount, "10000")
 	y.Props.Set(prop.RecordCount, "100000")
 
 	fmt.Println("***************** properties *****************")

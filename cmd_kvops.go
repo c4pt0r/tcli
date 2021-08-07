@@ -24,10 +24,15 @@ func (c ScanCmd) Handler() func(ctx context.Context) {
 				fmt.Println(c.Help())
 				return nil
 			}
-			startKey := []byte(ic.Args[0])
+			s := ic.RawArgs[1]
+			// it's a hex string literal
+
+			_, startKey, err := getStringLit(s)
+			if err != nil {
+				return err
+			}
 
 			limit := 100
-			var err error
 			if len(ic.Args) > 1 {
 				limit, err = strconv.Atoi(ic.Args[1])
 				if err != nil {
@@ -66,6 +71,34 @@ func (c PutCmd) Handler() func(ctx context.Context) {
 			if err != nil {
 				return err
 			}
+			return nil
+		})
+	}
+}
+
+type EchoCmd struct{}
+
+func (c EchoCmd) Name() string    { return "echo" }
+func (c EchoCmd) Alias() []string { return []string{"echo"} }
+func (c EchoCmd) Help() string {
+	return `echo [string lit]`
+}
+
+func (c EchoCmd) Handler() func(ctx context.Context) {
+	return func(ctx context.Context) {
+		outputWithElapse(func() error {
+			ic := ctx.Value("ishell").(*ishell.Context)
+			if len(ic.Args) < 1 {
+				fmt.Println(c.Help())
+				return nil
+			}
+			s := ic.RawArgs[1]
+			// it's a hex string literal
+			_, v, err := getStringLit(s)
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(v))
 			return nil
 		})
 	}
