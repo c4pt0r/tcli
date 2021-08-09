@@ -88,9 +88,7 @@ func NewYcsbBench() BenchWorkload {
 	return ret
 }
 
-func (y *YcsbBench) Name() string                                           { return "ycsb" }
-func (y *YcsbBench) SetOpt(optKey string, optVal interface{}) BenchWorkload { return y }
-func (y *YcsbBench) GetOpt(optKey string) interface{}                       { return nil }
+func (y *YcsbBench) Name() string { return "ycsb" }
 func (y *YcsbBench) Run(ctx context.Context) error {
 	c := make(chan os.Signal)
 	// Ctrl-C to break

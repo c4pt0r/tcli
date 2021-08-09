@@ -8,15 +8,22 @@ import (
 
 type BenchWorkload interface {
 	Name() string
-	SetOpt(optKey string, optVal interface{}) BenchWorkload
-	GetOpt(optKey string) interface{}
-
 	Run(ctx context.Context) error
 	Stop(ctx context.Context) error
 }
 
 type BenchCmd struct {
 	Workloads []BenchWorkload
+}
+
+func NewBenchCmd(ww ...BenchWorkload) BenchCmd {
+	var workloads []BenchWorkload
+	for _, w := range ww {
+		workloads = append(workloads, w)
+	}
+	return BenchCmd{
+		Workloads: workloads,
+	}
 }
 
 func (c BenchCmd) Name() string    { return "bench" }
