@@ -36,6 +36,11 @@ func (kvs KVS) Print(formatter KVSFormatter) {
 				data = append(data, row)
 			}
 			printTable(data)
+			if len(kvs) > 1 {
+				fmt.Printf("%d Records Found\n", len(kvs))
+			} else {
+				fmt.Printf("%d Record Found\n", len(kvs))
+			}
 		}
 	default:
 		{
