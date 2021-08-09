@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"sync/atomic"
 
 	"github.com/tikv/client-go/v2/tikv"
@@ -117,7 +116,7 @@ func (c *TikvClient) Put(ctx context.Context, kv KV) error {
 	return nil
 }
 
-func (c *TikvClient) Scan(ctx context.Context, keyPrefix []byte) (KVS, error) {
+func (c *TikvClient) Scan(ctx context.Context, startKey []byte) (KVS, error) {
 	scanOpts := propFromContext(ctx)
 	tx, err := c.client.Begin()
 	if err != nil {
@@ -125,20 +124,35 @@ func (c *TikvClient) Scan(ctx context.Context, keyPrefix []byte) (KVS, error) {
 	}
 
 	keyOnly := scanOpts.GetBool(ScanOptKeyOnly, false)
-	log.Println(keyOnly)
-	tx.GetSnapshot().SetKeyOnly(keyOnly)
+	if keyOnly {
+		tx.GetSnapshot().SetKeyOnly(keyOnly)
+	}
 
 	limit := scanOpts.GetInt(ScanOptLimit, 100)
-	it, err := tx.Iter(keyPrefix, nil)
+	it, err := tx.Iter(startKey, nil)
 	if err != nil {
 		return nil, err
 	}
 	defer it.Close()
+
+	isCountOnly := scanOpts.GetBool(ScanOptCountOnly, false)
+
 	var ret []KV
+	var lastKey KV
+	count := 0
 	for it.Valid() && limit > 0 {
-		ret = append(ret, KV{K: it.Key()[:], V: it.Value()[:]})
+		if !isCountOnly {
+			ret = append(ret, KV{K: it.Key()[:], V: it.Value()[:]})
+		} else {
+			count++
+		}
 		limit--
+		lastKey.K = it.Key()[:]
 		it.Next()
+	}
+	if isCountOnly {
+		ret = append(ret, KV{K: []byte("Count"), V: []byte(fmt.Sprintf("%d", count))})
+		ret = append(ret, KV{K: []byte("Last Key"), V: []byte(lastKey.K)})
 	}
 	return ret, nil
 }

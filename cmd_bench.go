@@ -33,7 +33,7 @@ func (c BenchCmd) Handler() func(ctx context.Context) {
 		for _, w := range c.Workloads {
 			items = append(items, w.Name())
 		}
-		choice := ic.MultiChoice(items, "Benchmark workload: ")
+		choice := ic.MultiChoice(items, "Choose Benchmark Workload: ")
 		if choice != -1 {
 			c.Workloads[choice].Run(context.TODO())
 		}
