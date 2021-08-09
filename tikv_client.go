@@ -162,7 +162,15 @@ func (c *TikvClient) BatchPut(ctx context.Context, kv []KV) error {
 }
 
 func (c *TikvClient) Get(ctx context.Context, k Key) (KV, error) {
-	return KV{}, errors.New("not implemented")
+	tx, err := c.client.Begin()
+	if err != nil {
+		return KV{}, err
+	}
+	v, err := tx.Get(context.TODO(), k)
+	if err != nil {
+		return KV{}, err
+	}
+	return KV{K: k, V: v}, nil
 }
 
 func (c *TikvClient) Delete(ctx context.Context, k Key) error {

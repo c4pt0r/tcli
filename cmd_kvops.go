@@ -90,6 +90,41 @@ func (c PutCmd) Handler() func(ctx context.Context) {
 	}
 }
 
+type GetCmd struct{}
+
+func (c GetCmd) Name() string    { return "get" }
+func (c GetCmd) Alias() []string { return []string{".g"} }
+func (c GetCmd) Help() string {
+	return `get [string lit]`
+}
+
+func (c GetCmd) Handler() func(ctx context.Context) {
+	return func(ctx context.Context) {
+		outputWithElapse(func() error {
+			ic := ctx.Value("ishell").(*ishell.Context)
+			if len(ic.Args) < 1 {
+				fmt.Println(c.Help())
+				return nil
+			}
+			s := ic.RawArgs[1]
+			// it's a hex string literal
+			_, k, err := getStringLit(s)
+			if err != nil {
+				return err
+			}
+			kv, err := GetTikvClient().Get(context.TODO(), Key(k))
+			if err != nil {
+				return err
+			}
+			kvs :=[]KV{kv}
+			KVS(kvs).Print(TableFormat)
+			return nil
+		})
+	}
+}
+
+
+// EchoCmd is just for debugging
 type EchoCmd struct{}
 
 func (c EchoCmd) Name() string    { return "echo" }
@@ -112,8 +147,10 @@ func (c EchoCmd) Handler() func(ctx context.Context) {
 			if err != nil {
 				return err
 			}
-			fmt.Println(string(v))
+			fmt.Println(string(v)) 
 			return nil
 		})
 	}
 }
+
+
