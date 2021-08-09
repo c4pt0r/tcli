@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/abiosoft/ishell"
 	"github.com/magiconair/properties"
@@ -24,10 +25,11 @@ func (c ScanCmd) Name() string    { return "scan" }
 func (c ScanCmd) Alias() []string { return []string{"scan"} }
 func (c ScanCmd) Help() string {
 	return `Scan key-value pairs in range, usage: scan [start key] [opts]
-                opt format: key1=value1,key2=value2,key3=value3, scan options:
-                limit: integer, default:100
-                key-only: true|false
-                count-only: true|false`
+                opt format: key1=value1,key2=value2,key3=value3, 
+                scan options:
+                  limit: integer, default:100
+                  key-only: true(1)|false(0)
+                  count-only: true(1)|false(0)`
 }
 
 func (c ScanCmd) Handler() func(ctx context.Context) {
@@ -93,7 +95,7 @@ func (c PutCmd) Handler() func(ctx context.Context) {
 type GetCmd struct{}
 
 func (c GetCmd) Name() string    { return "get" }
-func (c GetCmd) Alias() []string { return []string{".g"} }
+func (c GetCmd) Alias() []string { return []string{"g"} }
 func (c GetCmd) Help() string {
 	return `get [string lit]`
 }
@@ -153,4 +155,28 @@ func (c EchoCmd) Handler() func(ctx context.Context) {
 	}
 }
 
+type LoadFileCmd struct{}
 
+func (c LoadFileCmd) Name() string    { return "loadfile" }
+func (c LoadFileCmd) Alias() []string { return []string{"l"} }
+func (c LoadFileCmd) Help() string {
+	return `loadfile [filename] [opts]
+	           opts:
+               filetype: [csv]`
+}
+
+func (c LoadFileCmd) Handler() func(ctx context.Context) {
+	return func(ctx context.Context) {
+		outputWithElapse(func() error {
+			ic := ctx.Value("ishell").(*ishell.Context)
+			ic.ProgressBar().Start()
+			for i := 0; i < 101; i++ {
+				ic.ProgressBar().Suffix(fmt.Sprint(" ", i, "%"))
+				ic.ProgressBar().Progress(i)
+				time.Sleep(time.Millisecond * 100)
+			}
+			ic.ProgressBar().Stop()
+			return nil
+		})
+	}
+}
