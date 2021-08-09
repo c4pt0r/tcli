@@ -6,7 +6,8 @@ The ultimate CLI tool for TiKV
 >>> help
 
 Commands:
-  .connect      connect to a tikv cluster, usage: [.connect|.conn|.c] [pd addr], example: .c 192.168.1.1:2379
+  .connect      connect to a tikv cluster, usage: [.connect|.conn|.c] [pd addr]
+                  example: .c 192.168.1.1:2379
   .stores       list tikv stores in cluster
   bench         bench [type] config1=value1 config2=value2 ...
                   type: ycsb
@@ -19,7 +20,7 @@ Commands:
   scan          Scan key-value pairs in range, usage: scan [start key] [opts]
                 opt format: key1=value1,key2=value2,key3=value3, 
                 scan options:
-                    limit: integer, default:100
-                    key-only: true|false
-                    count-only: true|false             
+                  limit: integer, default:100
+                  key-only: true(1)|false(0)
+                  count-only: true(1)|false(0)          
 ```
