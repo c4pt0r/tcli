@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -123,6 +124,7 @@ func (c *TikvClient) Scan(ctx context.Context, startKey []byte) (KVS, error) {
 		return nil, err
 	}
 
+	strictPrefix := scanOpts.GetBool(ScanOptStrictPrefix, false)
 	countOnly := scanOpts.GetBool(ScanOptCountOnly, false)
 	keyOnly := scanOpts.GetBool(ScanOptKeyOnly, false)
 	if keyOnly || countOnly {
@@ -140,6 +142,9 @@ func (c *TikvClient) Scan(ctx context.Context, startKey []byte) (KVS, error) {
 	var lastKey KV
 	count := 0
 	for it.Valid() && limit > 0 {
+		if strictPrefix && !bytes.HasPrefix(it.Key(), startKey) {
+			break
+		}
 		if !countOnly {
 			ret = append(ret, KV{K: it.Key()[:], V: it.Value()[:]})
 		} else {

@@ -12,9 +12,10 @@ import (
 )
 
 var (
-	ScanOptKeyOnly   string = "key-only"
-	ScanOptCountOnly string = "count-only"
-	ScanOptLimit     string = "limit"
+	ScanOptKeyOnly      string = "key-only"
+	ScanOptCountOnly    string = "count-only"
+	ScanOptLimit        string = "limit"
+	ScanOptStrictPrefix string = "strict-prefix"
 
 	LoadFileOptBatchSize string = "batch-size"
 )
@@ -33,6 +34,7 @@ func (c ScanCmd) Help() string {
                 scan options:
                   limit: integer, default:100
                   key-only: true(1)|false(0)
+                  strict-prefix: true(1)|false(0)
                   count-only: true(1)|false(0)`
 }
 
@@ -189,7 +191,8 @@ func (c LoadFileCmd) processCSV(prop *properties.Properties, rc io.Reader, keyPr
 		cnt++
 		var key []byte
 		if len(keyPrefix) > 0 {
-			key = append(keyPrefix[:], []byte(rec[0])...)
+			key = append([]byte{}, keyPrefix...)
+			key = append(key, []byte(rec[0])...)
 		} else {
 			key = []byte(rec[0])
 		}
