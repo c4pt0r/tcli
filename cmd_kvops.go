@@ -14,12 +14,10 @@ var (
 	ScanOptLimit     string = "limit"
 )
 
-type ScanCmd struct {
-	scanOpt *properties.Properties
-}
+type ScanCmd struct{}
 
 func NewScanCmd() ScanCmd {
-	return ScanCmd{scanOpt: properties.NewProperties()}
+	return ScanCmd{}
 }
 
 func (c ScanCmd) Name() string    { return "scan" }
@@ -46,13 +44,16 @@ func (c ScanCmd) Handler() func(ctx context.Context) {
 			if err != nil {
 				return err
 			}
+
+			scanOpt := properties.NewProperties()
 			if len(ic.Args) > 1 {
-				err := setOptByString(ic.Args[1], c.scanOpt)
+				err := setOptByString(ic.Args[1], scanOpt)
 				if err != nil {
 					return err
 				}
 			}
-			kvs, err := GetTikvClient().Scan(contextWithProp(context.TODO(), c.scanOpt), startKey)
+
+			kvs, err := GetTikvClient().Scan(contextWithProp(context.TODO(), scanOpt), startKey)
 			if err != nil {
 				return err
 			}

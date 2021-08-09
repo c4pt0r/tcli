@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"sync/atomic"
 
 	"github.com/tikv/client-go/v2/tikv"
@@ -124,6 +125,7 @@ func (c *TikvClient) Scan(ctx context.Context, keyPrefix []byte) (KVS, error) {
 	}
 
 	keyOnly := scanOpts.GetBool(ScanOptKeyOnly, false)
+	log.Println(keyOnly)
 	tx.GetSnapshot().SetKeyOnly(keyOnly)
 
 	limit := scanOpts.GetInt(ScanOptLimit, 100)
