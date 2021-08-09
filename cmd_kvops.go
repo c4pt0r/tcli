@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
+	"errors"
 	"fmt"
-	"time"
+	"io"
 
 	"github.com/abiosoft/ishell"
 	"github.com/magiconair/properties"
@@ -13,6 +15,8 @@ var (
 	ScanOptKeyOnly   string = "key-only"
 	ScanOptCountOnly string = "count-only"
 	ScanOptLimit     string = "limit"
+
+	LoadFileOptBatchSize string = "batch-size"
 )
 
 type ScanCmd struct{}
@@ -118,13 +122,12 @@ func (c GetCmd) Handler() func(ctx context.Context) {
 			if err != nil {
 				return err
 			}
-			kvs :=[]KV{kv}
+			kvs := []KV{kv}
 			KVS(kvs).Print(TableFormat)
 			return nil
 		})
 	}
 }
-
 
 // EchoCmd is just for debugging
 type EchoCmd struct{}
@@ -149,7 +152,7 @@ func (c EchoCmd) Handler() func(ctx context.Context) {
 			if err != nil {
 				return err
 			}
-			fmt.Println(string(v)) 
+			fmt.Println(string(v))
 			return nil
 		})
 	}
@@ -160,23 +163,108 @@ type LoadFileCmd struct{}
 func (c LoadFileCmd) Name() string    { return "loadfile" }
 func (c LoadFileCmd) Alias() []string { return []string{"l"} }
 func (c LoadFileCmd) Help() string {
-	return `loadfile [filename] [opts]
+	return `loadfile [filename] [key prefix] [opts], only supports CSV now, when "key prefix" is set, will automatically add prefix to the original key,
 	           opts:
-               filetype: [csv]`
+			   batch-size: int, how many records in one tikv transaction, default: 1000`
+
+}
+
+func (c LoadFileCmd) processCSV(prop *properties.Properties, rc io.Reader, keyPrefix []byte) error {
+	r := csv.NewReader(rc)
+	if _, err := r.Read(); err != nil { //read header
+		return err
+	}
+	var cnt int
+	var batch []KV
+
+	batchSize := prop.GetInt(LoadFileOptBatchSize, 1000)
+	for {
+		rec, err := r.Read()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+		cnt++
+		var key []byte
+		if len(keyPrefix) > 0 {
+			key = append(keyPrefix[:], []byte(rec[0])...)
+		} else {
+			key = []byte(rec[0])
+		}
+		// TODO multi-threaded
+		batch = append(batch, KV{
+			K: key,
+			V: []byte(rec[1]),
+		})
+
+		if len(batch) == batchSize {
+			// do insert
+			err := GetTikvClient().BatchPut(context.TODO(), batch)
+			if err != nil {
+				return err
+			}
+			// Show progress
+			progress := rc.(*ProgressReader).GetProgress() * 100
+			fmt.Printf("Progress: %d%% Count: %d Last Key: %s\n", int(progress), cnt, rec[0])
+			// clean buffer
+			batch = nil
+		}
+	}
+	// may have last batch
+	if len(batch) > 0 {
+		// do insert
+		err := GetTikvClient().BatchPut(context.TODO(), batch)
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Printf("Done, affected records: %d\n", cnt)
+	return nil
 }
 
 func (c LoadFileCmd) Handler() func(ctx context.Context) {
 	return func(ctx context.Context) {
 		outputWithElapse(func() error {
+			var err error
 			ic := ctx.Value("ishell").(*ishell.Context)
-			ic.ProgressBar().Start()
-			for i := 0; i < 101; i++ {
-				ic.ProgressBar().Suffix(fmt.Sprint(" ", i, "%"))
-				ic.ProgressBar().Progress(i)
-				time.Sleep(time.Millisecond * 100)
+			if len(ic.Args) == 0 {
+				return errors.New(c.Help())
 			}
-			ic.ProgressBar().Stop()
-			return nil
+
+			// set filename
+			var csvFile string
+			if len(ic.Args) > 0 {
+				csvFile = ic.Args[0]
+			}
+
+			// set prefix
+			var keyPrefix []byte
+			if len(ic.Args) > 1 && !(ic.RawArgs[2] == `""` || ic.RawArgs[2] == `''`) {
+				_, keyPrefix, err = getStringLit(ic.RawArgs[2])
+				if err != nil {
+					return err
+				}
+			}
+
+			// set prop
+			prop := properties.NewProperties()
+			if len(ic.Args) > 2 {
+				err = setOptByString(ic.RawArgs[3], prop)
+				if err != nil {
+					return nil
+				}
+			}
+			// open file for read
+			fp, rdr, err := openFileToProgressReader(csvFile)
+			if err != nil {
+				return err
+			}
+			defer fp.Close()
+			// TODO should validate first
+			// TODO set batch size
+			return c.processCSV(prop, rdr, keyPrefix)
 		})
 	}
 }

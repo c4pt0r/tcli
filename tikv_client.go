@@ -123,8 +123,9 @@ func (c *TikvClient) Scan(ctx context.Context, startKey []byte) (KVS, error) {
 		return nil, err
 	}
 
+	countOnly := scanOpts.GetBool(ScanOptCountOnly, false)
 	keyOnly := scanOpts.GetBool(ScanOptKeyOnly, false)
-	if keyOnly {
+	if keyOnly || countOnly {
 		tx.GetSnapshot().SetKeyOnly(keyOnly)
 	}
 
@@ -135,13 +136,11 @@ func (c *TikvClient) Scan(ctx context.Context, startKey []byte) (KVS, error) {
 	}
 	defer it.Close()
 
-	isCountOnly := scanOpts.GetBool(ScanOptCountOnly, false)
-
 	var ret []KV
 	var lastKey KV
 	count := 0
 	for it.Valid() && limit > 0 {
-		if !isCountOnly {
+		if !countOnly {
 			ret = append(ret, KV{K: it.Key()[:], V: it.Value()[:]})
 		} else {
 			count++
@@ -150,15 +149,25 @@ func (c *TikvClient) Scan(ctx context.Context, startKey []byte) (KVS, error) {
 		lastKey.K = it.Key()[:]
 		it.Next()
 	}
-	if isCountOnly {
+	if countOnly {
 		ret = append(ret, KV{K: []byte("Count"), V: []byte(fmt.Sprintf("%d", count))})
 		ret = append(ret, KV{K: []byte("Last Key"), V: []byte(lastKey.K)})
 	}
 	return ret, nil
 }
 
-func (c *TikvClient) BatchPut(ctx context.Context, kv []KV) error {
-	return errors.New("not implemented")
+func (c *TikvClient) BatchPut(ctx context.Context, kvs []KV) error {
+	tx, err := c.client.Begin()
+	if err != nil {
+		return err
+	}
+	for _, kv := range kvs {
+		err := tx.Set(kv.K[:], kv.V[:])
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit(context.Background())
 }
 
 func (c *TikvClient) Get(ctx context.Context, k Key) (KV, error) {

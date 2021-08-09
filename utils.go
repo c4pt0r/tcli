@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/magiconair/properties"
 	"github.com/olekukonko/tablewriter"
 	plog "github.com/pingcap/log"
+	"go.uber.org/atomic"
 )
 
 var (
@@ -102,14 +104,16 @@ const (
 )
 
 var (
-	_reHexStr *regexp.Regexp
+	_reHexStr, _reNormalStr *regexp.Regexp
 )
 
 func init() {
 	_reHexStr, _ = regexp.Compile(`h"([^"\\]|\\[\s\S])*"|h'([^'\\]|\\[\s\S])*'`)
+	_reNormalStr, _ = regexp.Compile(`"([^"\\]|\\[\s\S])*"|'([^'\\]|\\[\s\S])*'`)
 }
 
 func getStringLit(raw string) (StrLitType, []byte, error) {
+	// h"" | h''
 	if _reHexStr.MatchString(raw) {
 		out := _reHexStr.FindString(raw)
 		val := string(out[2 : len(out)-1])
@@ -118,6 +122,12 @@ func getStringLit(raw string) (StrLitType, []byte, error) {
 			return StrLitNormal, nil, err
 		}
 		return StrLitHex, b, nil
+	}
+	// "" | ''
+	if _reNormalStr.MatchString(raw) {
+		out := _reNormalStr.FindString(raw)
+		val := out[1 : len(out)-1]
+		return StrLitNormal, []byte(val), nil
 	}
 	return StrLitNormal, []byte(raw), nil
 }
@@ -145,4 +155,55 @@ func propFromContext(ctx context.Context) *properties.Properties {
 		return properties.NewProperties()
 	}
 	return prop
+}
+
+type ProgressReader struct {
+	totalSz int64
+	readSz  *atomic.Int32
+	rdr     io.Reader
+	err     atomic.Value
+}
+
+func NewProgressReader(r io.Reader, total int64) *ProgressReader {
+	return &ProgressReader{
+		totalSz: total,
+		readSz:  atomic.NewInt32(0),
+		err:     atomic.Value{},
+		rdr:     r,
+	}
+}
+
+func (pr *ProgressReader) Read(b []byte) (int, error) {
+	n, err := pr.rdr.Read(b)
+	if err != nil {
+		pr.err.Store(err)
+		return n, err
+	}
+	pr.readSz.Add(int32(n))
+	return n, err
+}
+
+func (pr *ProgressReader) GetProgress() float64 {
+	return float64(pr.readSz.Load()) / float64(pr.totalSz)
+}
+
+func (pr *ProgressReader) Error() error {
+	v := pr.err.Load()
+	if v != nil {
+		return v.(error)
+	}
+	return nil
+}
+
+func openFileToProgressReader(fname string) (*os.File, *ProgressReader, error) {
+	fp, err := os.Open(fname)
+	if err != nil {
+		return nil, nil, err
+	}
+	fi, err := fp.Stat()
+	if err != nil {
+		return nil, nil, err
+	}
+	pr := NewProgressReader(fp, fi.Size())
+	return fp, pr, nil
 }
