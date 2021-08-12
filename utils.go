@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -132,16 +131,34 @@ func getStringLit(raw string) (StrLitType, []byte, error) {
 	return StrLitNormal, []byte(raw), nil
 }
 
-func setOptByString(s string, prop *properties.Properties) error {
-	// s:  opt1=val1,opt2=val2,opt3=val3
-	fields := strings.Split(s, ",")
-	for _, field := range fields {
-		opt := strings.Split(field, "=")
-		if len(opt) != 2 {
-			return errors.New("option format error")
-		}
-		prop.Set(opt[0], opt[1])
+func setOptByString(ss []string, props *properties.Properties) error {
+	// hack
+	var items []string
+	var kvItems []string
+	var boolItems []string
+	for _, item := range ss {
+		kvs := strings.Split(item, ",")
+		items = append(items, kvs...)
 	}
+	// 1. ss:  opt1=val1 opt2=val2,    opt3=val3 => opt1=val1\nopt2=val2\n
+	for _, item := range items {
+		kv := strings.ReplaceAll(item, " ", "\n")
+		// item like: key-only,count-only
+		if strings.Contains(kv, "=") {
+			kvItems = append(kvItems, kv)
+		} else {
+			boolItems = append(boolItems, kv)
+		}
+	}
+	confBuf := strings.Join(kvItems, "\n")
+	props.Load([]byte(confBuf), properties.UTF8)
+
+	for _, item := range boolItems {
+		props.Set(item, "true")
+	}
+
+	fmt.Println(ss, boolItems, props.String())
+
 	return nil
 }
 

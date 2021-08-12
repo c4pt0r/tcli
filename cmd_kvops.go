@@ -55,7 +55,7 @@ func (c ScanCmd) Handler() func(ctx context.Context) {
 
 			scanOpt := properties.NewProperties()
 			if len(ic.Args) > 1 {
-				err := setOptByString(ic.Args[1], scanOpt)
+				err := setOptByString(ic.Args[1:], scanOpt)
 				if err != nil {
 					return err
 				}
@@ -254,7 +254,7 @@ func (c LoadFileCmd) Handler() func(ctx context.Context) {
 			// set prop
 			prop := properties.NewProperties()
 			if len(ic.Args) > 2 {
-				err = setOptByString(ic.RawArgs[3], prop)
+				err = setOptByString(ic.RawArgs[3:], prop)
 				if err != nil {
 					return nil
 				}

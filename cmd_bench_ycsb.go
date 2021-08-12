@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -28,50 +27,28 @@ type YcsbBench struct {
 	Cancel   context.CancelFunc
 	DB       ycsb.DB
 	Workload ycsb.Workload
-	Props    *properties.Properties
 }
 
 func (y *YcsbBench) init() {
-	y.Props = properties.NewProperties()
-	y.Context, y.Cancel = context.WithCancel(context.Background())
+}
 
-	addr := y.Props.GetString(prop.DebugPprof, prop.DebugPprofDefault)
-	go func() {
-		http.ListenAndServe(addr, nil)
-	}()
-	measurement.InitMeasure(y.Props)
-	// TODO only support core for now
-	//workloadName := y.Props.GetString(prop.Workload, "core")
-	workloadCreator := ycsb.GetWorkloadCreator("core")
-
+func (y *YcsbBench) Start(load bool) {
+	props := properties.NewProperties()
+	measurement.InitMeasure(props)
 	var err error
-	if y.Workload, err = workloadCreator.Create(y.Props); err != nil {
+	workloadCreator := ycsb.GetWorkloadCreator("core")
+	if y.Workload, err = workloadCreator.Create(props); err != nil {
 		log.Fatalf("create workload failed %v", err)
 	}
 
-	dbCreator := ycsb.GetDBCreator("tikv")
-	// FIXME hacking...
-	y.Props.Set("tikv.type", "txn")
+	props.Set("tikv.type", "txn")
+	props.Set(prop.ThreadCount, "10")
+	props.Set(prop.OperationCount, "10000")
+	props.Set(prop.RecordCount, "100000")
+	// report every 2s
+	props.Set(prop.LogInterval, "2")
 
-	if dbCreator == nil {
-		log.Fatalf("tikv is not registered")
-	}
-	if y.DB, err = dbCreator.Create(y.Props); err != nil {
-		log.Fatalf("create db %s failed %v", "ycsb", err)
-	}
-	y.DB = client.DbWrapper{y.DB}
-}
-
-func (y *YcsbBench) Start() {
-	// FIXME
-	y.Props.Set(prop.DoTransactions, "false")
-	y.Props.Set(prop.ThreadCount, "10")
-	y.Props.Set(prop.OperationCount, "10000")
-	y.Props.Set(prop.RecordCount, "100000")
-	// report every 1s
-	y.Props.Set(prop.LogInterval, "2")
-
-	defaultProps := y.Props.String()
+	defaultProps := props.String()
 	prompt := &survey.Editor{
 		Message:       "Ycsb Config",
 		Default:       defaultProps,
@@ -81,18 +58,30 @@ func (y *YcsbBench) Start() {
 	var content string
 	survey.AskOne(prompt, &content)
 
-	if err := y.Props.Load([]byte(content), properties.UTF8); err != nil {
+	if err := props.Load([]byte(content), properties.UTF8); err != nil {
 		fmt.Printf(err.Error())
 		return
 	}
+	// Is load data
+	if load {
+		props.Set(prop.DoTransactions, "false")
+	} else {
+		props.Set(prop.DoTransactions, "true")
+	}
 
 	fmt.Println("***************** properties *****************")
-	for key, value := range y.Props.Map() {
+	for key, value := range props.Map() {
 		fmt.Printf("\"%s\"=\"%s\"\n", key, value)
 	}
 	fmt.Println("**********************************************")
 
-	c := client.NewClient(y.Props, y.Workload, y.DB)
+	dbCreator := ycsb.GetDBCreator("tikv")
+	if y.DB, err = dbCreator.Create(props); err != nil {
+		log.Fatalf("create db %s failed %v", "ycsb", err)
+	}
+
+	y.Context, y.Cancel = context.WithCancel(context.Background())
+	c := client.NewClient(props, y.Workload, y.DB)
 	start := time.Now()
 
 	c.Run(y.Context)
@@ -121,13 +110,17 @@ func (y *YcsbBench) Run(ctx context.Context) error {
 		Label: "Choose job:",
 		Items: []string{"1. Load bench data", "2. Run workload"},
 	}
-	_, _, err := prompt.Run()
+	i, _, err := prompt.Run()
 	if err != nil {
 		fmt.Println(err)
 		return err
 	}
 
-	y.Start()
+	load := false
+	if i == 0 {
+		load = true
+	}
+	y.Start(load)
 	return nil
 }
 func (y *YcsbBench) Stop(ctx context.Context) error {
