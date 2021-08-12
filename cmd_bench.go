@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/abiosoft/ishell"
+	"github.com/manifoldco/promptui"
 )
 
 type BenchWorkload interface {
@@ -35,15 +36,20 @@ func (c BenchCmd) Help() string {
 
 func (c BenchCmd) Handler() func(ctx context.Context) {
 	return func(ctx context.Context) {
-		ic := ctx.Value("ishell").(*ishell.Context)
 		var items []string
 		for _, w := range c.Workloads {
 			items = append(items, w.Name())
 		}
-		choice := ic.MultiChoice(items, "Choose Benchmark Workload: ")
-		if choice != -1 {
-			c.Workloads[choice].Run(context.TODO())
+
+		prompt := promptui.Select{
+			Label: "Choose Benchmark Workload",
+			Items: items,
 		}
-		ic.Println()
+		i, _, err := prompt.Run()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		c.Workloads[i].Run(context.TODO())
 	}
 }
