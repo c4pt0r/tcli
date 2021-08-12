@@ -156,9 +156,6 @@ func setOptByString(ss []string, props *properties.Properties) error {
 	for _, item := range boolItems {
 		props.Set(item, "true")
 	}
-
-	fmt.Println(ss, boolItems, props.String())
-
 	return nil
 }
 
