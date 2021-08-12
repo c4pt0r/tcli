@@ -3,6 +3,7 @@ module tcli
 go 1.16
 
 require (
+	github.com/AlecAivazis/survey/v2 v2.2.16 // indirect
 	github.com/abiosoft/ishell v2.0.0+incompatible
 	github.com/abiosoft/readline v0.0.0-20180607040430-155bce2042db // indirect
 	github.com/fatih/color v1.12.0

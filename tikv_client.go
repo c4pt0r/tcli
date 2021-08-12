@@ -16,10 +16,11 @@ var (
 )
 
 type StoreInfo struct {
-	ID      string
-	Version string
-	Addr    string
-	Status  string
+	ID            string
+	Version       string
+	Addr          string
+	State         string
+	StatusAddress string
 }
 
 type PDInfo struct {
@@ -28,11 +29,11 @@ type PDInfo struct {
 }
 
 func (StoreInfo) TableTitle() []string {
-	return []string{"Store ID", "Version", "Address", "Status"}
+	return []string{"Store ID", "Version", "Address", "State", "Status Address"}
 }
 
 func (s *StoreInfo) Flatten() []string {
-	return []string{s.ID, s.Version, s.Addr, s.Status}
+	return []string{s.ID, s.Version, s.Addr, s.State, s.StatusAddress}
 }
 
 type TikvClient struct {
@@ -86,10 +87,11 @@ func (c *TikvClient) GetStores() ([]StoreInfo, error) {
 	}
 	for _, store := range stores {
 		ret = append(ret, StoreInfo{
-			ID:      fmt.Sprintf("%d", store.GetId()),
-			Version: store.GetVersion(),
-			Addr:    store.GetAddress(),
-			Status:  store.GetState().String(),
+			ID:            fmt.Sprintf("%d", store.GetId()),
+			Version:       store.GetVersion(),
+			Addr:          store.GetAddress(),
+			State:         store.GetState().String(),
+			StatusAddress: store.GetStatusAddress(),
 		})
 	}
 	return ret, nil

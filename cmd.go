@@ -30,4 +30,5 @@ var RegisteredCmds = []Cmd{
 	),
 	GetCmd{},
 	LoadFileCmd{},
+	ConfigEditorCmd{},
 }

@@ -11,7 +11,9 @@ import (
 	"time"
 
 	// Register TiKV database
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/magiconair/properties"
+	"github.com/manifoldco/promptui"
 	_ "github.com/pingcap/go-ycsb/db/tikv"
 	"github.com/pingcap/go-ycsb/pkg/measurement"
 	_ "github.com/pingcap/go-ycsb/pkg/workload"
@@ -66,6 +68,23 @@ func (y *YcsbBench) Start() {
 	y.Props.Set(prop.ThreadCount, "10")
 	y.Props.Set(prop.OperationCount, "10000")
 	y.Props.Set(prop.RecordCount, "100000")
+	// report every 1s
+	y.Props.Set(prop.LogInterval, "2")
+
+	defaultProps := y.Props.String()
+	prompt := &survey.Editor{
+		Message:       "Ycsb Config",
+		Default:       defaultProps,
+		HideDefault:   true,
+		AppendDefault: true,
+	}
+	var content string
+	survey.AskOne(prompt, &content)
+
+	if err := y.Props.Load([]byte(content), properties.UTF8); err != nil {
+		fmt.Printf(err.Error())
+		return
+	}
 
 	fmt.Println("***************** properties *****************")
 	for key, value := range y.Props.Map() {
@@ -97,6 +116,16 @@ func (y *YcsbBench) Run(ctx context.Context) error {
 		<-c
 		y.Stop(context.TODO())
 	}()
+
+	prompt := promptui.Select{
+		Label: "Choose job:",
+		Items: []string{"1. Load bench data", "2. Run workload"},
+	}
+	_, _, err := prompt.Run()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
 
 	y.Start()
 	return nil
