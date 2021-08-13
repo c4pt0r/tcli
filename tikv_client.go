@@ -190,9 +190,29 @@ func (c *TikvClient) Get(ctx context.Context, k Key) (KV, error) {
 }
 
 func (c *TikvClient) Delete(ctx context.Context, k Key) error {
-	return errors.New("not implemented")
+	tx, err := c.client.Begin()
+	if err != nil {
+		return err
+	}
+	tx.Delete(k)
+	return tx.Commit(context.Background())
+
 }
 
 func (c *TikvClient) DeleteRange(ctx context.Context, start, end Key) error {
 	return errors.New("not implemented")
+}
+
+func (c *TikvClient) BatchDelete(ctx context.Context, kvs []KV) error {
+	tx, err := c.client.Begin()
+	if err != nil {
+		return err
+	}
+	for _, kv := range kvs {
+		err := tx.Delete(kv.K)
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit(context.Background())
 }

@@ -59,5 +59,6 @@ type Client interface {
 	Scan(ctx context.Context, prefix []byte) (KVS, error)
 
 	Delete(ctx context.Context, k Key) error
+	BatchDelete(ctx context.Context, kvs []KV) error
 	DeleteRange(ctx context.Context, start, end Key) error
 }

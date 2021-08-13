@@ -1,11 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/abiosoft/ishell"
 	"github.com/magiconair/properties"
@@ -18,6 +19,11 @@ var (
 	ScanOptStrictPrefix string = "strict-prefix"
 
 	LoadFileOptBatchSize string = "batch-size"
+	// LoadFileOptConcurrent string = "concurrent"
+
+	DeleteOptWithPrefix string = "prefix-mode"
+	DeleteOptBatchSize  string = "batch-size"
+	DeleteOptLimit      string = "limit"
 )
 
 type ScanCmd struct{}
@@ -87,9 +93,15 @@ func (c PutCmd) Handler() func(ctx context.Context) {
 				fmt.Println(c.Help())
 				return nil
 			}
-			k, v := []byte(ic.Args[0]), []byte(ic.Args[1])
-
-			err := GetTikvClient().Put(context.TODO(), KV{k, v})
+			_, k, err := getStringLit(ic.RawArgs[1])
+			if err != nil {
+				return err
+			}
+			_, v, err := getStringLit(ic.RawArgs[2])
+			if err != nil {
+				return err
+			}
+			err = GetTikvClient().Put(context.TODO(), KV{k, v})
 			if err != nil {
 				return err
 			}
@@ -233,7 +245,8 @@ func (c LoadFileCmd) Handler() func(ctx context.Context) {
 			var err error
 			ic := ctx.Value("ishell").(*ishell.Context)
 			if len(ic.Args) == 0 {
-				return errors.New(c.Help())
+				fmt.Println(c.Help())
+				return nil
 			}
 
 			// set filename
@@ -268,6 +281,43 @@ func (c LoadFileCmd) Handler() func(ctx context.Context) {
 			// TODO should validate first
 			// TODO set batch size
 			return c.processCSV(prop, rdr, keyPrefix)
+		})
+	}
+}
+
+type DeleteCmd struct{}
+
+func (c DeleteCmd) Name() string    { return "del" }
+func (c DeleteCmd) Alias() []string { return []string{"remove", "delete", "rm"} }
+func (c DeleteCmd) Help() string {
+	return `del(delete, rm, remove) [key]`
+}
+
+func (c DeleteCmd) Handler() func(ctx context.Context) {
+	return func(ctx context.Context) {
+		outputWithElapse(func() error {
+			ic := ctx.Value("ishell").(*ishell.Context)
+			if len(ic.Args) < 1 {
+				fmt.Println(c.Help())
+				return nil
+			}
+			_, k, err := getStringLit(ic.RawArgs[1])
+			if err != nil {
+				return err
+			}
+			// TODO support prefix literal like: tbl_*
+			opt := properties.NewProperties()
+			if bytes.HasSuffix(k, []byte("*")) {
+				opt.Set(DeleteOptWithPrefix, "true")
+				prefix := k[:len(k)-1]
+				log.Println("delete with prefix: ", string(prefix))
+			} else {
+				err = GetTikvClient().Delete(context.TODO(), k)
+			}
+			if err != nil {
+				return err
+			}
+			return nil
 		})
 	}
 }
