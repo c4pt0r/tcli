@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"context"
@@ -10,63 +10,20 @@ import (
 	"strings"
 	"time"
 
-	"log"
-
-	"github.com/fatih/color"
 	"github.com/magiconair/properties"
 	"github.com/manifoldco/promptui"
 	"github.com/olekukonko/tablewriter"
-	plog "github.com/pingcap/log"
 	"go.uber.org/atomic"
 )
 
 var (
-	logo string = `                   /                   
-                %#######%               
-           .#################           
-       ##########################*      
-   #############        *############%  
-(###########             ###############
-(######(             ###################
-(######             (#########    ######
-(######     #%      (######       ######
-(###### %####%      (######       ######
-(############%      (######       ######
-(############%      (######       ######
-(############%      (######       ######
-(############%      (######   .#########
- #############,     (##################(
-     /############# (##############.    
-          ####################%         
-              %###########(             
-                  /###,   
-`
+	propertiesKey = "property"
 )
 
-func initLog() {
-	// keep pingcap's log silent
-	conf := &plog.Config{Level: *clientLogLevel, File: plog.FileLogConfig{Filename: *clientLog}}
-	lg, r, _ := plog.InitLogger(conf)
-	plog.ReplaceGlobals(lg, r)
-}
+/*
+ */
 
-func showWelcomeMessage() {
-	color.Red(logo)
-	pdClient := GetTikvClient().GetPDClient()
-	// show pd members
-	members, err := pdClient.GetAllMembers(context.TODO())
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-	fmt.Println("PD Peers:")
-	for _, member := range members {
-		fmt.Println(member)
-	}
-	color.Green("Welcome, TiKV Cluster ID: %d", pdClient.GetClusterID(context.TODO()))
-
-}
-
-func printTable(data [][]string) {
+func PrintTable(data [][]string) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(data[0])
 	table.SetBorders(tablewriter.Border{Left: true, Top: true, Right: true, Bottom: true})
@@ -75,7 +32,7 @@ func printTable(data [][]string) {
 	table.Render()
 }
 
-func outputWithElapse(f func() error) error {
+func OutputWithElapse(f func() error) error {
 	tt := time.Now()
 	err := f()
 	if err != nil {
@@ -86,11 +43,11 @@ func outputWithElapse(f func() error) error {
 	return err
 }
 
-func hexstr2bytes(hexStr string) ([]byte, error) {
+func Hexstr2bytes(hexStr string) ([]byte, error) {
 	return hex.DecodeString(hexStr)
 }
 
-func bytes2hex(s []byte) string {
+func Bytes2hex(s []byte) string {
 	return hex.EncodeToString(s)
 }
 
@@ -112,12 +69,12 @@ func init() {
 	_reNormalStr, _ = regexp.Compile(`"([^"\\]|\\[\s\S])*"|'([^'\\]|\\[\s\S])*'`)
 }
 
-func getStringLit(raw string) (StrLitType, []byte, error) {
+func GetStringLit(raw string) (StrLitType, []byte, error) {
 	// h"" | h''
 	if _reHexStr.MatchString(raw) {
 		out := _reHexStr.FindString(raw)
 		val := string(out[2 : len(out)-1])
-		b, err := hexstr2bytes(val)
+		b, err := Hexstr2bytes(val)
 		if err != nil {
 			return StrLitNormal, nil, err
 		}
@@ -132,7 +89,7 @@ func getStringLit(raw string) (StrLitType, []byte, error) {
 	return StrLitNormal, []byte(raw), nil
 }
 
-func setOptByString(ss []string, props *properties.Properties) error {
+func SetOptByString(ss []string, props *properties.Properties) error {
 	// hack
 	var items []string
 	var kvItems []string
@@ -160,11 +117,11 @@ func setOptByString(ss []string, props *properties.Properties) error {
 	return nil
 }
 
-func contextWithProp(ctx context.Context, p *properties.Properties) context.Context {
+func ContextWithProp(ctx context.Context, p *properties.Properties) context.Context {
 	return context.WithValue(ctx, propertiesKey, p)
 }
 
-func propFromContext(ctx context.Context) *properties.Properties {
+func PropFromContext(ctx context.Context) *properties.Properties {
 	prop := ctx.Value(propertiesKey).(*properties.Properties)
 	if prop == nil {
 		return properties.NewProperties()
@@ -210,7 +167,7 @@ func (pr *ProgressReader) Error() error {
 	return nil
 }
 
-func openFileToProgressReader(fname string) (*os.File, *ProgressReader, error) {
+func OpenFileToProgressReader(fname string) (*os.File, *ProgressReader, error) {
 	fp, err := os.Open(fname)
 	if err != nil {
 		return nil, nil, err
@@ -224,7 +181,7 @@ func openFileToProgressReader(fname string) (*os.File, *ProgressReader, error) {
 }
 
 // 1 yes, 0 no, -1 return
-func askYesNo(msg string, def string) int {
+func AskYesNo(msg string, def string) int {
 	prompt := promptui.Select{
 		Label: msg,
 		Items: []string{"yes", "no"},

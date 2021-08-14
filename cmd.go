@@ -1,4 +1,4 @@
-package main
+package tcli
 
 import (
 	"context"
@@ -15,21 +15,4 @@ type Cmd interface {
 	// Handler is the handler of the command. A *ishell.Context object named
 	// `ishell` is stored in ctx
 	Handler() func(ctx context.Context)
-}
-
-// RegisteredCmds global command registration
-// the Cmd objects inside this array can only be used
-var RegisteredCmds = []Cmd{
-	ConnectCmd{},
-	NewScanCmd(),
-	ListStoresCmd{},
-	PutCmd{},
-	EchoCmd{},
-	NewBenchCmd(
-		NewYcsbBench(),
-	),
-	GetCmd{},
-	LoadFileCmd{},
-	ConfigEditorCmd{},
-	DeleteCmd{},
 }

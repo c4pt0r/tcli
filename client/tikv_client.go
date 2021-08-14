@@ -1,4 +1,4 @@
-package main
+package client
 
 import (
 	"bytes"
@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"sync/atomic"
+	"tcli"
+	"tcli/utils"
 
 	"github.com/tikv/client-go/v2/tikv"
 	pd "github.com/tikv/pd/client"
@@ -49,8 +51,8 @@ var (
 	_globalKvClient atomic.Value
 )
 
-func initTikvClient() {
-	kvClient := NewTikvClient([]string{*pdAddr})
+func InitTikvClient(pdAddrs []string) {
+	kvClient := NewTikvClient(pdAddrs)
 	_globalKvClient.Store(kvClient)
 }
 
@@ -120,20 +122,20 @@ func (c *TikvClient) Put(ctx context.Context, kv KV) error {
 }
 
 func (c *TikvClient) Scan(ctx context.Context, startKey []byte) (KVS, error) {
-	scanOpts := propFromContext(ctx)
+	scanOpts := utils.PropFromContext(ctx)
 	tx, err := c.client.Begin()
 	if err != nil {
 		return nil, err
 	}
 
-	strictPrefix := scanOpts.GetBool(ScanOptStrictPrefix, false)
-	countOnly := scanOpts.GetBool(ScanOptCountOnly, false)
-	keyOnly := scanOpts.GetBool(ScanOptKeyOnly, false)
+	strictPrefix := scanOpts.GetBool(tcli.ScanOptStrictPrefix, false)
+	countOnly := scanOpts.GetBool(tcli.ScanOptCountOnly, false)
+	keyOnly := scanOpts.GetBool(tcli.ScanOptKeyOnly, false)
 	if keyOnly || countOnly {
 		tx.GetSnapshot().SetKeyOnly(keyOnly)
 	}
 
-	limit := scanOpts.GetInt(ScanOptLimit, 100)
+	limit := scanOpts.GetInt(tcli.ScanOptLimit, 100)
 	it, err := tx.Iter(startKey, nil)
 	if err != nil {
 		return nil, err

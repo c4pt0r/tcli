@@ -1,8 +1,9 @@
-package main
+package client
 
 import (
 	"context"
 	"fmt"
+	"tcli/utils"
 )
 
 type Key []byte
@@ -35,7 +36,7 @@ func (kvs KVS) Print(formatter KVSFormatter) {
 				row := []string{string(kv.K), string(kv.V)}
 				data = append(data, row)
 			}
-			printTable(data)
+			utils.PrintTable(data)
 			if len(kvs) > 1 {
 				fmt.Printf("%d Records Found\n", len(kvs))
 			} else {
