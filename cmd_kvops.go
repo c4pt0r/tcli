@@ -6,7 +6,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/abiosoft/ishell"
 	"github.com/magiconair/properties"
@@ -305,12 +304,17 @@ func (c DeleteCmd) Handler() func(ctx context.Context) {
 			if err != nil {
 				return err
 			}
-			// TODO support prefix literal like: tbl_*
 			opt := properties.NewProperties()
 			if bytes.HasSuffix(k, []byte("*")) {
 				opt.Set(DeleteOptWithPrefix, "true")
 				prefix := k[:len(k)-1]
-				log.Println("delete with prefix: ", string(prefix))
+				ret := askYesNo(fmt.Sprintf("delete with prefix: %s, are you sure?", string(prefix)), "no")
+				if ret == 1 {
+					fmt.Println("Your call")
+					// TODO support prefix literal like: tbl_*
+				} else {
+					fmt.Println("Nothing happened")
+				}
 			} else {
 				err = GetTikvClient().Delete(context.TODO(), k)
 			}

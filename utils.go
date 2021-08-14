@@ -14,6 +14,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/magiconair/properties"
+	"github.com/manifoldco/promptui"
 	"github.com/olekukonko/tablewriter"
 	plog "github.com/pingcap/log"
 	"go.uber.org/atomic"
@@ -220,4 +221,31 @@ func openFileToProgressReader(fname string) (*os.File, *ProgressReader, error) {
 	}
 	pr := NewProgressReader(fp, fi.Size())
 	return fp, pr, nil
+}
+
+// 1 yes, 0 no, -1 return
+func askYesNo(msg string, def string) int {
+	prompt := promptui.Select{
+		Label: msg,
+		Items: []string{"yes", "no"},
+	}
+
+	// TODO
+	switch def {
+	case "yes":
+	case "no":
+	}
+
+	_, res, err := prompt.Run()
+	if err != nil {
+		return -1
+	}
+
+	switch res {
+	case "yes":
+		return 1
+	case "no":
+		return 0
+	}
+	return -1
 }
