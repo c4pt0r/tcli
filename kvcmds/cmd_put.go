@@ -1,0 +1,43 @@
+package kvcmds
+
+import (
+	"context"
+	"fmt"
+	"tcli/client"
+	"tcli/utils"
+
+	"github.com/abiosoft/ishell"
+)
+
+type PutCmd struct{}
+
+func (c PutCmd) Name() string    { return "put" }
+func (c PutCmd) Alias() []string { return []string{"put", "set"} }
+func (c PutCmd) Help() string {
+	return `put [key] [value]`
+}
+
+func (c PutCmd) Handler() func(ctx context.Context) {
+	return func(ctx context.Context) {
+		utils.OutputWithElapse(func() error {
+			ic := ctx.Value("ishell").(*ishell.Context)
+			if len(ic.Args) < 2 {
+				fmt.Println(c.Help())
+				return nil
+			}
+			_, k, err := utils.GetStringLit(ic.RawArgs[1])
+			if err != nil {
+				return err
+			}
+			_, v, err := utils.GetStringLit(ic.RawArgs[2])
+			if err != nil {
+				return err
+			}
+			err = client.GetTikvClient().Put(context.TODO(), client.KV{k, v})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	}
+}

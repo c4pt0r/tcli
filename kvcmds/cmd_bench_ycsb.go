@@ -1,4 +1,4 @@
-package main
+package kvcmds
 
 import (
 	"context"
@@ -34,7 +34,6 @@ func (y *YcsbBench) init() {
 
 func (y *YcsbBench) Start(load bool) {
 	props := properties.NewProperties()
-	measurement.InitMeasure(props)
 	var err error
 	workloadCreator := ycsb.GetWorkloadCreator("core")
 	if y.Workload, err = workloadCreator.Create(props); err != nil {
@@ -81,6 +80,7 @@ func (y *YcsbBench) Start(load bool) {
 		log.Fatalf("create db %s failed %v", "ycsb", err)
 	}
 
+	measurement.InitMeasure(props)
 	y.Context, y.Cancel = context.WithCancel(context.Background())
 	c := client.NewClient(props, y.Workload, y.DB)
 	start := time.Now()
