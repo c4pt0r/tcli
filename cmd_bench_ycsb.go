@@ -42,6 +42,7 @@ func (y *YcsbBench) Start(load bool) {
 	}
 
 	props.Set("tikv.type", "txn")
+	props.Set("tikv.pd", *pdAddr)
 	props.Set(prop.ThreadCount, "10")
 	props.Set(prop.OperationCount, "10000")
 	props.Set(prop.RecordCount, "100000")
