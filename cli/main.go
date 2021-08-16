@@ -53,7 +53,7 @@ var RegisteredCmds = []tcli.Cmd{
 	kvcmds.NewScanCmd(),
 	kvcmds.PutCmd{},
 	kvcmds.NewBenchCmd(
-		kvcmds.NewYcsbBench(),
+		kvcmds.NewYcsbBench(*pdAddr),
 	),
 	kvcmds.GetCmd{},
 	kvcmds.LoadFileCmd{},
