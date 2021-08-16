@@ -25,6 +25,7 @@ import (
 type YcsbBench struct {
 	Context  context.Context
 	Cancel   context.CancelFunc
+	pdAddr   string
 	DB       ycsb.DB
 	Workload ycsb.Workload
 }
@@ -41,6 +42,7 @@ func (y *YcsbBench) Start(load bool) {
 	}
 
 	props.Set("tikv.type", "txn")
+	props.Set("tikv.pd", y.pdAddr)
 	props.Set(prop.ThreadCount, "10")
 	props.Set(prop.OperationCount, "10000")
 	props.Set(prop.RecordCount, "100000")
@@ -90,8 +92,8 @@ func (y *YcsbBench) Start(load bool) {
 	measurement.Output()
 }
 
-func NewYcsbBench() BenchWorkload {
-	ret := &YcsbBench{}
+func NewYcsbBench(pdAddr string) BenchWorkload {
+	ret := &YcsbBench{pdAddr: pdAddr}
 	ret.init()
 	return ret
 }
