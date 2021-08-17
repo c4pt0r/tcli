@@ -63,6 +63,8 @@ func (y *YcsbBench) Start(load bool) {
 		fmt.Printf(err.Error())
 		return
 	}
+
+	measurement.InitMeasure(props)
 	// Is load data
 	if load {
 		props.Set(prop.DoTransactions, "false")
@@ -80,8 +82,8 @@ func (y *YcsbBench) Start(load bool) {
 	if y.DB, err = dbCreator.Create(props); err != nil {
 		log.Fatalf("create db %s failed %v", "ycsb", err)
 	}
+	y.DB = client.DbWrapper{DB: y.DB}
 
-	measurement.InitMeasure(props)
 	y.Context, y.Cancel = context.WithCancel(context.Background())
 	c := client.NewClient(props, y.Workload, y.DB)
 	start := time.Now()
