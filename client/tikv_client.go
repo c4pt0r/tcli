@@ -3,7 +3,6 @@ package client
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"sync/atomic"
 	"tcli"
@@ -201,8 +200,50 @@ func (c *TikvClient) Delete(ctx context.Context, k Key) error {
 
 }
 
-func (c *TikvClient) DeleteRange(ctx context.Context, start, end Key) error {
-	return errors.New("not implemented")
+func (c *TikvClient) DeletePrefix(ctx context.Context, prefix Key, limit int) (int, error) {
+	tx, err := c.client.Begin()
+	if err != nil {
+		return 0, err
+	}
+
+	tx.GetSnapshot().SetKeyOnly(true)
+
+	it, err := tx.Iter(prefix, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer it.Close()
+
+	var lastKey KV
+	count := 0
+
+	var batch []KV
+
+	for it.Valid() && limit > 0 {
+		if !bytes.HasPrefix(it.Key(), prefix) {
+			break
+		}
+		lastKey.K = it.Key()[:]
+		batch = append(batch, KV{K: it.Key()[:]})
+		if len(batch) == 1000 {
+			// do delete
+			if err := c.BatchDelete(ctx, batch); err != nil {
+				return count, err
+			}
+			count += len(batch)
+			// reset batch
+			batch = nil
+		}
+		limit--
+		it.Next()
+	}
+	if len(batch) > 0 {
+		if err := c.BatchDelete(ctx, batch); err != nil {
+			return count, err
+		}
+		count += len(batch)
+	}
+	return count, nil
 }
 
 func (c *TikvClient) BatchDelete(ctx context.Context, kvs []KV) error {

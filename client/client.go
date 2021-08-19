@@ -61,5 +61,5 @@ type Client interface {
 
 	Delete(ctx context.Context, k Key) error
 	BatchDelete(ctx context.Context, kvs []KV) error
-	DeleteRange(ctx context.Context, start, end Key) error
+	DeletePrefix(ctx context.Context, prefix Key, limit int) (int, error)
 }

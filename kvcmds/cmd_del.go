@@ -33,13 +33,21 @@ func (c DeleteCmd) Handler() func(ctx context.Context) {
 				return err
 			}
 			opt := properties.NewProperties()
+			if len(ic.Args) > 1 {
+				err := utils.SetOptByString(ic.Args[1:], opt)
+				if err != nil {
+					return err
+				}
+			}
+
 			if bytes.HasSuffix(k, []byte("*")) {
 				opt.Set(tcli.DeleteOptWithPrefix, "true")
+				limit := opt.GetInt(tcli.DeleteOptLimit, 1000)
 				prefix := k[:len(k)-1]
-				ret := utils.AskYesNo(fmt.Sprintf("delete with prefix: %s, are you sure?", string(prefix)), "no")
+				ret := utils.AskYesNo(fmt.Sprintf("delete with prefix: %s, limit %d, are you sure?", string(prefix), limit), "no")
 				if ret == 1 {
 					fmt.Println("Your call")
-					// TODO support prefix literal like: tbl_*
+					client.GetTikvClient().DeletePrefix(ctx, prefix, limit)
 				} else {
 					fmt.Println("Nothing happened")
 				}
