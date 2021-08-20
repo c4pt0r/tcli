@@ -58,6 +58,7 @@ var RegisteredCmds = []tcli.Cmd{
 	kvcmds.GetCmd{},
 	kvcmds.LoadFileCmd{},
 	kvcmds.DeleteCmd{},
+	kvcmds.DeletePrefix{},
 
 	opcmds.ListStoresCmd{},
 	opcmds.ConnectCmd{},
