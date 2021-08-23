@@ -38,7 +38,7 @@ func (c ScanCmd) Handler() func(ctx context.Context) {
 			}
 			s := ic.RawArgs[1]
 			// it's a hex string literal
-			_, startKey, err := utils.GetStringLit(s)
+			startKey, err := utils.GetStringLit(s)
 			if err != nil {
 				return err
 			}

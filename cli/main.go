@@ -60,6 +60,7 @@ var RegisteredCmds = []tcli.Cmd{
 	kvcmds.DeletePrefix{},
 	kvcmds.EchoCmd{},
 	kvcmds.VarCmd{},
+	kvcmds.PrintVarsCmd{},
 
 	opcmds.ListStoresCmd{},
 	opcmds.ConnectCmd{},
@@ -104,6 +105,7 @@ func main() {
 	flag.Parse()
 	client.InitTikvClient([]string{*pdAddr})
 	initLog()
+	utils.InitBuiltinVaribles()
 	showWelcomeMessage()
 
 	shell := ishell.New()

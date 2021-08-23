@@ -25,11 +25,11 @@ func (c PutCmd) Handler() func(ctx context.Context) {
 				fmt.Println(c.Help())
 				return nil
 			}
-			_, k, err := utils.GetStringLit(ic.RawArgs[1])
+			k, err := utils.GetStringLit(ic.RawArgs[1])
 			if err != nil {
 				return err
 			}
-			_, v, err := utils.GetStringLit(ic.RawArgs[2])
+			v, err := utils.GetStringLit(ic.RawArgs[2])
 			if err != nil {
 				return err
 			}

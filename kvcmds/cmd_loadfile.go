@@ -99,7 +99,7 @@ func (c LoadFileCmd) Handler() func(ctx context.Context) {
 			// set prefix
 			var keyPrefix []byte
 			if len(ic.Args) > 1 && !(ic.RawArgs[2] == `""` || ic.RawArgs[2] == `''`) {
-				_, keyPrefix, err = utils.GetStringLit(ic.RawArgs[2])
+				keyPrefix, err = utils.GetStringLit(ic.RawArgs[2])
 				if err != nil {
 					return err
 				}

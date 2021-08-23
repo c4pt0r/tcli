@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -70,24 +71,31 @@ func IsStringLit(raw string) bool {
 	return _reHexStr.MatchString(raw) || _reNormalStr.MatchString(raw)
 }
 
-func GetStringLit(raw string) (StrLitType, []byte, error) {
+func GetStringLit(raw string) ([]byte, error) {
+	if raw[0] == '$' {
+		varVal, ok := VarGet(raw[1:])
+		if !ok {
+			return nil, errors.New("no such variable")
+		}
+		return varVal, nil
+	}
 	// h"" | h''
 	if _reHexStr.MatchString(raw) {
 		out := _reHexStr.FindString(raw)
 		val := string(out[2 : len(out)-1])
 		b, err := Hexstr2bytes(val)
 		if err != nil {
-			return StrLitNormal, nil, err
+			return nil, err
 		}
-		return StrLitHex, b, nil
+		return b, nil
 	}
 	// "" | ''
 	if _reNormalStr.MatchString(raw) {
 		out := _reNormalStr.FindString(raw)
 		val := out[1 : len(out)-1]
-		return StrLitNormal, []byte(val), nil
+		return []byte(val), nil
 	}
-	return StrLitNormal, []byte(raw), nil
+	return []byte(raw), nil
 }
 
 func SetOptByString(ss []string, props *properties.Properties) error {

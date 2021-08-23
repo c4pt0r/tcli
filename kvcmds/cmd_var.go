@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 	"tcli/utils"
-	"tcli/variables"
 
 	"github.com/abiosoft/ishell"
 )
@@ -50,11 +49,11 @@ func (c VarCmd) Handler() func(ctx context.Context) {
 			}
 
 			// it's a hex string literal
-			_, value, err := utils.GetStringLit(varValue)
+			value, err := utils.GetStringLit(varValue)
 			if err != nil {
 				return err
 			}
-			variables.Set(varName, value)
+			utils.VarSet(varName, value)
 			return nil
 		})
 	}
@@ -82,11 +81,28 @@ func (c EchoCmd) Handler() func(ctx context.Context) {
 				return errors.New("varname should have $ as prefix")
 			}
 			varName = varName[1:]
-			if val, ok := variables.Get(varName); ok {
+			if val, ok := utils.VarGet(varName); ok {
 				fmt.Printf("string:\"%s\" bytes: %v\n", val, val)
 			} else {
 				return errors.New("no such variable")
 			}
+			return nil
+		})
+	}
+}
+
+type PrintVarsCmd struct{}
+
+func (c PrintVarsCmd) Name() string    { return "env" }
+func (c PrintVarsCmd) Alias() []string { return []string{"env"} }
+func (c PrintVarsCmd) Help() string {
+	return `print env variables`
+}
+
+func (c PrintVarsCmd) Handler() func(ctx context.Context) {
+	return func(ctx context.Context) {
+		utils.OutputWithElapse(func() error {
+			utils.PrintGlobalVaribles()
 			return nil
 		})
 	}

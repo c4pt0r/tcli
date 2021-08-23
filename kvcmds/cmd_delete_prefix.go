@@ -27,7 +27,7 @@ func (c DeletePrefix) Handler() func(ctx context.Context) {
 				fmt.Println(c.Help())
 				return nil
 			}
-			_, k, err := utils.GetStringLit(ic.RawArgs[1])
+			k, err := utils.GetStringLit(ic.RawArgs[1])
 			if err != nil {
 				return err
 			}
