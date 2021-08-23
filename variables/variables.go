@@ -10,6 +10,11 @@ var (
 	_globalVarMutex  sync.RWMutex
 )
 
+type VarExpr struct {
+	VarName string
+	Val     []byte
+}
+
 func Get(varname string) ([]byte, bool) {
 	_globalVarMutex.RLock()
 	defer _globalVarMutex.RUnlock()

@@ -20,9 +20,6 @@ var (
 	propertiesKey = "property"
 )
 
-/*
- */
-
 func PrintTable(data [][]string) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(data[0])
@@ -67,6 +64,10 @@ var (
 func init() {
 	_reHexStr, _ = regexp.Compile(`h"([^"\\]|\\[\s\S])*"|h'([^'\\]|\\[\s\S])*'`)
 	_reNormalStr, _ = regexp.Compile(`"([^"\\]|\\[\s\S])*"|'([^'\\]|\\[\s\S])*'`)
+}
+
+func IsStringLit(raw string) bool {
+	return _reHexStr.MatchString(raw) || _reNormalStr.MatchString(raw)
 }
 
 func GetStringLit(raw string) (StrLitType, []byte, error) {

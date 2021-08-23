@@ -9,9 +9,9 @@ import (
 	"tcli/client"
 	"tcli/kvcmds"
 	"tcli/opcmds"
+	"tcli/utils"
 
 	"github.com/abiosoft/ishell"
-	"github.com/fatih/color"
 	"github.com/magiconair/properties"
 	plog "github.com/pingcap/log"
 )
@@ -25,26 +25,25 @@ var (
 	globalProps *properties.Properties
 )
 var (
-	logo string = `                   /                   
-                %#######%               
-           .#################           
-       ##########################*      
-   #############        *############%  
-(###########             ###############
-(######(             ###################
-(######             (#########    ######
-(######     #%      (######       ######
-(###### %####%      (######       ######
-(############%      (######       ######
-(############%      (######       ######
-(############%      (######       ######
-(############%      (######   .#########
- #############,     (##################(
-     /############# (##############.    
-          ####################%         
-              %###########(             
-                  /###,   
-`
+	logo string = "                    /           \n" +
+		"                %%#######%%               \n" +
+		"           .#################             \n" +
+		"       ##########################*        \n" +
+		"   #############        *############%%   \n" +
+		"(###########           ###############    \n" +
+		"(######(             ###################     %s\n" +
+		"(######             (#########    ######  \n" +
+		"(######     #%%      (######       ######  \n" +
+		"(###### %%####%%      (######       ######     https://tikv.org\n" +
+		"(############%%      (######       ######     https://pingcap.com\n" +
+		"(############%%      (######       ###### \n" +
+		"(############%%      (######       ###### \n" +
+		"(############%%      (######   .######### \n" +
+		" #############,     (##################(  \n" +
+		"     /############# (##############.      \n" +
+		"          ####################%%          \n" +
+		"              %%###########(              \n" +
+		"                  /###,                   \n"
 )
 
 // RegisteredCmds global command registration
@@ -59,6 +58,8 @@ var RegisteredCmds = []tcli.Cmd{
 	kvcmds.LoadFileCmd{},
 	kvcmds.DeleteCmd{},
 	kvcmds.DeletePrefix{},
+	kvcmds.EchoCmd{},
+	kvcmds.VarCmd{},
 
 	opcmds.ListStoresCmd{},
 	opcmds.ConnectCmd{},
@@ -73,18 +74,30 @@ func initLog() {
 }
 
 func showWelcomeMessage() {
-	color.Red(logo)
 	pdClient := client.GetTikvClient().GetPDClient()
 	// show pd members
 	members, err := pdClient.GetAllMembers(context.TODO())
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
-	fmt.Println("PD Peers:")
 	for _, member := range members {
 		fmt.Println(member)
 	}
-	color.Green("Welcome, TiKV Cluster ID: %d", pdClient.GetClusterID(context.TODO()))
+	welcome := fmt.Sprintf("Welcome, TiKV Cluster ID: %d", pdClient.GetClusterID(context.TODO()))
+	fmt.Printf(logo, welcome)
+	fmt.Println("Stores Info:")
+	stores, err := client.GetTikvClient().GetStores()
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+
+	var output [][]string = [][]string{
+		(client.StoreInfo).TableTitle(client.StoreInfo{}),
+	}
+	for _, store := range stores {
+		output = append(output, store.Flatten())
+	}
+	utils.PrintTable(output)
 }
 
 func main() {
