@@ -15,6 +15,7 @@ Commands:
   del           delete a single kv pair, usage: del(delete/rm/remove) [key or keyPrefix] [opts]
   delp          delete kv pairs with specific prefix, usage: delp(deletep/rmp) keyPrefix [opts]
   echo          echo $<varname>
+  env           print env variables
   exit          exit the program
   get           get [string lit]
   help          display help
