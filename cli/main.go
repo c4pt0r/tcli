@@ -103,8 +103,8 @@ func showWelcomeMessage() {
 
 func main() {
 	flag.Parse()
-	client.InitTikvClient([]string{*pdAddr})
 	initLog()
+	client.InitTikvClient([]string{*pdAddr})
 	utils.InitBuiltinVaribles()
 	showWelcomeMessage()
 

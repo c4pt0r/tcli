@@ -8,6 +8,8 @@ import (
 	"tcli"
 	"tcli/utils"
 
+	"github.com/tikv/client-go/v2/config"
+
 	"github.com/tikv/client-go/v2/tikv"
 	pd "github.com/tikv/pd/client"
 )
@@ -60,6 +62,8 @@ func GetTikvClient() *TikvClient {
 }
 
 func NewTikvClient(pdAddr []string) *TikvClient {
+	cfg := config.GetGlobalConfig()
+	cfg.PDClient.PDServerTimeout
 	client, err := tikv.NewTxnClient(pdAddr)
 	if err != nil {
 		//logutil.BgLogger().Fatal(err.Error())
