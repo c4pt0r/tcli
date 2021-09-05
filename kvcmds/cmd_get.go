@@ -36,7 +36,7 @@ func (c GetCmd) Handler() func(ctx context.Context) {
 				return err
 			}
 			kvs := []client.KV{kv}
-			client.KVS(kvs).Print(client.TableFormat)
+			client.KVS(kvs).Print()
 			return nil
 		})
 	}

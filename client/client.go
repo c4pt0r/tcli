@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"tcli/utils"
 )
@@ -20,9 +21,16 @@ type KVSFormatter int
 
 const (
 	TableFormat = iota + 1000
+	JsonFormat
 )
 
-func (kvs KVS) Print(formatter KVSFormatter) {
+func (kvs KVS) Print() {
+	formatter := TableFormat
+	if r, ok := utils.VarGet(utils.SysVarPrintFormatKey); ok {
+		if string(r) == "json" {
+			formatter = JsonFormat
+		}
+	}
 	switch formatter {
 	case TableFormat:
 		{
@@ -42,6 +50,11 @@ func (kvs KVS) Print(formatter KVSFormatter) {
 			} else {
 				fmt.Printf("%d Record Found\n", len(kvs))
 			}
+		}
+	case JsonFormat:
+		{
+			out, _ := json.MarshalIndent(kvs, "", " ")
+			fmt.Println(string(out))
 		}
 	default:
 		{

@@ -55,7 +55,7 @@ func (c ScanCmd) Handler() func(ctx context.Context) {
 			if err != nil {
 				return err
 			}
-			kvs.Print(client.TableFormat)
+			kvs.Print()
 			return nil
 		})
 	}

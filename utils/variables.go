@@ -7,24 +7,33 @@ import (
 )
 
 var (
-	_globalVariables = make(map[string][]byte)
-	_globalVarMutex  sync.RWMutex
+	SysVarPrintFormatKey string = "sys.printfmt"
+)
 
-	_builtinVars = [][]string{
-		[]string{`head`, "\x00"},
+var (
+	_varMutex sync.RWMutex
+
+	_globalVariables = make(map[string][]byte)
+	_builtinVars     = [][]string{
+		{`head`, "\x00"},
+	}
+
+	_globalSysVariables = make(map[string]string)
+	_builtinSysVars     = [][]string{
+		{SysVarPrintFormatKey, "json"},
 	}
 )
 
 func VarGet(varname string) ([]byte, bool) {
-	_globalVarMutex.RLock()
-	defer _globalVarMutex.RUnlock()
+	_varMutex.RLock()
+	defer _varMutex.RUnlock()
 	val, ok := _globalVariables[varname]
 	return val, ok
 }
 
 func VarSet(varname string, val []byte) {
-	_globalVarMutex.Lock()
-	defer _globalVarMutex.Unlock()
+	_varMutex.Lock()
+	defer _varMutex.Unlock()
 	_globalVariables[varname] = append([]byte{}, val...)
 }
 
@@ -36,11 +45,14 @@ func InitBuiltinVaribles() {
 	for _, item := range _builtinVars {
 		VarSet(item[0], []byte(item[1]))
 	}
-}
 
+	for _, item := range _builtinSysVars {
+		SysVarSet(item[0], item[1])
+	}
+}
 func PrintGlobalVaribles() {
-	_globalVarMutex.RLock()
-	defer _globalVarMutex.RUnlock()
+	_varMutex.RLock()
+	defer _varMutex.RUnlock()
 	if len(_globalVariables) > 0 {
 		var data = [][]string{
 			{"Var Name", "Value"},
@@ -50,5 +62,33 @@ func PrintGlobalVaribles() {
 			data = append(data, []string{k, vv})
 		}
 		PrintTable(data)
+	}
+}
+
+func SysVarGet(varname string) (string, bool) {
+	_varMutex.RLock()
+	defer _varMutex.RUnlock()
+	val, ok := _globalSysVariables[varname]
+	return val, ok
+}
+
+func SysVarSet(varname, val string) {
+	_varMutex.Lock()
+	defer _varMutex.Unlock()
+	_globalSysVariables[varname] = val
+}
+
+func PrintSysVaribles() {
+	_varMutex.RLock()
+	defer _varMutex.RUnlock()
+	if len(_globalSysVariables) > 0 {
+		var data = [][]string{
+			{"System Varibles Name", "Value"},
+		}
+		for k, v := range _globalSysVariables {
+			data = append(data, []string{k, string(v)})
+		}
+		PrintTable(data)
+
 	}
 }
