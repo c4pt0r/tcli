@@ -89,6 +89,5 @@ func PrintSysVaribles() {
 			data = append(data, []string{k, string(v)})
 		}
 		PrintTable(data)
-
 	}
 }

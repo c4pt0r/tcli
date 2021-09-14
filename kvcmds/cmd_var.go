@@ -107,3 +107,53 @@ func (c PrintVarsCmd) Handler() func(ctx context.Context) {
 		})
 	}
 }
+
+type PrintSysVarsCmd struct{}
+
+func (c PrintSysVarsCmd) Name() string    { return "sysenv" }
+func (c PrintSysVarsCmd) Alias() []string { return []string{"sysenv"} }
+func (c PrintSysVarsCmd) Help() string {
+	return `print system env variables`
+}
+
+func (c PrintSysVarsCmd) Handler() func(ctx context.Context) {
+	return func(ctx context.Context) {
+		utils.OutputWithElapse(func() error {
+			utils.PrintSysVaribles()
+			return nil
+		})
+	}
+}
+
+type SetSysVarsCmd struct{}
+
+func (c SetSysVarsCmd) Name() string    { return "setsysenv" }
+func (c SetSysVarsCmd) Alias() []string { return []string{"setsysenv"} }
+func (c SetSysVarsCmd) Help() string {
+	return `set system env variables, setsysenv [key] [value]`
+}
+
+func (c SetSysVarsCmd) Handler() func(ctx context.Context) {
+	return func(ctx context.Context) {
+		utils.OutputWithElapse(func() error {
+			ic := ctx.Value("ishell").(*ishell.Context)
+			if len(ic.Args) < 1 {
+				fmt.Println(c.Help())
+				return errors.New("wrong args number")
+			}
+
+			varName := ic.Args[0]
+			if !strings.HasPrefix(varName, "$") {
+				return errors.New("varname should have $ as prefix")
+			}
+			varName = varName[1:]
+			if val, ok := utils.VarGet(varName); ok {
+				fmt.Printf("string:\"%s\" bytes: %v\n", val, val)
+			} else {
+				return errors.New("no such variable")
+			}
+			return nil
+
+		})
+	}
+}

@@ -26,7 +26,7 @@ const (
 
 func (kvs KVS) Print() {
 	formatter := TableFormat
-	if r, ok := utils.VarGet(utils.SysVarPrintFormatKey); ok {
+	if r, ok := utils.SysVarGet(utils.SysVarPrintFormatKey); ok {
 		if string(r) == "json" {
 			formatter = JsonFormat
 		}
