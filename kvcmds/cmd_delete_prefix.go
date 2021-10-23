@@ -11,15 +11,15 @@ import (
 	"github.com/magiconair/properties"
 )
 
-type DeletePrefix struct{}
+type DeletePrefixCmd struct{}
 
-func (c DeletePrefix) Name() string    { return "delp" }
-func (c DeletePrefix) Alias() []string { return []string{"deletep", "removep", "rmp"} }
-func (c DeletePrefix) Help() string {
+func (c DeletePrefixCmd) Name() string    { return "delp" }
+func (c DeletePrefixCmd) Alias() []string { return []string{"deletep", "removep", "rmp"} }
+func (c DeletePrefixCmd) Help() string {
 	return `delete kv pairs with specific prefix, usage: delp(deletep/rmp) keyPrefix [opts]`
 }
 
-func (c DeletePrefix) Handler() func(ctx context.Context) {
+func (c DeletePrefixCmd) Handler() func(ctx context.Context) {
 	return func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
 			ic := ctx.Value("ishell").(*ishell.Context)
@@ -40,7 +40,6 @@ func (c DeletePrefix) Handler() func(ctx context.Context) {
 			}
 			opt.Set(tcli.DeleteOptWithPrefix, "true")
 			limit := opt.GetInt(tcli.DeleteOptLimit, 1000)
-			// prefix := k[:len(k)-1] // I don't know why I wrote this? orz...
 			ret := utils.AskYesNo(fmt.Sprintf("delete with prefix: %s, limit %d, are you sure?", string(k), limit), "no")
 			if ret == 1 {
 				client.Println("Your call")

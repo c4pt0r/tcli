@@ -76,7 +76,7 @@ type Client interface {
 	BatchPut(ctx context.Context, kv []KV) error
 
 	Get(ctx context.Context, k Key) (KV, error)
-	Scan(ctx context.Context, prefix []byte) (KVS, error)
+	Scan(ctx context.Context, prefix []byte) (KVS, int, error)
 
 	Delete(ctx context.Context, k Key) error
 	BatchDelete(ctx context.Context, kvs []KV) error

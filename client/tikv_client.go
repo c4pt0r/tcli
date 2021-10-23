@@ -121,11 +121,11 @@ func (c *TikvClient) Put(ctx context.Context, kv KV) error {
 	return nil
 }
 
-func (c *TikvClient) Scan(ctx context.Context, startKey []byte) (KVS, error) {
+func (c *TikvClient) Scan(ctx context.Context, startKey []byte) (KVS, int, error) {
 	scanOpts := utils.PropFromContext(ctx)
 	tx, err := c.client.Begin()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	strictPrefix := scanOpts.GetBool(tcli.ScanOptStrictPrefix, false)
@@ -134,27 +134,32 @@ func (c *TikvClient) Scan(ctx context.Context, startKey []byte) (KVS, error) {
 	if keyOnly || countOnly {
 		tx.GetSnapshot().SetKeyOnly(keyOnly)
 	}
-
+	// count only mode will ignore this
 	limit := scanOpts.GetInt(tcli.ScanOptLimit, 100)
 	it, err := tx.Iter(startKey, nil)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer it.Close()
 
 	var ret []KV
 	var lastKey KV
 	count := 0
-	for it.Valid() && limit > 0 {
-		if strictPrefix && !bytes.HasPrefix(it.Key(), startKey) {
+	for it.Valid() {
+		if !countOnly && limit == 0 {
+			log.D(1)
 			break
 		}
+		if strictPrefix && !bytes.HasPrefix(it.Key(), startKey) {
+			log.D(2, strictPrefix, it.Key(), startKey)
+			break
+		}
+		// count only will not use limit
 		if !countOnly {
 			ret = append(ret, KV{K: it.Key()[:], V: it.Value()[:]})
-		} else {
-			count++
+			limit--
 		}
-		limit--
+		count++
 		lastKey.K = it.Key()[:]
 		it.Next()
 	}
@@ -162,7 +167,7 @@ func (c *TikvClient) Scan(ctx context.Context, startKey []byte) (KVS, error) {
 		ret = append(ret, KV{K: []byte("Count"), V: []byte(fmt.Sprintf("%d", count))})
 		ret = append(ret, KV{K: []byte("Last Key"), V: []byte(lastKey.K)})
 	}
-	return ret, nil
+	return ret, count, nil
 }
 
 func (c *TikvClient) BatchPut(ctx context.Context, kvs []KV) error {

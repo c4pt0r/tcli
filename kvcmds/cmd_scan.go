@@ -48,7 +48,7 @@ func (c ScanCmd) Handler() func(ctx context.Context) {
 					return err
 				}
 			}
-			kvs, err := client.GetTikvClient().Scan(utils.ContextWithProp(context.TODO(), scanOpt), startKey)
+			kvs, _, err := client.GetTikvClient().Scan(utils.ContextWithProp(context.TODO(), scanOpt), startKey)
 			if err != nil {
 				return err
 			}

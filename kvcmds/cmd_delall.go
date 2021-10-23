@@ -9,15 +9,15 @@ import (
 	"github.com/c4pt0r/log"
 )
 
-type DeleteAll struct{}
+type DeleteAllCmd struct{}
 
-func (c DeleteAll) Name() string    { return "delall" }
-func (c DeleteAll) Alias() []string { return []string{"dela", "removeall", "rma"} }
-func (c DeleteAll) Help() string {
+func (c DeleteAllCmd) Name() string    { return "delall" }
+func (c DeleteAllCmd) Alias() []string { return []string{"dela", "removeall", "rma"} }
+func (c DeleteAllCmd) Help() string {
 	return `remove all key-value pairs, DANGEROUS`
 }
 
-func (c DeleteAll) Handler() func(ctx context.Context) {
+func (c DeleteAllCmd) Handler() func(ctx context.Context) {
 	return func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
 			ret := utils.AskYesNo(fmt.Sprintf("delete all keys, are you sure?"), "no")

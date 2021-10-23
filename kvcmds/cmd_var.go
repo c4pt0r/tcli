@@ -158,3 +158,29 @@ func (c SetSysVarsCmd) Handler() func(ctx context.Context) {
 		})
 	}
 }
+
+type HexCmd struct{}
+
+func (c HexCmd) Name() string    { return "hexdump" }
+func (c HexCmd) Alias() []string { return []string{"hex"} }
+func (c HexCmd) Help() string {
+	return `hexdump <string>`
+}
+
+func (c HexCmd) Handler() func(ctx context.Context) {
+	return func(ctx context.Context) {
+		utils.OutputWithElapse(func() error {
+			ic := ctx.Value("ishell").(*ishell.Context)
+			if len(ic.Args) < 1 {
+				client.Println(c.Help())
+				return errors.New("wrong args number")
+			}
+
+			s := ic.Args[0]
+			client.Println(fmt.Sprintf("string:\"%s\" bytes: %v hexLit: h\"%s\"\n", s,
+				utils.Bytes2hex([]byte(s)),
+				utils.Bytes2hex([]byte(s))))
+			return nil
+		})
+	}
+}
