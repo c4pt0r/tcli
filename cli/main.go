@@ -58,6 +58,7 @@ var RegisteredCmds = []tcli.Cmd{
 	kvcmds.LoadFileCmd{},
 	kvcmds.DeleteCmd{},
 	kvcmds.DeletePrefix{},
+	kvcmds.DeleteAll{},
 	kvcmds.EchoCmd{},
 	kvcmds.VarCmd{},
 	kvcmds.PrintVarsCmd{},

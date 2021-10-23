@@ -198,7 +198,6 @@ func (c *TikvClient) Delete(ctx context.Context, k Key) error {
 	}
 	tx.Delete(k)
 	return tx.Commit(context.Background())
-
 }
 
 // return lastKey, delete count, error
@@ -225,9 +224,9 @@ func (c *TikvClient) DeletePrefix(ctx context.Context, prefix Key, limit int) (K
 		if !bytes.HasPrefix(it.Key(), prefix) {
 			break
 		}
-		log.D(it.Key(), prefix, bytes.HasPrefix(it.Key(), prefix))
 		lastKey.K = it.Key()[:]
 		batch = append(batch, KV{K: it.Key()[:]})
+		// TODO batch size shoule not be fixed
 		if len(batch) == 1000 {
 			// do delete
 			if err := c.BatchDelete(ctx, batch); err != nil {
@@ -241,7 +240,6 @@ func (c *TikvClient) DeletePrefix(ctx context.Context, prefix Key, limit int) (K
 		it.Next()
 	}
 	if len(batch) > 0 {
-		log.D(batch)
 		if err := c.BatchDelete(ctx, batch); err != nil {
 			return nil, count, err
 		}
