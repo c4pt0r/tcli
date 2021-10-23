@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/abiosoft/ishell"
 	"github.com/magiconair/properties"
 	"github.com/manifoldco/promptui"
 	"github.com/olekukonko/tablewriter"
@@ -214,4 +215,13 @@ func AskYesNo(msg string, def string) int {
 		return 0
 	}
 	return -1
+}
+
+func Print(a ...interface{}) {
+	fmt.Println(a...)
+}
+
+func ExtractIshellContext(ctx context.Context) *ishell.Context {
+	ic := ctx.Value("ishell").(*ishell.Context)
+	return ic
 }

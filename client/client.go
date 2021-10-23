@@ -65,12 +65,6 @@ func (kvs KVS) Print() {
 	}
 }
 
-// Helper
-func Println(line string) {
-	fmt.Println("Output:")
-	fmt.Println(line)
-}
-
 type Client interface {
 	Put(ctx context.Context, kv KV) error
 	BatchPut(ctx context.Context, kv []KV) error

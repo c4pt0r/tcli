@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"tcli/client"
 	"tcli/utils"
 
 	"github.com/abiosoft/ishell"
@@ -22,24 +21,22 @@ func (c VarCmd) Name() string    { return "var" }
 func (c VarCmd) Alias() []string { return []string{"var", "let"} }
 func (c VarCmd) Help() string {
 	return `set variables, usage:
-			let <varname>=<string value>, variable name and value are both string
-
-			Example: scan $varname / get $varname`
+			    var <varname>=<string value>, variable name and value are both string
+				  example: scan $varname or get $varname`
 }
 
 func (c VarCmd) Handler() func(ctx context.Context) {
 	return func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
-			ic := ctx.Value("ishell").(*ishell.Context)
+			ic := utils.ExtractIshellContext(ctx)
 			if len(ic.Args) < 1 {
-				client.Println(c.Help())
+				utils.Print(c.Help())
 				return errors.New("wrong args")
 			}
-
 			stmt := strings.Join(ic.RawArgs[1:], " ")
 			parts := strings.Split(stmt, "=")
 			if len(parts) != 2 {
-				client.Println(c.Help())
+				utils.Print(c.Help())
 				return errors.New("wrong format")
 			}
 			varName, varValue := parts[0], parts[1]
@@ -48,7 +45,6 @@ func (c VarCmd) Handler() func(ctx context.Context) {
 			if !utils.IsStringLit(varValue) {
 				return errors.New("wrong format for value")
 			}
-
 			// it's a hex string literal
 			value, err := utils.GetStringLit(varValue)
 			if err != nil {
@@ -73,7 +69,7 @@ func (c EchoCmd) Handler() func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
 			ic := ctx.Value("ishell").(*ishell.Context)
 			if len(ic.Args) < 1 {
-				client.Println(c.Help())
+				utils.Print(c.Help())
 				return errors.New("wrong args number")
 			}
 
@@ -83,7 +79,7 @@ func (c EchoCmd) Handler() func(ctx context.Context) {
 			}
 			varName = varName[1:]
 			if val, ok := utils.VarGet(varName); ok {
-				client.Println(fmt.Sprintf("string:\"%s\" bytes: %v\n", val, val))
+				utils.Print(fmt.Sprintf("string:\"%s\" bytes: %v", val, val))
 			} else {
 				return errors.New("no such variable")
 			}
@@ -172,12 +168,12 @@ func (c HexCmd) Handler() func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
 			ic := ctx.Value("ishell").(*ishell.Context)
 			if len(ic.Args) < 1 {
-				client.Println(c.Help())
+				utils.Print(c.Help())
 				return errors.New("wrong args number")
 			}
 
-			s := ic.Args[0]
-			client.Println(fmt.Sprintf("string:\"%s\" bytes: %v hexLit: h\"%s\"\n", s,
+			s := strings.Join(ic.RawArgs[1:], " ")
+			utils.Print(fmt.Sprintf("string: %s\nbytes: %v\nhexLit: h'%s'", s,
 				utils.Bytes2hex([]byte(s)),
 				utils.Bytes2hex([]byte(s))))
 			return nil

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"tcli/client"
 	"tcli/utils"
-
-	"github.com/abiosoft/ishell"
 )
 
 type PutCmd struct{}
@@ -20,7 +18,7 @@ func (c PutCmd) Help() string {
 func (c PutCmd) Handler() func(ctx context.Context) {
 	return func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
-			ic := ctx.Value("ishell").(*ishell.Context)
+			ic := utils.ExtractIshellContext(ctx)
 			if len(ic.Args) < 2 {
 				fmt.Println(c.Help())
 				return nil

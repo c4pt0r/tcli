@@ -4,7 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
+	"strings"
 	"tcli"
 	"tcli/client"
 	"tcli/kvcmds"
@@ -12,6 +12,7 @@ import (
 	"tcli/utils"
 
 	"github.com/abiosoft/ishell"
+	"github.com/c4pt0r/log"
 	"github.com/magiconair/properties"
 	plog "github.com/pingcap/log"
 )
@@ -49,7 +50,9 @@ var (
 // RegisteredCmds global command registration
 // the Cmd objects inside this array can only be used
 var RegisteredCmds = []tcli.Cmd{
-	kvcmds.NewScanCmd(),
+	kvcmds.ScanCmd{},
+	kvcmds.ScanPrefixCmd{},
+	kvcmds.HeadCmd{},
 	kvcmds.PutCmd{},
 	kvcmds.NewBenchCmd(
 		kvcmds.NewYcsbBench(*pdAddr),
@@ -67,8 +70,8 @@ var RegisteredCmds = []tcli.Cmd{
 	kvcmds.PrintSysVarsCmd{},
 
 	opcmds.ListStoresCmd{},
-	opcmds.ConnectCmd{},
-	opcmds.ConfigEditorCmd{},
+	//opcmds.ConnectCmd{},
+	//opcmds.ConfigEditorCmd{},
 }
 
 func initLog() {
@@ -76,6 +79,8 @@ func initLog() {
 	conf := &plog.Config{Level: *clientLogLevel, File: plog.FileLogConfig{Filename: *clientLog}}
 	lg, r, _ := plog.InitLogger(conf)
 	plog.ReplaceGlobals(lg, r)
+
+	log.SetLevelByString(*clientLogLevel)
 }
 
 func showWelcomeMessage() {
@@ -83,26 +88,21 @@ func showWelcomeMessage() {
 	// show pd members
 	members, err := pdClient.GetAllMembers(context.TODO())
 	if err != nil {
-		log.Fatalf("%v", err)
-	}
-	for _, member := range members {
-		fmt.Println(member)
+		log.F(err)
 	}
 	welcome := fmt.Sprintf("Welcome, TiKV Cluster ID: %d", pdClient.GetClusterID(context.TODO()))
 	fmt.Printf(logo, welcome)
-	fmt.Println("Stores Info:")
+
+	for _, member := range members {
+		log.I("pd instance info:", member)
+	}
 	stores, err := client.GetTikvClient().GetStores()
 	if err != nil {
-		log.Fatalf("%v", err)
-	}
-
-	var output [][]string = [][]string{
-		(client.StoreInfo).TableTitle(client.StoreInfo{}),
+		log.F(err)
 	}
 	for _, store := range stores {
-		output = append(output, store.Flatten())
+		log.I("tikv instance info:", store)
 	}
-	utils.PrintTable(output)
 }
 
 func main() {
@@ -120,7 +120,9 @@ func main() {
 			Help:    cmd.Help(),
 			Aliases: cmd.Alias(),
 			Func: func(c *ishell.Context) {
-				handler(context.WithValue(context.TODO(), "ishell", c))
+				ctx := context.WithValue(context.TODO(), "ishell", c)
+				fmt.Println(fmt.Sprintf("Input: %v", strings.Join(c.RawArgs, " ")))
+				handler(ctx)
 			},
 		})
 	}

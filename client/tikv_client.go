@@ -38,6 +38,10 @@ func (s *StoreInfo) Flatten() []string {
 	return []string{s.ID, s.Version, s.Addr, s.State, s.StatusAddress}
 }
 
+func (s StoreInfo) String() string {
+	return fmt.Sprintf("store_id:\"%s\" version:\"%s\" addr:\"%s\" state:\"%s\" status_addr:\"%s\"", s.ID, s.Version, s.Addr, s.State, s.StatusAddress)
+}
+
 type TikvClient struct {
 	client *tikv.KVStore
 	pdAddr []string
@@ -147,11 +151,9 @@ func (c *TikvClient) Scan(ctx context.Context, startKey []byte) (KVS, int, error
 	count := 0
 	for it.Valid() {
 		if !countOnly && limit == 0 {
-			log.D(1)
 			break
 		}
 		if strictPrefix && !bytes.HasPrefix(it.Key(), startKey) {
-			log.D(2, strictPrefix, it.Key(), startKey)
 			break
 		}
 		// count only will not use limit

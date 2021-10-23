@@ -4,8 +4,6 @@ import (
 	"context"
 	"tcli/client"
 	"tcli/utils"
-
-	"github.com/abiosoft/ishell"
 )
 
 type GetCmd struct{}
@@ -13,15 +11,15 @@ type GetCmd struct{}
 func (c GetCmd) Name() string    { return "get" }
 func (c GetCmd) Alias() []string { return []string{"g"} }
 func (c GetCmd) Help() string {
-	return `get [string lit]`
+	return `get [key]`
 }
 
 func (c GetCmd) Handler() func(ctx context.Context) {
 	return func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
-			ic := ctx.Value("ishell").(*ishell.Context)
+			ic := utils.ExtractIshellContext(ctx)
 			if len(ic.Args) < 1 {
-				client.Println(c.Help())
+				utils.Print(c.Help())
 				return nil
 			}
 			s := ic.RawArgs[1]

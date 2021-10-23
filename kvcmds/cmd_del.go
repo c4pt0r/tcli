@@ -4,8 +4,6 @@ import (
 	"context"
 	"tcli/client"
 	"tcli/utils"
-
-	"github.com/abiosoft/ishell"
 )
 
 type DeleteCmd struct{}
@@ -13,15 +11,15 @@ type DeleteCmd struct{}
 func (c DeleteCmd) Name() string    { return "del" }
 func (c DeleteCmd) Alias() []string { return []string{"remove", "delete", "rm"} }
 func (c DeleteCmd) Help() string {
-	return `delete a single kv pair, usage: del(delete/rm/remove) [key or keyPrefix] [opts]`
+	return `delete a single kv pair, usage: del(delete/rm/remove) [key]`
 }
 
 func (c DeleteCmd) Handler() func(ctx context.Context) {
 	return func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
-			ic := ctx.Value("ishell").(*ishell.Context)
+			ic := utils.ExtractIshellContext(ctx)
 			if len(ic.Args) < 1 {
-				client.Println(c.Help())
+				utils.Print(c.Help())
 				return nil
 			}
 			k, err := utils.GetStringLit(ic.RawArgs[1])

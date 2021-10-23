@@ -2,7 +2,7 @@ package kvcmds
 
 import (
 	"context"
-	"tcli/client"
+	"tcli/utils"
 
 	"github.com/manifoldco/promptui"
 )
@@ -47,7 +47,7 @@ func (c BenchCmd) Handler() func(ctx context.Context) {
 		}
 		i, _, err := prompt.Run()
 		if err != nil {
-			client.Println(err.Error())
+			utils.Print("ERR:", err)
 			return
 		}
 		c.Workloads[i].Run(context.TODO())

@@ -8,7 +8,6 @@ import (
 	"tcli/client"
 	"tcli/utils"
 
-	"github.com/abiosoft/ishell"
 	"github.com/magiconair/properties"
 )
 
@@ -17,15 +16,15 @@ type CountCmd struct{}
 func (c CountCmd) Name() string    { return "count" }
 func (c CountCmd) Alias() []string { return []string{"cnt", "count", "count"} }
 func (c CountCmd) Help() string {
-	return `count * | KeyPrefix`
+	return `count [*|key prefix], count all keys or keys with specific prefix`
 }
 
 func (c CountCmd) Handler() func(ctx context.Context) {
 	return func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
-			ic := ctx.Value("ishell").(*ishell.Context)
+			ic := utils.ExtractIshellContext(ctx)
 			if len(ic.Args) < 1 {
-				client.Println(c.Help())
+				utils.Print(c.Help())
 				return nil
 			}
 			prefix, err := utils.GetStringLit(ic.RawArgs[1])
@@ -51,7 +50,7 @@ func (c CountCmd) Handler() func(ctx context.Context) {
 				if err != nil {
 					return err
 				}
-				client.Println(fmt.Sprintf("%d", cnt))
+				utils.Print(fmt.Sprintf("%d", cnt))
 			}
 			return nil
 		})

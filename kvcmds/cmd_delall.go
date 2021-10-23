@@ -22,7 +22,7 @@ func (c DeleteAllCmd) Handler() func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
 			ret := utils.AskYesNo(fmt.Sprintf("delete all keys, are you sure?"), "no")
 			if ret == 1 {
-				client.Println("Your call")
+				utils.Print("Your call")
 				var total int
 				// TODO limit should not be fixed
 				for {

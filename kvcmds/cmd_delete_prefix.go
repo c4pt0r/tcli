@@ -7,7 +7,6 @@ import (
 	"tcli/client"
 	"tcli/utils"
 
-	"github.com/abiosoft/ishell"
 	"github.com/magiconair/properties"
 )
 
@@ -22,9 +21,9 @@ func (c DeletePrefixCmd) Help() string {
 func (c DeletePrefixCmd) Handler() func(ctx context.Context) {
 	return func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
-			ic := ctx.Value("ishell").(*ishell.Context)
+			ic := utils.ExtractIshellContext(ctx)
 			if len(ic.Args) < 1 {
-				client.Println(c.Help())
+				utils.Print(c.Help())
 				return nil
 			}
 			k, err := utils.GetStringLit(ic.RawArgs[1])
@@ -42,7 +41,7 @@ func (c DeletePrefixCmd) Handler() func(ctx context.Context) {
 			limit := opt.GetInt(tcli.DeleteOptLimit, 1000)
 			ret := utils.AskYesNo(fmt.Sprintf("delete with prefix: %s, limit %d, are you sure?", string(k), limit), "no")
 			if ret == 1 {
-				client.Println("Your call")
+				utils.Print("Your call")
 				lastKey, cnt, err := client.GetTikvClient().DeletePrefix(ctx, k, limit)
 				if err != nil {
 					return err
@@ -53,7 +52,7 @@ func (c DeletePrefixCmd) Handler() func(ctx context.Context) {
 				}
 				client.KVS(result).Print()
 			} else {
-				client.Println("Nothing happened")
+				utils.Print("Nothing happened")
 			}
 			if err != nil {
 				return err
