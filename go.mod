@@ -3,13 +3,14 @@ module tcli
 go 1.16
 
 require (
-	github.com/AlecAivazis/survey/v2 v2.2.16 // indirect
+	github.com/AlecAivazis/survey/v2 v2.2.16
 	github.com/abiosoft/ishell v2.0.0+incompatible
 	github.com/abiosoft/readline v0.0.0-20180607040430-155bce2042db // indirect
-	github.com/fatih/color v1.12.0
+	github.com/c4pt0r/log v0.0.0-20211004143616-aa6380016a47
+	github.com/fatih/color v1.12.0 // indirect
 	github.com/flynn-archive/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
 	github.com/magiconair/properties v1.8.0
-	github.com/manifoldco/promptui v0.8.0 // indirect
+	github.com/manifoldco/promptui v0.8.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pingcap/go-ycsb v0.0.0-20210727125954-0c816a248fc3
 	github.com/pingcap/log v0.0.0-20210317133921-96f4fcab92a4

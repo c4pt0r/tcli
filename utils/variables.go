@@ -20,7 +20,7 @@ var (
 
 	_globalSysVariables = make(map[string]string)
 	_builtinSysVars     = [][]string{
-		{SysVarPrintFormatKey, "json"},
+		{SysVarPrintFormatKey, "table"},
 	}
 )
 

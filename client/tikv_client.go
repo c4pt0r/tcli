@@ -8,6 +8,7 @@ import (
 	"tcli"
 	"tcli/utils"
 
+	"github.com/c4pt0r/log"
 	"github.com/tikv/client-go/v2/tikv"
 	pd "github.com/tikv/pd/client"
 )
@@ -62,7 +63,7 @@ func GetTikvClient() *TikvClient {
 func NewTikvClient(pdAddr []string) *TikvClient {
 	client, err := tikv.NewTxnClient(pdAddr)
 	if err != nil {
-		//logutil.BgLogger().Fatal(err.Error())
+		log.F(err)
 	}
 	return &TikvClient{
 		client: client,
@@ -200,17 +201,18 @@ func (c *TikvClient) Delete(ctx context.Context, k Key) error {
 
 }
 
-func (c *TikvClient) DeletePrefix(ctx context.Context, prefix Key, limit int) (int, error) {
+// return lastKey, delete count, error
+func (c *TikvClient) DeletePrefix(ctx context.Context, prefix Key, limit int) (Key, int, error) {
 	tx, err := c.client.Begin()
 	if err != nil {
-		return 0, err
+		return nil, 0, err
 	}
 
 	tx.GetSnapshot().SetKeyOnly(true)
 
 	it, err := tx.Iter(prefix, nil)
 	if err != nil {
-		return 0, err
+		return nil, 0, err
 	}
 	defer it.Close()
 
@@ -223,12 +225,13 @@ func (c *TikvClient) DeletePrefix(ctx context.Context, prefix Key, limit int) (i
 		if !bytes.HasPrefix(it.Key(), prefix) {
 			break
 		}
+		log.D(it.Key(), prefix, bytes.HasPrefix(it.Key(), prefix))
 		lastKey.K = it.Key()[:]
 		batch = append(batch, KV{K: it.Key()[:]})
 		if len(batch) == 1000 {
 			// do delete
 			if err := c.BatchDelete(ctx, batch); err != nil {
-				return count, err
+				return lastKey.K, count, err
 			}
 			count += len(batch)
 			// reset batch
@@ -238,12 +241,13 @@ func (c *TikvClient) DeletePrefix(ctx context.Context, prefix Key, limit int) (i
 		it.Next()
 	}
 	if len(batch) > 0 {
+		log.D(batch)
 		if err := c.BatchDelete(ctx, batch); err != nil {
-			return count, err
+			return nil, count, err
 		}
 		count += len(batch)
 	}
-	return count, nil
+	return lastKey.K, count, nil
 }
 
 func (c *TikvClient) BatchDelete(ctx context.Context, kvs []KV) error {

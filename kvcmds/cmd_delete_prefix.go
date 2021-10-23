@@ -38,14 +38,21 @@ func (c DeletePrefix) Handler() func(ctx context.Context) {
 					return err
 				}
 			}
-
 			opt.Set(tcli.DeleteOptWithPrefix, "true")
 			limit := opt.GetInt(tcli.DeleteOptLimit, 1000)
-			prefix := k[:len(k)-1]
-			ret := utils.AskYesNo(fmt.Sprintf("delete with prefix: %s, limit %d, are you sure?", string(prefix), limit), "no")
+			// prefix := k[:len(k)-1] // I don't know why I wrote this? orz...
+			ret := utils.AskYesNo(fmt.Sprintf("delete with prefix: %s, limit %d, are you sure?", string(k), limit), "no")
 			if ret == 1 {
 				fmt.Println("Your call")
-				client.GetTikvClient().DeletePrefix(ctx, prefix, limit)
+				lastKey, cnt, err := client.GetTikvClient().DeletePrefix(ctx, k, limit)
+				if err != nil {
+					return err
+				}
+				result := []client.KV{
+					{K: []byte("Last Key"), V: []byte(lastKey)},
+					{K: []byte("Affected Keys"), V: []byte(fmt.Sprintf("%d", cnt))},
+				}
+				client.KVS(result).Print()
 			} else {
 				fmt.Println("Nothing happened")
 			}
