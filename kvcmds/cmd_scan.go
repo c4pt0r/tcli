@@ -2,7 +2,6 @@ package kvcmds
 
 import (
 	"context"
-	"fmt"
 	"tcli/client"
 	"tcli/utils"
 
@@ -33,7 +32,7 @@ func (c ScanCmd) Handler() func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
 			ic := ctx.Value("ishell").(*ishell.Context)
 			if len(ic.Args) < 1 {
-				fmt.Println(c.Help())
+				client.Println(c.Help())
 				return nil
 			}
 			s := ic.RawArgs[1]
@@ -42,7 +41,6 @@ func (c ScanCmd) Handler() func(ctx context.Context) {
 			if err != nil {
 				return err
 			}
-
 			scanOpt := properties.NewProperties()
 			if len(ic.Args) > 1 {
 				err := utils.SetOptByString(ic.Args[1:], scanOpt)
@@ -50,7 +48,6 @@ func (c ScanCmd) Handler() func(ctx context.Context) {
 					return err
 				}
 			}
-
 			kvs, err := client.GetTikvClient().Scan(utils.ContextWithProp(context.TODO(), scanOpt), startKey)
 			if err != nil {
 				return err

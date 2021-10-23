@@ -2,7 +2,6 @@ package kvcmds
 
 import (
 	"context"
-	"fmt"
 	"tcli/client"
 	"tcli/utils"
 
@@ -22,7 +21,7 @@ func (c GetCmd) Handler() func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
 			ic := ctx.Value("ishell").(*ishell.Context)
 			if len(ic.Args) < 1 {
-				fmt.Println(c.Help())
+				client.Println(c.Help())
 				return nil
 			}
 			s := ic.RawArgs[1]

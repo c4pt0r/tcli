@@ -24,7 +24,7 @@ func (c DeletePrefix) Handler() func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
 			ic := ctx.Value("ishell").(*ishell.Context)
 			if len(ic.Args) < 1 {
-				fmt.Println(c.Help())
+				client.Println(c.Help())
 				return nil
 			}
 			k, err := utils.GetStringLit(ic.RawArgs[1])
@@ -43,7 +43,7 @@ func (c DeletePrefix) Handler() func(ctx context.Context) {
 			// prefix := k[:len(k)-1] // I don't know why I wrote this? orz...
 			ret := utils.AskYesNo(fmt.Sprintf("delete with prefix: %s, limit %d, are you sure?", string(k), limit), "no")
 			if ret == 1 {
-				fmt.Println("Your call")
+				client.Println("Your call")
 				lastKey, cnt, err := client.GetTikvClient().DeletePrefix(ctx, k, limit)
 				if err != nil {
 					return err
@@ -54,7 +54,7 @@ func (c DeletePrefix) Handler() func(ctx context.Context) {
 				}
 				client.KVS(result).Print()
 			} else {
-				fmt.Println("Nothing happened")
+				client.Println("Nothing happened")
 			}
 			if err != nil {
 				return err

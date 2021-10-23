@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"tcli/client"
 	"tcli/utils"
 
 	"github.com/abiosoft/ishell"
@@ -31,14 +32,14 @@ func (c VarCmd) Handler() func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
 			ic := ctx.Value("ishell").(*ishell.Context)
 			if len(ic.Args) < 1 {
-				fmt.Println(c.Help())
+				client.Println(c.Help())
 				return errors.New("wrong args")
 			}
 
 			stmt := strings.Join(ic.RawArgs[1:], " ")
 			parts := strings.Split(stmt, "=")
 			if len(parts) != 2 {
-				fmt.Println(c.Help())
+				client.Println(c.Help())
 				return errors.New("wrong format")
 			}
 			varName, varValue := parts[0], parts[1]
@@ -72,7 +73,7 @@ func (c EchoCmd) Handler() func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
 			ic := ctx.Value("ishell").(*ishell.Context)
 			if len(ic.Args) < 1 {
-				fmt.Println(c.Help())
+				client.Println(c.Help())
 				return errors.New("wrong args number")
 			}
 
@@ -82,7 +83,7 @@ func (c EchoCmd) Handler() func(ctx context.Context) {
 			}
 			varName = varName[1:]
 			if val, ok := utils.VarGet(varName); ok {
-				fmt.Printf("string:\"%s\" bytes: %v\n", val, val)
+				client.Println(fmt.Sprintf("string:\"%s\" bytes: %v\n", val, val))
 			} else {
 				return errors.New("no such variable")
 			}

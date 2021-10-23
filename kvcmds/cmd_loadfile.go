@@ -63,7 +63,7 @@ func (c LoadFileCmd) processCSV(prop *properties.Properties, rc io.Reader, keyPr
 			}
 			// Show progress
 			progress := rc.(*utils.ProgressReader).GetProgress() * 100
-			fmt.Printf("Progress: %d%% Count: %d Last Key: %s\n", int(progress), cnt, rec[0])
+			client.Println(fmt.Sprintf("Progress: %d%% Count: %d Last Key: %s\n", int(progress), cnt, rec[0]))
 			// clean buffer
 			batch = nil
 		}
@@ -76,7 +76,7 @@ func (c LoadFileCmd) processCSV(prop *properties.Properties, rc io.Reader, keyPr
 			return err
 		}
 	}
-	fmt.Printf("Done, affected records: %d\n", cnt)
+	client.Println(fmt.Sprintf("Done, affected records: %d\n", cnt))
 	return nil
 }
 
@@ -86,7 +86,7 @@ func (c LoadFileCmd) Handler() func(ctx context.Context) {
 			var err error
 			ic := ctx.Value("ishell").(*ishell.Context)
 			if len(ic.Args) == 0 {
-				fmt.Println(c.Help())
+				client.Println(c.Help())
 				return nil
 			}
 

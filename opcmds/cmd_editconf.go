@@ -2,7 +2,7 @@ package opcmds
 
 import (
 	"context"
-	"fmt"
+	"tcli/client"
 
 	"github.com/AlecAivazis/survey/v2"
 )
@@ -26,6 +26,6 @@ func (c ConfigEditorCmd) Handler() func(ctx context.Context) {
 		var content string
 		survey.AskOne(prompt, &content)
 		// TODO
-		fmt.Println(content)
+		client.Println(content)
 	}
 }

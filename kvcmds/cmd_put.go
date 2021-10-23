@@ -33,7 +33,7 @@ func (c PutCmd) Handler() func(ctx context.Context) {
 			if err != nil {
 				return err
 			}
-			err = client.GetTikvClient().Put(context.TODO(), client.KV{k, v})
+			err = client.GetTikvClient().Put(context.TODO(), client.KV{K: k, V: v})
 			if err != nil {
 				return err
 			}

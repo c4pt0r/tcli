@@ -19,7 +19,6 @@ func (c ConnectCmd) Handler() func(ctx context.Context) {
 	return func(ctx context.Context) {
 		ic := ctx.Value("ishell").(*ishell.Context)
 		if len(ic.Args) > 0 {
-			ic.Println("connecting to", ic.Args[0])
 			ic.SetPrompt(fmt.Sprintf("[%s] >>> ", ic.Args[0]))
 		} else {
 			ic.Println(ic.Cmd.HelpText())
