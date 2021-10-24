@@ -40,3 +40,72 @@ Commands:
 
 
 ```
+
+Have a try:
+
+1. Install `tiup` 
+
+`curl --proto '=https' --tlsv1.2 -sSf https://tiup-mirrors.pingcap.com/install.sh | sh`
+
+2. Deploy TiKV using `tiup`
+
+`tiup playground --mode tikv-slim`
+
+3. Launch `tcli`
+
+```
+$ tcli -pd localhost:2379
+                    /
+                %#######%
+           .#################
+       ##########################*
+   #############        *############%
+(###########           ###############
+(######(             ###################     Welcome, TiKV Cluster ID: 7022523378280680532
+(######             (#########    ######
+(######     #%      (######       ######
+(###### %####%      (######       ######     https://tikv.org
+(############%      (######       ######     https://pingcap.com
+(############%      (######       ######
+(############%      (######       ######
+(############%      (######   .#########
+ #############,     (##################(
+     /############# (##############.
+          ####################%
+              %###########(
+                  /###,
+2021/10/24 14:57:19 main.go:98: I | pd instance info: name:"pd-0" member_id:3474484975246189105 peer_urls:"http://127.0.0.1:2380" client_urls:"http://127.0.0.1:2379"
+2021/10/24 14:57:19 main.go:105: I | tikv instance info: store_id:"1" version:"5.2.1" addr:"127.0.0.1:20160" state:"Up" status_addr:"127.0.0.1:20180"
+>>>
+```
+4. Have a try:
+
+```
+>>> put hello world
+Input: put hello world
+Success, Elapse: 33 ms
+>>> get hello
+Input: get hello
+|-------|-------|
+|  KEY  | VALUE |
+|-------|-------|
+| hello | world |
+|-------|-------|
+1 Record Found
+Success, Elapse: 8 ms
+>>> put hello_world world
+Input: put hello_world world
+Success, Elapse: 7 ms
+>>> scanp hello
+Input: scanp hello
+|-------------|-------|
+|     KEY     | VALUE |
+|-------------|-------|
+| hello       | world |
+| hello_world | world |
+|-------------|-------|
+2 Records Found
+Success, Elapse: 5 ms
+>>>
+```
+
