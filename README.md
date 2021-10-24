@@ -84,6 +84,7 @@ $ tcli -pd localhost:2379
 >>> put hello world
 Input: put hello world
 Success, Elapse: 33 ms
+
 >>> get hello
 Input: get hello
 |-------|-------|
@@ -93,9 +94,11 @@ Input: get hello
 |-------|-------|
 1 Record Found
 Success, Elapse: 8 ms
+
 >>> put hello_world world
 Input: put hello_world world
 Success, Elapse: 7 ms
+
 >>> scanp hello
 Input: scanp hello
 |-------------|-------|
@@ -106,6 +109,5 @@ Input: scanp hello
 |-------------|-------|
 2 Records Found
 Success, Elapse: 5 ms
->>>
 ```
 
