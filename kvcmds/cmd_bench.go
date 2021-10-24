@@ -30,8 +30,7 @@ func NewBenchCmd(ww ...BenchWorkload) BenchCmd {
 func (c BenchCmd) Name() string    { return "bench" }
 func (c BenchCmd) Alias() []string { return []string{"benchmark"} }
 func (c BenchCmd) Help() string {
-	return `bench [type] config1=value1 config2=value2 ...
-                  type: ycsb`
+	return `bench [type], type: ycsb`
 }
 
 func (c BenchCmd) Handler() func(ctx context.Context) {
@@ -47,7 +46,7 @@ func (c BenchCmd) Handler() func(ctx context.Context) {
 		}
 		i, _, err := prompt.Run()
 		if err != nil {
-			utils.Print("ERR:", err)
+			utils.Print(err)
 			return
 		}
 		c.Workloads[i].Run(context.TODO())

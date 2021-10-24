@@ -13,7 +13,7 @@ import (
 
 	"github.com/abiosoft/ishell"
 	"github.com/c4pt0r/log"
-	"github.com/magiconair/properties"
+	"github.com/fatih/color"
 	plog "github.com/pingcap/log"
 )
 
@@ -21,9 +21,6 @@ var (
 	pdAddr         = flag.String("pd", "localhost:2379", "pd addr")
 	clientLog      = flag.String("log-file", "/dev/null", "tikv client log file")
 	clientLogLevel = flag.String("log-level", "info", "tikv client log level")
-
-	//TODO
-	globalProps *properties.Properties
 )
 var (
 	logo string = "                    /           \n" +
@@ -114,6 +111,8 @@ func main() {
 	showWelcomeMessage()
 
 	shell := ishell.New()
+	pdLeaderAddr := client.GetTikvClient().GetPDClient().GetLeaderAddr()
+	shell.SetPrompt(fmt.Sprintf("%s> ", pdLeaderAddr))
 	for _, cmd := range RegisteredCmds {
 		handler := cmd.Handler()
 		shell.AddCmd(&ishell.Cmd{
@@ -122,7 +121,7 @@ func main() {
 			Aliases: cmd.Alias(),
 			Func: func(c *ishell.Context) {
 				ctx := context.WithValue(context.TODO(), "ishell", c)
-				fmt.Println(fmt.Sprintf("Input: %v", strings.Join(c.RawArgs, " ")))
+				fmt.Println(color.WhiteString("Input:"), strings.Join(c.RawArgs, " "))
 				handler(ctx)
 			},
 		})
