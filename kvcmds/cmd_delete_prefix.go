@@ -39,7 +39,7 @@ func (c DeletePrefixCmd) Handler() func(ctx context.Context) {
 			}
 			opt.Set(tcli.DeleteOptWithPrefix, "true")
 			limit := opt.GetInt(tcli.DeleteOptLimit, 1000)
-			ret := utils.AskYesNo(fmt.Sprintf("delete with prefix: %s, limit %d, are you sure?", string(k), limit), "no")
+			ret := utils.AskYesNo(fmt.Sprintf("Delete with prefix: %s, limit %d, are you sure?", string(k), limit), "no")
 			if ret == 1 {
 				utils.Print("Your call")
 				lastKey, cnt, err := client.GetTikvClient().DeletePrefix(ctx, k, limit)

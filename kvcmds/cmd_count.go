@@ -50,7 +50,7 @@ func (c CountCmd) Handler() func(ctx context.Context) {
 				if err != nil {
 					return err
 				}
-				utils.Print(fmt.Sprintf("%d", cnt))
+				utils.Print(cnt)
 			}
 			return nil
 		})

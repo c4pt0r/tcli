@@ -3,6 +3,7 @@ package kvcmds
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"tcli/client"
 	"tcli/utils"
 
@@ -20,7 +21,7 @@ func (c DeleteAllCmd) Help() string {
 func (c DeleteAllCmd) Handler() func(ctx context.Context) {
 	return func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
-			ret := utils.AskYesNo(fmt.Sprintf("delete all keys, are you sure?"), "no")
+			ret := utils.AskYesNo(fmt.Sprintf("Delete all keys, are you sure?"), "no")
 			if ret == 1 {
 				utils.Print("Your call")
 				var total int
@@ -37,7 +38,7 @@ func (c DeleteAllCmd) Handler() func(ctx context.Context) {
 					log.I(fmt.Sprintf("Deleting a batch... Position: %s Count: %d, Total: %d", key, cnt, total))
 				}
 				result := []client.KV{
-					{K: []byte("Affected Keys"), V: []byte(fmt.Sprintf("%d", total))},
+					{K: []byte("Affected Keys"), V: []byte(strconv.Itoa(total))},
 				}
 				client.KVS(result).Print()
 			}
