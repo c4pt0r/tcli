@@ -54,11 +54,12 @@ var RegisteredCmds = []tcli.Cmd{
 	kvcmds.ScanPrefixCmd{},
 	kvcmds.HeadCmd{},
 	kvcmds.PutCmd{},
+	kvcmds.BackupCmd{},
 	kvcmds.NewBenchCmd(
 		kvcmds.NewYcsbBench(*pdAddr),
 	),
 	kvcmds.GetCmd{},
-	kvcmds.LoadFileCmd{},
+	kvcmds.LoadCsvCmd{},
 	kvcmds.DeleteCmd{},
 	kvcmds.DeletePrefixCmd{},
 	kvcmds.DeleteAllCmd{},

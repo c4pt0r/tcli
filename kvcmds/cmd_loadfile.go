@@ -12,18 +12,18 @@ import (
 	"github.com/magiconair/properties"
 )
 
-type LoadFileCmd struct{}
+type LoadCsvCmd struct{}
 
-func (c LoadFileCmd) Name() string    { return "loadfile" }
-func (c LoadFileCmd) Alias() []string { return []string{"l"} }
-func (c LoadFileCmd) Help() string {
+func (c LoadCsvCmd) Name() string    { return "loadcsv" }
+func (c LoadCsvCmd) Alias() []string { return []string{"lcsv"} }
+func (c LoadCsvCmd) Help() string {
 	return `loadfile [filename] [key prefix] [opts], only supports CSV now, when "key prefix" is set, will automatically add prefix to the original key,
 	                 opts:
 			           batch-size: int, how many records in one tikv transaction, default: 1000`
 
 }
 
-func (c LoadFileCmd) processCSV(prop *properties.Properties, rc io.Reader, keyPrefix []byte) error {
+func (c LoadCsvCmd) processCSV(prop *properties.Properties, rc io.Reader, keyPrefix []byte) error {
 	r := csv.NewReader(rc)
 	if _, err := r.Read(); err != nil { //read header
 		return err
@@ -81,7 +81,7 @@ func (c LoadFileCmd) processCSV(prop *properties.Properties, rc io.Reader, keyPr
 	return nil
 }
 
-func (c LoadFileCmd) Handler() func(ctx context.Context) {
+func (c LoadCsvCmd) Handler() func(ctx context.Context) {
 	return func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
 			var err error

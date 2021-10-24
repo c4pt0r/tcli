@@ -59,6 +59,10 @@ const (
 	StrLitNormal
 )
 
+func Bytes2StrLit(b []byte) string {
+	return fmt.Sprintf("h'%s'", Bytes2hex(b))
+}
+
 var (
 	_reHexStr, _reNormalStr *regexp.Regexp
 )
@@ -224,4 +228,12 @@ func Print(a ...interface{}) {
 func ExtractIshellContext(ctx context.Context) *ishell.Context {
 	ic := ctx.Value("ishell").(*ishell.Context)
 	return ic
+}
+
+// NextKey returns the next key in byte-order.
+func NextKey(k []byte) []byte {
+	// add 0x0 to the end of key
+	buf := make([]byte, len(k)+1)
+	copy(buf, k)
+	return buf
 }

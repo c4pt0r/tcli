@@ -18,3 +18,7 @@ var (
 	// LoadFileOptConcurrent string = "concurrent"
 
 )
+
+var (
+	BackupOptBatchSize string = "batch-size"
+)
