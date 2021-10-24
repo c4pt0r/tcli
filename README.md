@@ -1,6 +1,7 @@
 # tcli
 The ultimate CLI tool for TiKV, for human being :).
 
+(Only support Transaction KV API now)
 
 ```
 >>> help
