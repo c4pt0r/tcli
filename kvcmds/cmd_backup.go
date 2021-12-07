@@ -70,7 +70,7 @@ func (c BackupCmd) Handler() func(ctx context.Context) {
 			if bytes.Compare(prefix, []byte("\x00")) != 0 && string(prefix) != "*" {
 				opt.Set(tcli.ScanOptStrictPrefix, "true")
 			}
-			kvs, cnt, err := client.GetTikvClient().Scan(utils.ContextWithProp(context.TODO(), opt), prefix)
+			kvs, cnt, err := client.GetTiKVClient().Scan(utils.ContextWithProp(context.TODO(), opt), prefix)
 			if err != nil {
 				return err
 			}
@@ -82,7 +82,7 @@ func (c BackupCmd) Handler() func(ctx context.Context) {
 				lastKey := utils.NextKey(kvs[len(kvs)-1].K)
 				utils.Print("Write a batch, batch size:", cnt, "Last key:", kvs[len(kvs)-1].K)
 				// run next batch
-				kvs, cnt, err = client.GetTikvClient().Scan(utils.ContextWithProp(context.TODO(), opt), lastKey)
+				kvs, cnt, err = client.GetTiKVClient().Scan(utils.ContextWithProp(context.TODO(), opt), lastKey)
 				if err != nil {
 					return err
 				}

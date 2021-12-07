@@ -26,7 +26,7 @@ func (c DeleteCmd) Handler() func(ctx context.Context) {
 			if err != nil {
 				return err
 			}
-			err = client.GetTikvClient().Delete(context.TODO(), k)
+			err = client.GetTiKVClient().Delete(context.TODO(), k)
 			if err != nil {
 				return err
 			}

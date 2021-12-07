@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"sync/atomic"
 	"tcli"
 	"tcli/utils"
 
@@ -13,81 +12,39 @@ import (
 	pd "github.com/tikv/pd/client"
 )
 
-var (
-	propertiesKey = "property"
-)
-
-type StoreInfo struct {
-	ID            string
-	Version       string
-	Addr          string
-	State         string
-	StatusAddress string
-}
-
-type PDInfo struct {
-	Name       string
-	ClientURLs []string
-}
-
-func (StoreInfo) TableTitle() []string {
-	return []string{"Store ID", "Version", "Address", "State", "Status Address"}
-}
-
-func (s *StoreInfo) Flatten() []string {
-	return []string{s.ID, s.Version, s.Addr, s.State, s.StatusAddress}
-}
-
-func (s StoreInfo) String() string {
-	return fmt.Sprintf("store_id:\"%s\" version:\"%s\" addr:\"%s\" state:\"%s\" status_addr:\"%s\"", s.ID, s.Version, s.Addr, s.State, s.StatusAddress)
-}
-
-type TikvClient struct {
-	client *tikv.KVStore
-	pdAddr []string
-}
-
-// Make sure TikvClient implements Client interface
-var _ Client = (*TikvClient)(nil)
-
-// Global client instance, safe to use concurrently
-var (
-	_globalKvClient atomic.Value
-)
-
-func InitTikvClient(pdAddrs []string) {
-	kvClient := NewTikvClient(pdAddrs)
-	_globalKvClient.Store(kvClient)
-}
-
-func GetTikvClient() *TikvClient {
-	return _globalKvClient.Load().(*TikvClient)
-}
-
-func NewTikvClient(pdAddr []string) *TikvClient {
+func newTxnKVClient(pdAddr []string) *txnkvClient {
 	client, err := tikv.NewTxnClient(pdAddr)
 	if err != nil {
 		log.F(err)
 	}
-	return &TikvClient{
-		client: client,
-		pdAddr: pdAddr,
+	return &txnkvClient{
+		txnClient: client,
+		pdAddr:    pdAddr,
 	}
 }
 
-func (c *TikvClient) Close() {
-	if c.client != nil {
-		c.client.Close()
+type txnkvClient struct {
+	txnClient *tikv.KVStore
+	pdAddr    []string
+}
+
+func (c *txnkvClient) Close() {
+	if c.txnClient != nil {
+		c.txnClient.Close()
 	}
 }
 
-func (c *TikvClient) GetClusterID() string {
-	return fmt.Sprintf("%d", c.client.GetPDClient().GetClusterID(context.TODO()))
+func (c *txnkvClient) GetClientMode() TiKV_MODE {
+	return TXN_CLIENT
 }
 
-func (c *TikvClient) GetStores() ([]StoreInfo, error) {
+func (c *txnkvClient) GetClusterID() string {
+	return fmt.Sprintf("%d", c.txnClient.GetPDClient().GetClusterID(context.TODO()))
+}
+
+func (c *txnkvClient) GetStores() ([]StoreInfo, error) {
 	var ret []StoreInfo
-	stores, err := c.client.GetPDClient().GetAllStores(context.TODO())
+	stores, err := c.txnClient.GetPDClient().GetAllStores(context.TODO())
 	if err != nil {
 		return nil, err
 	}
@@ -103,12 +60,12 @@ func (c *TikvClient) GetStores() ([]StoreInfo, error) {
 	return ret, nil
 }
 
-func (c *TikvClient) GetPDClient() pd.Client {
-	return c.client.GetPDClient()
+func (c *txnkvClient) GetPDClient() pd.Client {
+	return c.txnClient.GetPDClient()
 }
 
-func (c *TikvClient) Put(ctx context.Context, kv KV) error {
-	tx, err := c.client.Begin()
+func (c *txnkvClient) Put(ctx context.Context, kv KV) error {
+	tx, err := c.txnClient.Begin()
 	if err != nil {
 		return err
 	}
@@ -125,9 +82,9 @@ func (c *TikvClient) Put(ctx context.Context, kv KV) error {
 	return nil
 }
 
-func (c *TikvClient) Scan(ctx context.Context, startKey []byte) (KVS, int, error) {
+func (c *txnkvClient) Scan(ctx context.Context, startKey []byte) (KVS, int, error) {
 	scanOpts := utils.PropFromContext(ctx)
-	tx, err := c.client.Begin()
+	tx, err := c.txnClient.Begin()
 	if err != nil {
 		return nil, 0, err
 	}
@@ -172,8 +129,8 @@ func (c *TikvClient) Scan(ctx context.Context, startKey []byte) (KVS, int, error
 	return ret, count, nil
 }
 
-func (c *TikvClient) BatchPut(ctx context.Context, kvs []KV) error {
-	tx, err := c.client.Begin()
+func (c *txnkvClient) BatchPut(ctx context.Context, kvs []KV) error {
+	tx, err := c.txnClient.Begin()
 	if err != nil {
 		return err
 	}
@@ -186,8 +143,8 @@ func (c *TikvClient) BatchPut(ctx context.Context, kvs []KV) error {
 	return tx.Commit(context.Background())
 }
 
-func (c *TikvClient) Get(ctx context.Context, k Key) (KV, error) {
-	tx, err := c.client.Begin()
+func (c *txnkvClient) Get(ctx context.Context, k Key) (KV, error) {
+	tx, err := c.txnClient.Begin()
 	if err != nil {
 		return KV{}, err
 	}
@@ -198,8 +155,8 @@ func (c *TikvClient) Get(ctx context.Context, k Key) (KV, error) {
 	return KV{K: k, V: v}, nil
 }
 
-func (c *TikvClient) Delete(ctx context.Context, k Key) error {
-	tx, err := c.client.Begin()
+func (c *txnkvClient) Delete(ctx context.Context, k Key) error {
+	tx, err := c.txnClient.Begin()
 	if err != nil {
 		return err
 	}
@@ -208,8 +165,8 @@ func (c *TikvClient) Delete(ctx context.Context, k Key) error {
 }
 
 // return lastKey, delete count, error
-func (c *TikvClient) DeletePrefix(ctx context.Context, prefix Key, limit int) (Key, int, error) {
-	tx, err := c.client.Begin()
+func (c *txnkvClient) DeletePrefix(ctx context.Context, prefix Key, limit int) (Key, int, error) {
+	tx, err := c.txnClient.Begin()
 	if err != nil {
 		return nil, 0, err
 	}
@@ -255,8 +212,8 @@ func (c *TikvClient) DeletePrefix(ctx context.Context, prefix Key, limit int) (K
 	return lastKey.K, count, nil
 }
 
-func (c *TikvClient) BatchDelete(ctx context.Context, kvs []KV) error {
-	tx, err := c.client.Begin()
+func (c *txnkvClient) BatchDelete(ctx context.Context, kvs []KV) error {
+	tx, err := c.txnClient.Begin()
 	if err != nil {
 		return err
 	}

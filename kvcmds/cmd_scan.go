@@ -45,7 +45,7 @@ func (c ScanCmd) Handler() func(ctx context.Context) {
 					return err
 				}
 			}
-			kvs, _, err := client.GetTikvClient().Scan(utils.ContextWithProp(context.TODO(), scanOpt), startKey)
+			kvs, _, err := client.GetTiKVClient().Scan(utils.ContextWithProp(context.TODO(), scanOpt), startKey)
 			if err != nil {
 				return err
 			}
@@ -86,7 +86,7 @@ func (c ScanPrefixCmd) Handler() func(ctx context.Context) {
 				}
 			}
 			scanOpt.Set(tcli.ScanOptStrictPrefix, "true")
-			kvs, _, err := client.GetTikvClient().Scan(utils.ContextWithProp(context.TODO(), scanOpt), startKey)
+			kvs, _, err := client.GetTiKVClient().Scan(utils.ContextWithProp(context.TODO(), scanOpt), startKey)
 			if err != nil {
 				return err
 			}
@@ -127,7 +127,7 @@ func (c HeadCmd) Handler() func(ctx context.Context) {
 			// set limit
 			scanOpt.Set(tcli.ScanOptLimit, ic.Args[0])
 			scanOpt.Set(tcli.ScanOptStrictPrefix, "false")
-			kvs, _, err := client.GetTikvClient().Scan(utils.ContextWithProp(context.TODO(), scanOpt), []byte("\x00"))
+			kvs, _, err := client.GetTiKVClient().Scan(utils.ContextWithProp(context.TODO(), scanOpt), []byte("\x00"))
 			if err != nil {
 				return err
 			}

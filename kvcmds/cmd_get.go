@@ -28,7 +28,7 @@ func (c GetCmd) Handler() func(ctx context.Context) {
 			if err != nil {
 				return err
 			}
-			kv, err := client.GetTikvClient().Get(context.TODO(), client.Key(k))
+			kv, err := client.GetTiKVClient().Get(context.TODO(), client.Key(k))
 			if err != nil {
 				return err
 			}
