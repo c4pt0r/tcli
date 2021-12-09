@@ -27,7 +27,7 @@ func (c DeleteAllCmd) Handler() func(ctx context.Context) {
 				var total int
 				// TODO limit should not be fixed
 				for {
-					key, cnt, err := client.GetTikvClient().DeletePrefix(ctx, []byte(""), 1000)
+					key, cnt, err := client.GetTiKVClient().DeletePrefix(ctx, []byte(""), 1000)
 					if err != nil {
 						return err
 					}

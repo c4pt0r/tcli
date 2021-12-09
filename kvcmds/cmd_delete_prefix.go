@@ -42,7 +42,7 @@ func (c DeletePrefixCmd) Handler() func(ctx context.Context) {
 			ret := utils.AskYesNo(fmt.Sprintf("Delete with prefix: %s, limit %d, are you sure?", string(k), limit), "no")
 			if ret == 1 {
 				utils.Print("Your call")
-				lastKey, cnt, err := client.GetTikvClient().DeletePrefix(ctx, k, limit)
+				lastKey, cnt, err := client.GetTiKVClient().DeletePrefix(ctx, k, limit)
 				if err != nil {
 					return err
 				}

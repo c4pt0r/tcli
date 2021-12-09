@@ -17,7 +17,7 @@ func (c ListStoresCmd) Help() string {
 func (c ListStoresCmd) Handler() func(ctx context.Context) {
 	return func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
-			stores, err := client.GetTikvClient().GetStores()
+			stores, err := client.GetTiKVClient().GetStores()
 			if err != nil {
 				return err
 			}

@@ -46,7 +46,7 @@ func (c CountCmd) Handler() func(ctx context.Context) {
 					prefix = []byte("\x00")
 					scanOpt.Set(tcli.ScanOptStrictPrefix, "false")
 				}
-				_, cnt, err := client.GetTikvClient().Scan(utils.ContextWithProp(context.TODO(), scanOpt), prefix)
+				_, cnt, err := client.GetTiKVClient().Scan(utils.ContextWithProp(context.TODO(), scanOpt), prefix)
 				if err != nil {
 					return err
 				}

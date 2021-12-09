@@ -4,7 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+	"sync/atomic"
 	"tcli/utils"
+
+	"github.com/pkg/errors"
+	pd "github.com/tikv/pd/client"
 )
 
 type Key []byte
@@ -65,7 +70,40 @@ func (kvs KVS) Print() {
 	}
 }
 
+// Global client instance, safe to use concurrently
+var (
+	_globalKvClient atomic.Value
+)
+
+func InitTiKVClient(pdAddrs []string, clientMode string) error {
+	switch strings.ToLower(clientMode) {
+	case "raw":
+		kvClient := newRawKVClient(pdAddrs)
+		_globalKvClient.Store(kvClient)
+		return nil
+	case "txn":
+		kvClient := newTxnKVClient(pdAddrs)
+		_globalKvClient.Store(kvClient)
+		return nil
+	default:
+		return errors.Errorf("Unrecognized TiKV mode: %s", clientMode)
+	}
+}
+
+func GetTiKVClient() Client {
+	return _globalKvClient.Load().(Client)
+}
+
+// Make sure txnkvClient implements Client interface
+var _ Client = (*txnkvClient)(nil)
+var _ Client = (*rawkvClient)(nil)
+
 type Client interface {
+	GetClientMode() TiKV_MODE
+	GetClusterID() string
+	GetStores() ([]StoreInfo, error)
+	GetPDClient() pd.Client
+
 	Put(ctx context.Context, kv KV) error
 	BatchPut(ctx context.Context, kv []KV) error
 
@@ -75,4 +113,50 @@ type Client interface {
 	Delete(ctx context.Context, k Key) error
 	BatchDelete(ctx context.Context, kvs []KV) error
 	DeletePrefix(ctx context.Context, prefix Key, limit int) (Key, int, error)
+}
+
+type TiKV_MODE int
+
+const (
+	RAW_CLIENT TiKV_MODE = 0
+	TXN_CLIENT TiKV_MODE = 1
+)
+
+func (mode TiKV_MODE) String() string {
+	switch mode {
+	case RAW_CLIENT:
+		return "TiKV Raw Mode"
+	case TXN_CLIENT:
+		return "TiKV Txn Mode"
+	}
+	return "unknown"
+}
+
+var (
+	propertiesKey = "property"
+)
+
+type StoreInfo struct {
+	ID            string
+	Version       string
+	Addr          string
+	State         string
+	StatusAddress string
+}
+
+type PDInfo struct {
+	Name       string
+	ClientURLs []string
+}
+
+func (StoreInfo) TableTitle() []string {
+	return []string{"Store ID", "Version", "Address", "State", "Status Address"}
+}
+
+func (s *StoreInfo) Flatten() []string {
+	return []string{s.ID, s.Version, s.Addr, s.State, s.StatusAddress}
+}
+
+func (s StoreInfo) String() string {
+	return fmt.Sprintf("store_id:\"%s\" version:\"%s\" addr:\"%s\" state:\"%s\" status_addr:\"%s\"", s.ID, s.Version, s.Addr, s.State, s.StatusAddress)
 }

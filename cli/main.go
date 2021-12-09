@@ -18,9 +18,10 @@ import (
 )
 
 var (
-	pdAddr         = flag.String("pd", "localhost:2379", "pd addr")
-	clientLog      = flag.String("log-file", "/dev/null", "tikv client log file")
-	clientLogLevel = flag.String("log-level", "info", "tikv client log level")
+	pdAddr         = flag.String("pd", "localhost:2379", "PD addr")
+	clientLog      = flag.String("log-file", "/dev/null", "TiKV client log file")
+	clientLogLevel = flag.String("log-level", "info", "TiKV client log level")
+	clientmode     = flag.String("mode", "txn", "TiKV API mode, accepted values: raw/txn")
 )
 var (
 	logo string = "                    /           \n" +
@@ -82,19 +83,27 @@ func initLog() {
 }
 
 func showWelcomeMessage() {
-	pdClient := client.GetTikvClient().GetPDClient()
+	fmt.Printf(
+		"%s, Welcome, TiKV Cluster ID: %s, TiKV Mode: %s",
+		logo,
+		client.GetTiKVClient().GetClusterID(),
+		client.GetTiKVClient().GetClientMode(),
+	)
+
+	if client.GetTiKVClient().GetClientMode() == client.RAW_CLIENT {
+		return
+	}
+
 	// show pd members
+	pdClient := client.GetTiKVClient().GetPDClient()
 	members, err := pdClient.GetAllMembers(context.TODO())
 	if err != nil {
 		log.F(err)
 	}
-	welcome := fmt.Sprintf("Welcome, TiKV Cluster ID: %d", pdClient.GetClusterID(context.TODO()))
-	fmt.Printf(logo, welcome)
-
 	for _, member := range members {
 		log.I("pd instance info:", member)
 	}
-	stores, err := client.GetTikvClient().GetStores()
+	stores, err := client.GetTiKVClient().GetStores()
 	if err != nil {
 		log.F(err)
 	}
@@ -106,13 +115,23 @@ func showWelcomeMessage() {
 func main() {
 	flag.Parse()
 	initLog()
-	client.InitTikvClient([]string{*pdAddr})
+	if err := client.InitTiKVClient([]string{*pdAddr}, *clientmode); err != nil {
+		log.Fatal(err)
+	}
 	utils.InitBuiltinVaribles()
 	showWelcomeMessage()
 
+	// set shell prompts
 	shell := ishell.New()
-	pdLeaderAddr := client.GetTikvClient().GetPDClient().GetLeaderAddr()
-	shell.SetPrompt(fmt.Sprintf("%s> ", pdLeaderAddr))
+	if client.GetTiKVClient().GetClientMode() == client.RAW_CLIENT {
+		// TODO: add pd leader addr after we can get PD client from RawKV client.
+		shell.SetPrompt(fmt.Sprintf("%s> ", client.GetTiKVClient().GetClientMode()))
+	} else {
+		pdLeaderAddr := client.GetTiKVClient().GetPDClient().GetLeaderAddr()
+		shell.SetPrompt(fmt.Sprintf("%s(%s)> ", client.GetTiKVClient().GetClientMode(), pdLeaderAddr))
+	}
+
+	// register shell commands
 	for _, cmd := range RegisteredCmds {
 		handler := cmd.Handler()
 		shell.AddCmd(&ishell.Cmd{

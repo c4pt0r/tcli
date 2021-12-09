@@ -58,7 +58,7 @@ func (c LoadCsvCmd) processCSV(prop *properties.Properties, rc io.Reader, keyPre
 
 		if len(batch) == batchSize {
 			// do insert
-			err := client.GetTikvClient().BatchPut(context.TODO(), batch)
+			err := client.GetTiKVClient().BatchPut(context.TODO(), batch)
 			if err != nil {
 				return err
 			}
@@ -72,7 +72,7 @@ func (c LoadCsvCmd) processCSV(prop *properties.Properties, rc io.Reader, keyPre
 	// may have last batch
 	if len(batch) > 0 {
 		// do insert
-		err := client.GetTikvClient().BatchPut(context.TODO(), batch)
+		err := client.GetTiKVClient().BatchPut(context.TODO(), batch)
 		if err != nil {
 			return err
 		}
