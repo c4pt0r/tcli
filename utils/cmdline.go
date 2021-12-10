@@ -6,11 +6,14 @@ import (
 	"io"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/c4pt0r/log"
 )
 
 func isLetter(ch rune) bool {
-	return 'a' <= lower(ch) && lower(ch) <= 'z' || ch == '_' || ch >= utf8.RuneSelf && unicode.IsLetter(ch)
+	return (ch < unicode.MaxASCII && ch != '"' && ch != ' ' && ch != '\t') || ch >= utf8.RuneSelf && unicode.IsLetter(ch)
 }
+
 func lower(ch rune) rune     { return ('a' - 'A') | ch } // returns lower-case ch iff ch is ASCII letter
 func isDecimal(ch rune) bool { return '0' <= ch && ch <= '9' }
 func isHex(ch rune) bool     { return '0' <= ch && ch <= '9' || 'a' <= lower(ch) && lower(ch) <= 'f' }
@@ -59,6 +62,7 @@ func (l *CmdLine) Parse() error {
 		if arg == nil {
 			return nil
 		}
+		log.D(string(arg))
 		l.args = append(l.args, arg)
 	}
 	return nil
