@@ -3,20 +3,26 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"io"
+	"strconv"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/c4pt0r/log"
 )
 
+// UTF-8 Command line Scanner, refer: golang lexer/scanner
+
 func isLetter(ch rune) bool {
-	return (ch < unicode.MaxASCII && ch != '"' && ch != ' ' && ch != '\t') || ch >= utf8.RuneSelf && unicode.IsLetter(ch)
+	return 'a' <= lower(ch) && lower(ch) <= 'z' || ch == '_' || ch >= utf8.RuneSelf && unicode.IsLetter(ch)
 }
 
 func lower(ch rune) rune     { return ('a' - 'A') | ch } // returns lower-case ch iff ch is ASCII letter
 func isDecimal(ch rune) bool { return '0' <= ch && ch <= '9' }
 func isHex(ch rune) bool     { return '0' <= ch && ch <= '9' || 'a' <= lower(ch) && lower(ch) <= 'f' }
+
+func isWhiteSpace(ch rune) bool {
+	return ch == ' ' || ch == '\t'
+}
 
 func isDigit(ch rune) bool {
 	return isDecimal(ch) || ch >= utf8.RuneSelf && unicode.IsDigit(ch)
@@ -36,8 +42,6 @@ type CmdLine struct {
 	raw []byte
 	// parsed arguments, escaped
 	args [][]byte
-	// raw arguments
-	rawArgs [][]byte
 
 	offset   int // current offset
 	rdOffset int // next offset
@@ -62,7 +66,7 @@ func (l *CmdLine) Parse() error {
 		if arg == nil {
 			return nil
 		}
-		log.D(string(arg))
+		log.D("[" + string(arg) + "]")
 		l.args = append(l.args, arg)
 	}
 	return nil
@@ -73,57 +77,65 @@ func (l *CmdLine) scan() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	switch ch := l.ch; {
-	case isLetter(ch):
-		arg, err := l.scanNormalArgv()
+	var arg []byte
+	if l.ch == '"' || l.ch == '\'' {
+		quote := l.ch
+		l.next()
+		var arg []byte
+		var strArg string
+		var err error
+
+		arg, err = l.scanString(quote)
 		if err != nil {
 			return nil, err
 		}
-		return arg, nil
-	default:
-		l.next() // always make progress
-		switch ch {
-		case -1:
-			return nil, io.EOF
-		case '"':
-			arg, err := l.scanString()
-			if err != nil {
-				return nil, err
-			}
-			return arg, nil
+		strArg, err = strconv.Unquote("\"" + string(arg) + "\"")
+		if err != nil {
+			return nil, err
 		}
+		return []byte(strArg), nil
+	} else {
+		arg, err = l.scanString(' ')
 	}
-	return nil, nil
+	if err != nil {
+		return nil, err
+	}
+	return arg, nil
 }
 
-func (l *CmdLine) scanString() ([]byte, error) {
-	offs := l.offset - 1
-
+func (l *CmdLine) scanString(quote rune) ([]byte, error) {
+	offs := l.offset
 	for {
 		ch := l.ch
 		if ch == '\n' || ch < 0 {
+			if isWhiteSpace(quote) && ch < 0 {
+				break
+			}
 			return nil, l.error(offs, "string literal not terminated")
 		}
 		l.next()
-		if ch == '"' {
+		if ch == quote {
 			break
 		}
 		if ch == '\\' {
-			l.scanEscape('"')
+			err := l.scanEscape(quote)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
-	s := string(l.raw[offs:l.offset])
+	s := string(l.raw[offs : l.offset-1])
 	return []byte(s), nil
 }
 
-func (l *CmdLine) scanEscape(quote rune) (bool, error) {
+func (l *CmdLine) scanEscape(quote rune) error {
 	offs := l.rdOffset
 	var n int
 	var base, max uint32
 	switch l.ch {
 	case 'a', 'b', 'f', 'n', 'r', 't', 'v', '\\', quote:
 		l.next()
-		return true, nil
+		return nil
 	case '0', '1', '2', '3', '4', '5', '6', '7':
 		n, base, max = 3, 8, 255
 	case 'x':
@@ -140,7 +152,7 @@ func (l *CmdLine) scanEscape(quote rune) (bool, error) {
 		if l.ch < 0 {
 			msg = "escape sequence not terminated"
 		}
-		return false, l.error(offs, msg)
+		return l.error(offs, msg)
 	}
 
 	var x uint32
@@ -151,7 +163,7 @@ func (l *CmdLine) scanEscape(quote rune) (bool, error) {
 			if l.ch < 0 {
 				msg = "escape sequence not terminated"
 			}
-			return false, l.error(l.rdOffset, msg)
+			return l.error(l.rdOffset, msg)
 		}
 		x = x*base + d
 		l.next()
@@ -159,10 +171,10 @@ func (l *CmdLine) scanEscape(quote rune) (bool, error) {
 	}
 
 	if x > max || 0xD800 <= x && x < 0xE000 {
-		return false, l.error(offs, "escape sequence is invalid Unicode code point")
+		return l.error(offs, "escape sequence is invalid Unicode code point")
 	}
 
-	return true, nil
+	return nil
 }
 
 func (l *CmdLine) scanNormalArgv() ([]byte, error) {
@@ -199,7 +211,7 @@ func (l *CmdLine) next() error {
 }
 
 func (l *CmdLine) skipWhitespace() error {
-	for l.ch == ' ' || l.ch == '\t' {
+	for isWhiteSpace(l.ch) {
 		if err := l.next(); err != nil {
 			return err
 		}
@@ -220,8 +232,4 @@ func (l *CmdLine) Args(i int) []byte {
 		return l.args[i]
 	}
 	return nil
-}
-
-func (l *CmdLine) RawArgs(i int) []string {
-	panic("not implemented")
 }

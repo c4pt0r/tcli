@@ -2,15 +2,18 @@ package utils
 
 import (
 	"testing"
+
+	"github.com/c4pt0r/log"
 )
 
 func TestCmdLine(t *testing.T) {
-	l := NewCmdLine([]byte("你好 h@ello world 5.3 !@#$%^&*(*&^%$#@#$%$#) \"\\x65t   est\""))
-	l.Parse()
-	if l.Len() != 6 {
+	l := NewCmdLine([]byte("你好 \"测\\x32试\" 测试\x32测 试  'tes     t@test@test' \"te\\\\xdst\" abcd"))
+	err := l.Parse()
+	if err != nil {
+		log.E(err)
 		t.Fail()
 	}
-	if string(l.Args(1)) != "h@ello" {
+	if l.Len() != 4 {
 		t.Fail()
 	}
 }
