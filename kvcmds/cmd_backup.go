@@ -1,16 +1,13 @@
 package kvcmds
 
 import (
-	"bytes"
 	"context"
 	"encoding/csv"
-	"errors"
-	"os"
 	"tcli"
 	"tcli/client"
 	"tcli/utils"
 
-	"github.com/magiconair/properties"
+	"github.com/c4pt0r/log"
 )
 
 type BackupCmd struct{}
@@ -18,7 +15,7 @@ type BackupCmd struct{}
 func (c BackupCmd) Name() string    { return "backup" }
 func (c BackupCmd) Alias() []string { return []string{"backup"} }
 func (c BackupCmd) Help() string {
-	return `backup <prefix> <outfile> <opts>, opts: type=csv batch-size=1000(default) concurrent=1, example: backup * outfile`
+	return `backup`
 }
 
 func writeKvsToCsvFile(w *csv.Writer, kvs client.KVS) error {
@@ -33,9 +30,17 @@ func writeKvsToCsvFile(w *csv.Writer, kvs client.KVS) error {
 	return nil
 }
 
+func (c BackupCmd) Suggest(prefix string) []tcli.CmdSuggest {
+	return []tcli.CmdSuggest{}
+}
+func (c BackupCmd) Handler(ctx context.Context, input tcli.CmdInput) tcli.Result {
+	log.D("backup handler")
+	return tcli.ResultOK
+}
+
+/*
 func (c BackupCmd) Handler() func(ctx context.Context) {
 	return func(ctx context.Context) {
-		utils.OutputWithElapse(func() error {
 			ic := utils.ExtractIshellContext(ctx)
 			if len(ic.Args) < 2 {
 				utils.Print(c.Help())
@@ -91,3 +96,4 @@ func (c BackupCmd) Handler() func(ctx context.Context) {
 		})
 	}
 }
+*/

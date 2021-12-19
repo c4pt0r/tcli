@@ -2,8 +2,9 @@ package kvcmds
 
 import (
 	"context"
-	"tcli/client"
-	"tcli/utils"
+	"tcli"
+
+	"github.com/c4pt0r/log"
 )
 
 type GetCmd struct{}
@@ -14,27 +15,11 @@ func (c GetCmd) Help() string {
 	return `get [key]`
 }
 
-func (c GetCmd) Handler() func(ctx context.Context) {
-	return func(ctx context.Context) {
-		utils.OutputWithElapse(func() error {
-			ic := utils.ExtractIshellContext(ctx)
-			if len(ic.Args) < 1 {
-				utils.Print(c.Help())
-				return nil
-			}
-			s := ic.RawArgs[1]
-			// it's a hex string literal
-			k, err := utils.GetStringLit(s)
-			if err != nil {
-				return err
-			}
-			kv, err := client.GetTiKVClient().Get(context.TODO(), client.Key(k))
-			if err != nil {
-				return err
-			}
-			kvs := []client.KV{kv}
-			client.KVS(kvs).Print()
-			return nil
-		})
-	}
+func (c GetCmd) Suggest(prefix string) []tcli.CmdSuggest {
+	return []tcli.CmdSuggest{}
+}
+
+func (c GetCmd) Handler(ctx context.Context, input tcli.CmdInput) tcli.Result {
+	log.D("get handler")
+	return tcli.ResultOK
 }

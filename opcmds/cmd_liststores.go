@@ -2,8 +2,7 @@ package opcmds
 
 import (
 	"context"
-	"tcli/client"
-	"tcli/utils"
+	"tcli"
 )
 
 type ListStoresCmd struct{}
@@ -14,22 +13,6 @@ func (c ListStoresCmd) Help() string {
 	return "list tikv stores in cluster"
 }
 
-func (c ListStoresCmd) Handler() func(ctx context.Context) {
-	return func(ctx context.Context) {
-		utils.OutputWithElapse(func() error {
-			stores, err := client.GetTiKVClient().GetStores()
-			if err != nil {
-				return err
-			}
-
-			var output [][]string = [][]string{
-				(client.StoreInfo).TableTitle(client.StoreInfo{}),
-			}
-			for _, store := range stores {
-				output = append(output, store.Flatten())
-			}
-			utils.PrintTable(output)
-			return nil
-		})
-	}
+func (c ListStoresCmd) Handler(ctx context.Context, input tcli.CmdInput) tcli.Result {
+	return tcli.ResultOK
 }

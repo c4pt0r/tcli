@@ -2,9 +2,9 @@ package kvcmds
 
 import (
 	"context"
-	"tcli/utils"
+	"tcli"
 
-	"github.com/manifoldco/promptui"
+	"github.com/c4pt0r/log"
 )
 
 type BenchWorkload interface {
@@ -33,22 +33,11 @@ func (c BenchCmd) Help() string {
 	return `bench [type], type: ycsb`
 }
 
-func (c BenchCmd) Handler() func(ctx context.Context) {
-	return func(ctx context.Context) {
-		var items []string
-		for _, w := range c.Workloads {
-			items = append(items, w.Name())
-		}
+func (c BenchCmd) Suggest(prefix string) []tcli.CmdSuggest {
+	return []tcli.CmdSuggest{}
+}
 
-		prompt := promptui.Select{
-			Label: "Choose Benchmark Workload",
-			Items: items,
-		}
-		i, _, err := prompt.Run()
-		if err != nil {
-			utils.Print(err)
-			return
-		}
-		c.Workloads[i].Run(context.TODO())
-	}
+func (c BenchCmd) Handler(ctx context.Context, input tcli.CmdInput) tcli.Result {
+	log.D("bench handler")
+	return tcli.ResultOK
 }

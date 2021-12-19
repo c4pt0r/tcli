@@ -4,16 +4,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"strings"
 	"tcli"
 	"tcli/client"
 	"tcli/kvcmds"
-	"tcli/opcmds"
 	"tcli/utils"
 
-	"github.com/abiosoft/ishell"
+	"github.com/c-bata/go-prompt"
 	"github.com/c4pt0r/log"
-	"github.com/fatih/color"
 	plog "github.com/pingcap/log"
 )
 
@@ -23,17 +20,18 @@ var (
 	clientLogLevel = flag.String("log-level", "info", "TiKV client log level")
 	clientmode     = flag.String("mode", "txn", "TiKV API mode, accepted values: raw/txn")
 )
+
 var (
-	logo string = "                    /           \n" +
+	logo string = "                    /##          \n" +
 		"                %%#######%%               \n" +
-		"           .#################             \n" +
+		"           .##################            \n" +
 		"       ##########################*        \n" +
-		"   #############        *############%%   \n" +
+		"   #############       *###########%%   \n" +
 		"(###########           ###############    \n" +
-		"(######(             ###################     %s\n" +
-		"(######             (#########    ######  \n" +
+		"(######(             ###################  \n" +
+		"(######             (#########     ######  \n" +
 		"(######     #%%      (######       ######  \n" +
-		"(###### %%####%%      (######       ######     https://tikv.org\n" +
+		"(###### %%####%%     (######       ######     https://tikv.org\n" +
 		"(############%%      (######       ######     https://pingcap.com\n" +
 		"(############%%      (######       ###### \n" +
 		"(############%%      (######       ###### \n" +
@@ -53,38 +51,29 @@ var RegisteredCmds = []tcli.Cmd{
 	kvcmds.HeadCmd{},
 	kvcmds.PutCmd{},
 	kvcmds.BackupCmd{},
-	kvcmds.NewBenchCmd(
-		kvcmds.NewYcsbBench(*pdAddr),
-	),
 	kvcmds.GetCmd{},
 	kvcmds.LoadCsvCmd{},
 	kvcmds.DeleteCmd{},
 	kvcmds.DeletePrefixCmd{},
 	kvcmds.DeleteAllCmd{},
 	kvcmds.CountCmd{},
-	kvcmds.EchoCmd{},
-	kvcmds.HexCmd{},
-	kvcmds.VarCmd{},
-	kvcmds.PrintVarsCmd{},
-	kvcmds.PrintSysVarsCmd{},
-
-	opcmds.ListStoresCmd{},
-	//opcmds.ConnectCmd{},
-	//opcmds.ConfigEditorCmd{},
 }
+
+var RegisteredCmdsMap = map[string]tcli.Cmd{}
+
+var cmdObjectMap = map[string]tcli.Cmd{}
 
 func initLog() {
 	// keep pingcap's log silent
 	conf := &plog.Config{Level: *clientLogLevel, File: plog.FileLogConfig{Filename: *clientLog}}
 	lg, r, _ := plog.InitLogger(conf)
 	plog.ReplaceGlobals(lg, r)
-
 	log.SetLevelByString(*clientLogLevel)
 }
 
 func showWelcomeMessage() {
 	fmt.Printf(
-		"%s, Welcome, TiKV Cluster ID: %s, TiKV Mode: %s",
+		"%sWelcome, TiKV Cluster ID: %s, TiKV Mode: %s\n",
 		logo,
 		client.GetTiKVClient().GetClusterID(),
 		client.GetTiKVClient().GetClientMode(),
@@ -115,36 +104,31 @@ func showWelcomeMessage() {
 func main() {
 	flag.Parse()
 	initLog()
+	log.I("Connecting to PD:", *pdAddr, "...")
 	if err := client.InitTiKVClient([]string{*pdAddr}, *clientmode); err != nil {
 		log.Fatal(err)
 	}
+	log.I("Connected!")
 	utils.InitBuiltinVaribles()
 	showWelcomeMessage()
 
-	// set shell prompts
-	shell := ishell.New()
-	if client.GetTiKVClient().GetClientMode() == client.RAW_CLIENT {
-		// TODO: add pd leader addr after we can get PD client from RawKV client.
-		shell.SetPrompt(fmt.Sprintf("%s> ", client.GetTiKVClient().GetClientMode()))
-	} else {
-		pdLeaderAddr := client.GetTiKVClient().GetPDClient().GetLeaderAddr()
-		shell.SetPrompt(fmt.Sprintf("%s(%s)> ", client.GetTiKVClient().GetClientMode(), pdLeaderAddr))
+	for _, c := range RegisteredCmds {
+		RegisteredCmdsMap[c.Name()] = c
 	}
 
-	// register shell commands
-	for _, cmd := range RegisteredCmds {
-		handler := cmd.Handler()
-		shell.AddCmd(&ishell.Cmd{
-			Name:    cmd.Name(),
-			Help:    cmd.Help(),
-			Aliases: cmd.Alias(),
-			Func: func(c *ishell.Context) {
-				ctx := context.WithValue(context.TODO(), "ishell", c)
-				fmt.Println(color.WhiteString("Input:"), strings.Join(c.RawArgs, " "))
-				handler(ctx)
-			},
-		})
+	var promptPrefix string
+	if client.GetTiKVClient().GetClientMode() == client.RAW_CLIENT {
+		// TODO: add pd leader addr after we can get PD client from RawKV client.
+		promptPrefix = fmt.Sprintf("%s> ", client.GetTiKVClient().GetClientMode())
+	} else {
+		pdLeaderAddr := client.GetTiKVClient().GetPDClient().GetLeaderAddr()
+		promptPrefix = fmt.Sprintf("%s(%s)> ", client.GetTiKVClient().GetClientMode(), pdLeaderAddr)
 	}
-	shell.Run()
-	shell.Close()
+	// register shell commands
+	p := prompt.New(
+		executor,
+		completer,
+		prompt.OptionPrefix(promptPrefix),
+	)
+	p.Run()
 }

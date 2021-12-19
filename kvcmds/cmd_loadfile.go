@@ -9,6 +9,7 @@ import (
 	"tcli/client"
 	"tcli/utils"
 
+	"github.com/c4pt0r/log"
 	"github.com/magiconair/properties"
 )
 
@@ -21,6 +22,10 @@ func (c LoadCsvCmd) Help() string {
 	                 opts:
 			           batch-size: int, how many records in one tikv transaction, default: 1000`
 
+}
+
+func (c LoadCsvCmd) Suggest(line string) []tcli.CmdSuggest {
+	return []tcli.CmdSuggest{}
 }
 
 func (c LoadCsvCmd) processCSV(prop *properties.Properties, rc io.Reader, keyPrefix []byte) error {
@@ -81,48 +86,7 @@ func (c LoadCsvCmd) processCSV(prop *properties.Properties, rc io.Reader, keyPre
 	return nil
 }
 
-func (c LoadCsvCmd) Handler() func(ctx context.Context) {
-	return func(ctx context.Context) {
-		utils.OutputWithElapse(func() error {
-			var err error
-			ic := utils.ExtractIshellContext(ctx)
-			if len(ic.Args) == 0 {
-				utils.Print(c.Help())
-				return nil
-			}
-
-			// set filename
-			var csvFile string
-			if len(ic.Args) > 0 {
-				csvFile = ic.Args[0]
-			}
-
-			// set prefix
-			var keyPrefix []byte
-			if len(ic.Args) > 1 && !(ic.RawArgs[2] == `""` || ic.RawArgs[2] == `''`) {
-				keyPrefix, err = utils.GetStringLit(ic.RawArgs[2])
-				if err != nil {
-					return err
-				}
-			}
-
-			// set prop
-			prop := properties.NewProperties()
-			if len(ic.Args) > 2 {
-				err = utils.SetOptByString(ic.RawArgs[3:], prop)
-				if err != nil {
-					return nil
-				}
-			}
-			// open file for read
-			fp, rdr, err := utils.OpenFileToProgressReader(csvFile)
-			if err != nil {
-				return err
-			}
-			defer fp.Close()
-			// TODO should validate first
-			// TODO set batch size
-			return c.processCSV(prop, rdr, keyPrefix)
-		})
-	}
+func (c LoadCsvCmd) Handler(ctx context.Context, input tcli.CmdInput) tcli.Result {
+	log.D("load handler")
+	return tcli.ResultOK
 }
