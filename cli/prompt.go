@@ -4,8 +4,10 @@ import (
 	"context"
 	"os"
 	"strings"
+	"tcli/utils"
 
 	"github.com/c-bata/go-prompt"
+	"github.com/c4pt0r/log"
 )
 
 func executor(s string) {
@@ -13,16 +15,23 @@ func executor(s string) {
 	if s == "" {
 		return
 	}
-	parts := strings.Split(s, " ")
-	cmd := parts[0]
-	if cmd == "exit" {
-		os.Exit(0)
-		return
+
+	cmdLine := utils.NewCmdLine([]byte(s))
+	if err := cmdLine.Parse(); err != nil {
+		log.Fatal(err)
 	}
 
-	c, ok := RegisteredCmdsMap[cmd]
-	if ok {
-		c.Handler(context.TODO(), nil)
+	if cmdLine.Len() > 0 {
+		cmd := string(cmdLine.Args(0))
+		log.D(cmd)
+		if cmd == "exit" {
+			os.Exit(0)
+			return
+		}
+		c, ok := RegisteredCmdsMap[cmd]
+		if ok {
+			c.Handler(context.TODO(), nil)
+		}
 	}
 	return
 }
@@ -55,7 +64,6 @@ func completer(d prompt.Document) []prompt.Suggest {
 			}
 
 		}
-
 	}
 	return ret
 }

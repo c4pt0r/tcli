@@ -10,7 +10,14 @@ import (
 	"github.com/c4pt0r/log"
 )
 
-// UTF-8 Command line Scanner, refer: golang lexer/scanner
+// a simple UTF-8 line scanner (with quoted string), refer: golang lexer/scanner
+// Example:
+//            Input:           Output:
+//            a b c            [a] [b] [c]
+//            a "b" c          [a] [b] [c]
+//            a "b c d" e      [a] [b c d] [e]
+//            a "\x61bc" e     [a] [abc] [e]
+//            a '\x61bc' e     [a] [abc] [e]
 
 func isLetter(ch rune) bool {
 	return 'a' <= lower(ch) && lower(ch) <= 'z' || ch == '_' || ch >= utf8.RuneSelf && unicode.IsLetter(ch)
@@ -53,7 +60,7 @@ func NewCmdLine(raw []byte) *CmdLine {
 		raw:      raw,
 		ch:       rune(raw[0]),
 		offset:   0,
-		rdOffset: 0,
+		rdOffset: 1,
 	}
 }
 
@@ -80,12 +87,13 @@ func (l *CmdLine) scan() ([]byte, error) {
 	var arg []byte
 	if l.ch == '"' || l.ch == '\'' {
 		quote := l.ch
+		// move to next char to start
 		l.next()
 		var arg []byte
 		var strArg string
 		var err error
 
-		arg, err = l.scanString(quote)
+		arg, err = l.scanQuoteString(quote)
 		if err != nil {
 			return nil, err
 		}
@@ -95,7 +103,7 @@ func (l *CmdLine) scan() ([]byte, error) {
 		}
 		return []byte(strArg), nil
 	} else {
-		arg, err = l.scanString(' ')
+		arg, err = l.scanString()
 	}
 	if err != nil {
 		return nil, err
@@ -103,15 +111,12 @@ func (l *CmdLine) scan() ([]byte, error) {
 	return arg, nil
 }
 
-func (l *CmdLine) scanString(quote rune) ([]byte, error) {
+func (l *CmdLine) scanQuoteString(quote rune) ([]byte, error) {
 	offs := l.offset
 	for {
 		ch := l.ch
 		if ch == '\n' || ch < 0 {
-			if isWhiteSpace(quote) && ch < 0 {
-				break
-			}
-			return nil, l.error(offs, "string literal not terminated")
+			return nil, l.error(l.offset, "string literal not terminated")
 		}
 		l.next()
 		if ch == quote {
@@ -125,6 +130,23 @@ func (l *CmdLine) scanString(quote rune) ([]byte, error) {
 		}
 	}
 	s := string(l.raw[offs : l.offset-1])
+	return []byte(s), nil
+
+}
+
+func (l *CmdLine) scanString() ([]byte, error) {
+	offs := l.offset
+	for {
+		ch := l.ch
+		if ch == '\n' || ch < 0 {
+			break
+		}
+		if isWhiteSpace(ch) {
+			break
+		}
+		l.next()
+	}
+	s := string(l.raw[offs:l.offset])
 	return []byte(s), nil
 }
 
