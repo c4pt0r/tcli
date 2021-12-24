@@ -11,6 +11,7 @@ import (
 
 	"github.com/c-bata/go-prompt"
 	"github.com/c4pt0r/log"
+	"github.com/fatih/color"
 	plog "github.com/pingcap/log"
 )
 
@@ -26,9 +27,9 @@ var (
 		"                %%#######%%               \n" +
 		"           .##################            \n" +
 		"       ##########################*        \n" +
-		"   #############       *###########%%   \n" +
-		"(###########           ###############    \n" +
-		"(######(             ###################  \n" +
+		"   #############       *###########%)      \n" +
+		"(###########           ###############%)    \n" +
+		"(######(             ###################)  \n" +
 		"(######             (#########     ######  \n" +
 		"(######     #%%      (######       ######  \n" +
 		"(###### %%####%%     (######       ######     https://tikv.org\n" +
@@ -57,6 +58,7 @@ var RegisteredCmds = []tcli.Cmd{
 	kvcmds.DeletePrefixCmd{},
 	kvcmds.DeleteAllCmd{},
 	kvcmds.CountCmd{},
+	kvcmds.EchoCmd{},
 }
 
 var RegisteredCmdsMap = map[string]tcli.Cmd{}
@@ -73,8 +75,8 @@ func initLog() {
 
 func showWelcomeMessage() {
 	fmt.Printf(
-		"%sWelcome, TiKV Cluster ID: %s, TiKV Mode: %s\n",
-		logo,
+		"\n%s\nWelcome, TiKV Cluster ID: %s, TiKV Mode: %s\n",
+		color.RedString(logo),
 		client.GetTiKVClient().GetClusterID(),
 		client.GetTiKVClient().GetClientMode(),
 	)

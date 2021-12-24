@@ -2,9 +2,10 @@ package kvcmds
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"tcli"
-
-	"github.com/c4pt0r/log"
+	"tcli/client"
 )
 
 type GetCmd struct{}
@@ -20,6 +21,19 @@ func (c GetCmd) Suggest(prefix string) []tcli.CmdSuggest {
 }
 
 func (c GetCmd) Handler(ctx context.Context, input tcli.CmdInput) tcli.Result {
-	log.D("get handler")
-	return tcli.ResultOK
+	cli := client.GetTiKVClient()
+	mode := cli.GetClientMode()
+	if mode == client.RAW_CLIENT {
+		return tcli.ResultNotImplemented
+	} else {
+		if input.Len() != 2 {
+			return tcli.ResultErr(500, errors.New(fmt.Sprintf("usage: %s", c.Help())))
+		}
+		v, err := cli.Get(ctx, input.Arg(1))
+		if err != nil {
+			return tcli.ResultErr(500, err)
+		} else {
+			return tcli.ResultStr(string(v.V))
+		}
+	}
 }

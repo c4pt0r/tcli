@@ -2,7 +2,9 @@ package kvcmds
 
 import (
 	"context"
+	"errors"
 	"tcli"
+	"tcli/utils"
 
 	"github.com/c4pt0r/log"
 )
@@ -29,14 +31,26 @@ func (c VarCmd) Handler(ctx context.Context, input tcli.CmdInput) tcli.Result {
 
 type EchoCmd struct{}
 
+func (c EchoCmd) Suggest(prefix string) []tcli.CmdSuggest {
+	return []tcli.CmdSuggest{}
+}
 func (c EchoCmd) Name() string    { return "echo" }
 func (c EchoCmd) Alias() []string { return []string{"echo"} }
 func (c EchoCmd) Help() string {
-	return `echo $<varname>`
+	return `echo <arg>`
 }
 
 func (c EchoCmd) Handler(ctx context.Context, input tcli.CmdInput) tcli.Result {
-	return tcli.ResultOK
+	content := input.Arg(1)
+	if content[0] == '$' {
+		v, ok := utils.GlobalEnv().Get(string(content[1:]))
+		if ok {
+			return tcli.ResultStr(string(v))
+		} else {
+			return tcli.ResultErr(400, errors.New("varible not found"))
+		}
+	}
+	return tcli.ResultStr(string(content))
 }
 
 type PrintVarsCmd struct{}

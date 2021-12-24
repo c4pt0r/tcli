@@ -22,15 +22,15 @@ func executor(s string) {
 	}
 
 	if cmdLine.Len() > 0 {
-		cmd := string(cmdLine.Args(0))
-		log.D(cmd)
+		cmd := string(cmdLine.Arg(0))
 		if cmd == "exit" {
 			os.Exit(0)
 			return
 		}
 		c, ok := RegisteredCmdsMap[cmd]
 		if ok {
-			c.Handler(context.TODO(), nil)
+			r := c.Handler(context.TODO(), cmdLine)
+			globalOutputer.Output(r)
 		}
 	}
 	return

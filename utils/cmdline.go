@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"unicode"
 	"unicode/utf8"
-
-	"github.com/c4pt0r/log"
 )
 
 // a simple UTF-8 line scanner (with quoted string), refer: golang lexer/scanner
@@ -73,7 +71,6 @@ func (l *CmdLine) Parse() error {
 		if arg == nil {
 			return nil
 		}
-		log.D("[" + string(arg) + "]")
 		l.args = append(l.args, arg)
 	}
 	return nil
@@ -249,9 +246,24 @@ func (l *CmdLine) Len() int {
 	return len(l.args)
 }
 
-func (l *CmdLine) Args(i int) []byte {
+func (l *CmdLine) Arg(i int) []byte {
 	if i >= 0 && i < len(l.args) {
 		return l.args[i]
 	}
 	return nil
+}
+
+func (l *CmdLine) Args() [][]byte {
+	return l.args
+}
+
+func (l *CmdLine) CmdName() string {
+	if len(l.args) > 0 {
+		return string(l.args[0])
+	}
+	return ""
+}
+
+func (l *CmdLine) Raw() string {
+	return string(l.raw)
 }

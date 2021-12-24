@@ -20,7 +20,6 @@ func (c ScanCmd) Suggest(line string) []tcli.CmdSuggest {
 }
 
 func (c ScanCmd) Handler(ctx context.Context, input tcli.CmdInput) tcli.Result {
-	log.D("scan handler")
 	return tcli.ResultOK
 }
 
