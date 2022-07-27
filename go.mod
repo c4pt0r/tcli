@@ -1,4 +1,4 @@
-module tcli
+module github.com/c4pt0r/tcli
 
 go 1.16
 
