@@ -2,8 +2,10 @@ package kvcmds
 
 import (
 	"context"
-	"tcli/client"
-	"tcli/utils"
+
+	"github.com/c4pt0r/tcli/utils"
+
+	"github.com/c4pt0r/tcli/client"
 )
 
 type GetCmd struct{}

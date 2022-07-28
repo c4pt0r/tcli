@@ -3,8 +3,10 @@ package kvcmds
 import (
 	"context"
 	"fmt"
-	"tcli/client"
-	"tcli/utils"
+
+	"github.com/c4pt0r/tcli/utils"
+
+	"github.com/c4pt0r/tcli/client"
 )
 
 type PutCmd struct{}

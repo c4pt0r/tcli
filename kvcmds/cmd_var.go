@@ -5,7 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"tcli/utils"
+
+	"github.com/c4pt0r/tcli/utils"
 
 	"github.com/abiosoft/ishell"
 )

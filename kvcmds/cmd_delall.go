@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"tcli/client"
-	"tcli/utils"
+
+	"github.com/c4pt0r/tcli/utils"
+
+	"github.com/c4pt0r/tcli/client"
 
 	"github.com/c4pt0r/log"
 )
