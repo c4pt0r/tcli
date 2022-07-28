@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"sync/atomic"
-	"tcli/utils"
+
+	"github.com/c4pt0r/tcli/utils"
 
 	"github.com/pkg/errors"
 	pd "github.com/tikv/pd/client"

@@ -6,9 +6,12 @@ import (
 	"encoding/csv"
 	"errors"
 	"os"
-	"tcli"
-	"tcli/client"
-	"tcli/utils"
+
+	"github.com/c4pt0r/tcli/utils"
+
+	"github.com/c4pt0r/tcli/client"
+
+	"github.com/c4pt0r/tcli"
 
 	"github.com/magiconair/properties"
 )

@@ -5,11 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"strings"
-	"tcli"
-	"tcli/client"
-	"tcli/kvcmds"
-	"tcli/opcmds"
-	"tcli/utils"
+
+	"github.com/c4pt0r/tcli"
+	"github.com/c4pt0r/tcli/client"
+	"github.com/c4pt0r/tcli/kvcmds"
+	"github.com/c4pt0r/tcli/opcmds"
+	"github.com/c4pt0r/tcli/utils"
 
 	"github.com/abiosoft/ishell"
 	"github.com/c4pt0r/log"
@@ -24,25 +25,7 @@ var (
 	clientmode     = flag.String("mode", "txn", "TiKV API mode, accepted values: raw/txn")
 )
 var (
-	logo string = "                    /           \n" +
-		"                %%#######%%               \n" +
-		"           .#################             \n" +
-		"       ##########################*        \n" +
-		"   #############        *############%%   \n" +
-		"(###########           ###############    \n" +
-		"(######(             ###################     %s\n" +
-		"(######             (#########    ######  \n" +
-		"(######     #%%      (######       ######  \n" +
-		"(###### %%####%%      (######       ######     https://tikv.org\n" +
-		"(############%%      (######       ######     https://pingcap.com\n" +
-		"(############%%      (######       ###### \n" +
-		"(############%%      (######       ###### \n" +
-		"(############%%      (######   .######### \n" +
-		" #############,     (##################(  \n" +
-		"     /############# (##############.      \n" +
-		"          ####################%%          \n" +
-		"              %%###########(              \n" +
-		"                  /###,                   \n"
+	logo string = ""
 )
 
 // RegisteredCmds global command registration
@@ -84,8 +67,7 @@ func initLog() {
 
 func showWelcomeMessage() {
 	fmt.Printf(
-		"%s, Welcome, TiKV Cluster ID: %s, TiKV Mode: %s",
-		logo,
+		"Welcome, TiKV Cluster ID: %s, TiKV Mode: %s\n",
 		client.GetTiKVClient().GetClusterID(),
 		client.GetTiKVClient().GetClientMode(),
 	)

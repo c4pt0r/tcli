@@ -2,7 +2,8 @@ package kvcmds
 
 import (
 	"context"
-	"tcli/utils"
+
+	"github.com/c4pt0r/tcli/utils"
 
 	"github.com/manifoldco/promptui"
 )

@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"tcli"
-	"tcli/utils"
+
+	"github.com/c4pt0r/tcli/utils"
+
+	"github.com/c4pt0r/tcli"
 
 	"github.com/c4pt0r/log"
 	"github.com/tikv/client-go/v2/tikv"
