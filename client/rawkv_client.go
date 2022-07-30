@@ -1,11 +1,14 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 
 	"github.com/c4pt0r/log"
+	"github.com/c4pt0r/tcli"
+	"github.com/c4pt0r/tcli/utils"
 	"github.com/tikv/client-go/v2/config"
 	"github.com/tikv/client-go/v2/rawkv"
 	pd "github.com/tikv/pd/client"
@@ -64,7 +67,41 @@ func (c *rawkvClient) Get(ctx context.Context, k Key) (KV, error) {
 }
 
 func (c *rawkvClient) Scan(ctx context.Context, prefix []byte) (KVS, int, error) {
-	return nil, 0, errors.New("rawkvClient.Scan() is not implemented")
+	scanOpts := utils.PropFromContext(ctx)
+
+	strictPrefix := scanOpts.GetBool(tcli.ScanOptStrictPrefix, false)
+	countOnly := scanOpts.GetBool(tcli.ScanOptCountOnly, false)
+	keyOnly := scanOpts.GetBool(tcli.ScanOptKeyOnly, false)
+	// count only mode will ignore this
+	limit := scanOpts.GetInt(tcli.ScanOptLimit, 100)
+
+	keys, values, err := c.rawClient.Scan(ctx, prefix, []byte{}, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var ret []KV
+	var lastKey KV
+	count := 0
+	for i := 0; i < len(keys); i++ {
+		if strictPrefix && !bytes.HasPrefix(keys[i], prefix) {
+			break
+		}
+		if !countOnly {
+			if keyOnly {
+				ret = append(ret, KV{K: keys[i], V: nil})
+			} else {
+				ret = append(ret, KV{K: keys[i], V: values[i]})
+			}
+		}
+		count++
+		lastKey.K = keys[i]
+	}
+	if countOnly {
+		ret = append(ret, KV{K: []byte("Count"), V: []byte(fmt.Sprintf("%d", count))})
+		ret = append(ret, KV{K: []byte("Last Key"), V: []byte(lastKey.K)})
+	}
+	return ret, count, nil
 }
 
 func (c *rawkvClient) Delete(ctx context.Context, k Key) error {
