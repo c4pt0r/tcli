@@ -14,6 +14,8 @@ import (
 	pd "github.com/tikv/pd/client"
 )
 
+var MaxRawKVScanLimit = 10240
+
 func newRawKVClient(pdAddr []string) *rawkvClient {
 	client, err := rawkv.NewClient(context.TODO(), pdAddr, config.DefaultConfig().Security)
 	if err != nil {
@@ -57,8 +59,14 @@ func (c *rawkvClient) Put(ctx context.Context, kv KV) error {
 	return c.rawClient.Put(context.TODO(), kv.K, kv.V)
 }
 
-func (c *rawkvClient) BatchPut(ctx context.Context, kv []KV) error {
-	return errors.New("rawkvClient.BatchPut() is not implemented")
+func (c *rawkvClient) BatchPut(ctx context.Context, kvs []KV) error {
+	for _, kv := range kvs {
+		err := c.rawClient.Put(context.TODO(), kv.K[:], kv.V[:])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (c *rawkvClient) Get(ctx context.Context, k Key) (KV, error) {
@@ -74,6 +82,9 @@ func (c *rawkvClient) Scan(ctx context.Context, prefix []byte) (KVS, int, error)
 	keyOnly := scanOpts.GetBool(tcli.ScanOptKeyOnly, false)
 	// count only mode will ignore this
 	limit := scanOpts.GetInt(tcli.ScanOptLimit, 100)
+	if countOnly {
+		limit = MaxRawKVScanLimit
+	}
 
 	keys, values, err := c.rawClient.Scan(ctx, prefix, []byte{}, limit)
 	if err != nil {
@@ -105,13 +116,25 @@ func (c *rawkvClient) Scan(ctx context.Context, prefix []byte) (KVS, int, error)
 }
 
 func (c *rawkvClient) Delete(ctx context.Context, k Key) error {
-	return errors.New("rawkvClient.Delete() is not implemented")
+	err := c.rawClient.Delete(context.TODO(), []byte(k))
+	return err
 }
 
 func (c *rawkvClient) BatchDelete(ctx context.Context, kvs []KV) error {
-	return errors.New("rawkvClient.BatchDelete() is not implemented")
+	keys := [][]byte{}
+	for _, kv := range kvs {
+		keys = append(keys, []byte(kv.K))
+	}
+	return c.rawClient.BatchDelete(context.TODO(), keys)
 }
 
 func (c *rawkvClient) DeletePrefix(ctx context.Context, prefix Key, limit int) (Key, int, error) {
-	return nil, 0, errors.New("rawkvClient.DeletePrefix() is not implemented")
+	endKey := []byte(prefix)
+	endKey[len(endKey)] += 0x1
+	keys, _, err := c.rawClient.Scan(ctx, prefix, endKey, MaxRawKVScanLimit)
+	if err != nil {
+		return nil, 0, err
+	}
+	lastKey := Key(keys[len(keys)-1])
+	return lastKey, len(keys), c.rawClient.BatchDelete(context.TODO(), keys)
 }
