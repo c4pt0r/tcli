@@ -47,11 +47,11 @@ func (c *rawkvClient) GetClusterID() string {
 }
 
 func (c *rawkvClient) GetStores() ([]StoreInfo, error) {
-	return nil, errors.New("rawkvClient.GetStores() is not implemented")
+	return nil, errors.New("rawkvClient does not support GetStores()")
 }
 
 func (c *rawkvClient) GetPDClient() pd.Client {
-	log.Fatal("rawkvClient.GetPDClient() is not implemented")
+	log.Fatal("rawkvClient does not support GetPDClient()")
 	return nil
 }
 
