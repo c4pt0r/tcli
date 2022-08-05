@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"strings"
 
 	"github.com/c4pt0r/tcli"
 	"github.com/c4pt0r/tcli/client"
@@ -97,9 +96,11 @@ func showWelcomeMessage() {
 func main() {
 	flag.Parse()
 	initLog()
+	fmt.Printf("Try connecting to PD: %s...", *pdAddr)
 	if err := client.InitTiKVClient([]string{*pdAddr}, *clientmode); err != nil {
 		log.Fatal(err)
 	}
+	fmt.Printf("done\n")
 	utils.InitBuiltinVaribles()
 	showWelcomeMessage()
 
@@ -122,7 +123,10 @@ func main() {
 			Aliases: cmd.Alias(),
 			Func: func(c *ishell.Context) {
 				ctx := context.WithValue(context.TODO(), "ishell", c)
-				fmt.Println(color.WhiteString("Input:"), strings.Join(c.RawArgs, " "))
+				fmt.Println(color.WhiteString("Input:"), c.RawArgs)
+				for _, arg := range c.Args {
+					fmt.Println(color.WhiteString("Arg:"), arg)
+				}
 				handler(ctx)
 			},
 		})
