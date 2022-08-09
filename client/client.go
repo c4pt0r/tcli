@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"sync/atomic"
 
@@ -52,9 +53,9 @@ func (kvs KVS) Print() {
 			}
 			utils.PrintTable(data)
 			if len(kvs) > 1 {
-				fmt.Printf("%d Records Found\n", len(kvs))
+				fmt.Fprintf(os.Stderr, "%d Records Found\n", len(kvs))
 			} else {
-				fmt.Printf("%d Record Found\n", len(kvs))
+				fmt.Fprintf(os.Stderr, "%d Record Found\n", len(kvs))
 			}
 		}
 	case JsonFormat:
