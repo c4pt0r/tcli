@@ -22,14 +22,27 @@ type KV struct {
 	V Value
 }
 
+type KVString struct {
+	K string
+	V string
+}
+
 type KVS []KV
 
-type KVSFormatter int
+//type KVSFormatter int
 
 const (
 	TableFormat = iota + 1000
 	JsonFormat
 )
+
+func Stringify(kvs KVS) []KVString {
+	KVStrings := make([]KVString, len(kvs))
+	for i := 0; i < len(kvs); i++ {
+		KVStrings[i] = KVString{string(kvs[i].K), string(kvs[i].V)}
+	}
+	return KVStrings
+}
 
 func (kvs KVS) Print() {
 	formatter := TableFormat
@@ -60,7 +73,8 @@ func (kvs KVS) Print() {
 		}
 	case JsonFormat:
 		{
-			out, _ := json.MarshalIndent(kvs, "", " ")
+			fmt.Print(Stringify(kvs))
+			out, _ := json.MarshalIndent(Stringify(kvs), "", " ")
 			fmt.Println(string(out))
 		}
 	default:
