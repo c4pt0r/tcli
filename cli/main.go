@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/c4pt0r/tcli"
 	"github.com/c4pt0r/tcli/client"
@@ -65,7 +66,8 @@ func initLog() {
 }
 
 func showWelcomeMessage() {
-	fmt.Printf(
+	fmt.Fprintf(
+		os.Stderr,
 		"Welcome, TiKV Cluster ID: %s, TiKV Mode: %s\n",
 		client.GetTiKVClient().GetClusterID(),
 		client.GetTiKVClient().GetClientMode(),
@@ -96,11 +98,11 @@ func showWelcomeMessage() {
 func main() {
 	flag.Parse()
 	initLog()
-	fmt.Printf("Try connecting to PD: %s...", *pdAddr)
+	fmt.Fprintf(os.Stderr, "Try connecting to PD: %s...", *pdAddr)
 	if err := client.InitTiKVClient([]string{*pdAddr}, *clientmode); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("done\n")
+	fmt.Fprintf(os.Stderr, "done\n")
 	utils.InitBuiltinVaribles()
 	showWelcomeMessage()
 
@@ -113,6 +115,7 @@ func main() {
 		pdLeaderAddr := client.GetTiKVClient().GetPDClient().GetLeaderAddr()
 		shell.SetPrompt(fmt.Sprintf("%s(%s)> ", client.GetTiKVClient().GetClientMode(), pdLeaderAddr))
 	}
+	shell.EOF(func(c *ishell.Context) { shell.Close() })
 
 	// register shell commands
 	for _, cmd := range RegisteredCmds {
@@ -123,9 +126,9 @@ func main() {
 			Aliases: cmd.Alias(),
 			Func: func(c *ishell.Context) {
 				ctx := context.WithValue(context.TODO(), "ishell", c)
-				fmt.Println(color.WhiteString("Input:"), c.RawArgs)
+				fmt.Fprintln(os.Stderr, color.WhiteString("Input:"), c.RawArgs)
 				for _, arg := range c.Args {
-					fmt.Println(color.WhiteString("Arg:"), arg)
+					fmt.Fprintln(os.Stderr, color.WhiteString("Arg:"), arg)
 				}
 				handler(ctx)
 			},
