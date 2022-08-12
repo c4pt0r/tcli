@@ -2,8 +2,7 @@ package opcmds
 
 import (
 	"context"
-
-	"github.com/c4pt0r/tcli/utils"
+	"tcli/utils"
 
 	"github.com/AlecAivazis/survey/v2"
 )

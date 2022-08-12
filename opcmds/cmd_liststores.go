@@ -2,10 +2,8 @@ package opcmds
 
 import (
 	"context"
-
-	"github.com/c4pt0r/tcli/utils"
-
-	"github.com/c4pt0r/tcli/client"
+	"tcli/client"
+	"tcli/utils"
 )
 
 type ListStoresCmd struct{}

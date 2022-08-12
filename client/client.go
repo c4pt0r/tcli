@@ -4,11 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 	"sync/atomic"
-
-	"github.com/c4pt0r/tcli/utils"
+	"tcli/utils"
 
 	"github.com/pkg/errors"
 	pd "github.com/tikv/pd/client"
@@ -53,9 +51,9 @@ func (kvs KVS) Print() {
 			}
 			utils.PrintTable(data)
 			if len(kvs) > 1 {
-				fmt.Fprintf(os.Stderr, "%d Records Found\n", len(kvs))
+				fmt.Printf("%d Records Found\n", len(kvs))
 			} else {
-				fmt.Fprintf(os.Stderr, "%d Record Found\n", len(kvs))
+				fmt.Printf("%d Record Found\n", len(kvs))
 			}
 		}
 	case JsonFormat:
@@ -107,6 +105,8 @@ type Client interface {
 	GetPDClient() pd.Client
 
 	Put(ctx context.Context, kv KV) error
+	PutJson(ctx context.Context, kv KV) error
+	// add
 	BatchPut(ctx context.Context, kv []KV) error
 
 	Get(ctx context.Context, k Key) (KV, error)

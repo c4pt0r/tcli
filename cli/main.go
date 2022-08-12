@@ -4,19 +4,21 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
-
-	"github.com/c4pt0r/tcli"
-	"github.com/c4pt0r/tcli/client"
-	"github.com/c4pt0r/tcli/kvcmds"
-	"github.com/c4pt0r/tcli/opcmds"
-	"github.com/c4pt0r/tcli/utils"
+	"strings"
+	"tcli"
+	"tcli/client"
+	"tcli/kvcmds"
+	"tcli/opcmds"
+	"tcli/utils"
 
 	"github.com/abiosoft/ishell"
 	"github.com/c4pt0r/log"
 	"github.com/fatih/color"
 	plog "github.com/pingcap/log"
 )
+
+const Json_separator = "xuanxuan"
+//
 
 var (
 	pdAddr         = flag.String("pd", "localhost:2379", "PD addr")
@@ -25,7 +27,25 @@ var (
 	clientmode     = flag.String("mode", "txn", "TiKV API mode, accepted values: raw/txn")
 )
 var (
-	logo string = ""
+	logo string = "                    /           \n" +
+		"                %%#######%%               \n" +
+		"           .#################             \n" +
+		"       ##########################*        \n" +
+		"   #############        *############%%   \n" +
+		"(###########           ###############    \n" +
+		"(######(             ###################     %s\n" +
+		"(######             (#########    ######  \n" +
+		"(######     #%%      (######       ######  \n" +
+		"(###### %%####%%      (######       ######     https://tikv.org\n" +
+		"(############%%      (######       ######     https://pingcap.com\n" +
+		"(############%%      (######       ###### \n" +
+		"(############%%      (######       ###### \n" +
+		"(############%%      (######   .######### \n" +
+		" #############,     (##################(  \n" +
+		"     /############# (##############.      \n" +
+		"          ####################%%          \n" +
+		"              %%###########(              \n" +
+		"                  /###,                   \n"
 )
 
 // RegisteredCmds global command registration
@@ -35,11 +55,15 @@ var RegisteredCmds = []tcli.Cmd{
 	kvcmds.ScanPrefixCmd{},
 	kvcmds.HeadCmd{},
 	kvcmds.PutCmd{},
+	// add
+	kvcmds.PutJsonCmd{},
 	kvcmds.BackupCmd{},
 	kvcmds.NewBenchCmd(
 		kvcmds.NewYcsbBench(*pdAddr),
 	),
 	kvcmds.GetCmd{},
+	//add
+	kvcmds.GetJsonCmd{},
 	kvcmds.LoadCsvCmd{},
 	kvcmds.DeleteCmd{},
 	kvcmds.DeletePrefixCmd{},
@@ -66,9 +90,9 @@ func initLog() {
 }
 
 func showWelcomeMessage() {
-	fmt.Fprintf(
-		os.Stderr,
-		"Welcome, TiKV Cluster ID: %s, TiKV Mode: %s\n",
+	fmt.Printf(
+		"%s, Welcome, TiKV Cluster ID: %s, TiKV Mode: %s",
+		logo,
 		client.GetTiKVClient().GetClusterID(),
 		client.GetTiKVClient().GetClientMode(),
 	)
@@ -98,11 +122,9 @@ func showWelcomeMessage() {
 func main() {
 	flag.Parse()
 	initLog()
-	fmt.Fprintf(os.Stderr, "Try connecting to PD: %s...", *pdAddr)
 	if err := client.InitTiKVClient([]string{*pdAddr}, *clientmode); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Fprintf(os.Stderr, "done\n")
 	utils.InitBuiltinVaribles()
 	showWelcomeMessage()
 
@@ -115,25 +137,58 @@ func main() {
 		pdLeaderAddr := client.GetTiKVClient().GetPDClient().GetLeaderAddr()
 		shell.SetPrompt(fmt.Sprintf("%s(%s)> ", client.GetTiKVClient().GetClientMode(), pdLeaderAddr))
 	}
-	shell.EOF(func(c *ishell.Context) { shell.Close() })
 
 	// register shell commands
-	for _, cmd := range RegisteredCmds {
-		handler := cmd.Handler()
-		shell.AddCmd(&ishell.Cmd{
-			Name:    cmd.Name(),
-			Help:    cmd.Help(),
-			Aliases: cmd.Alias(),
-			Func: func(c *ishell.Context) {
-				ctx := context.WithValue(context.TODO(), "ishell", c)
-				fmt.Fprintln(os.Stderr, color.WhiteString("Input:"), c.RawArgs)
-				for _, arg := range c.Args {
-					fmt.Fprintln(os.Stderr, color.WhiteString("Arg:"), arg)
-				}
-				handler(ctx)
-			},
-		})
+	for i, cmd := range RegisteredCmds {
+	    // 当i=4的时候为putjson 的cmd
+	    if i == 4 {
+            handler := cmd.Handler()
+    		shell.AddCmd(&ishell.Cmd{
+    			Name:    cmd.Name(),
+    			Help:    cmd.Help(),
+    			Aliases: cmd.Alias(),
+    			Func: func(c *ishell.Context) {
+    			    /*
+    			    先输入一个参数作为key，输入换行，输出"Please enter a json value end with 'EOF'."
+    			    接下来输入value，也就是一个json value。
+
+    			    我的逻辑是将key和value通过Json_separator链接起来，成为一个string，再放到handler去处理。
+    			    Json_separator应当是一个客户不会在key或者value中用到的特殊值。
+
+    			    如果结尾的'EOF'是一个可能会被存储到json value中的内容，那么可以进行更换。Json_separator也是同理
+
+    			    */
+    			    c.ShowPrompt(false)
+                    defer c.ShowPrompt(true)
+                    c.Println("Please enter a json value end with 'EOF'.")
+                    lines := c.ReadMultiLines("EOF")
+                    if len(c.Args) == 1 {
+                        c.Args[0] = c.Args[0] + Json_separator + lines
+                        c.RawArgs[1] = c.RawArgs[1] + " " + lines
+                    }
+    				ctx := context.WithValue(context.TODO(), "ishell", c)
+    				fmt.Println(color.WhiteString("Input:"), strings.Join(c.RawArgs, " "))
+    				fmt.Print("\n")
+    				handler(ctx)
+    			},
+    		})
+	    } else {
+	        handler := cmd.Handler()
+    		shell.AddCmd(&ishell.Cmd{
+    			Name:    cmd.Name(),
+    			Help:    cmd.Help(),
+    			Aliases: cmd.Alias(),
+    			Func: func(c *ishell.Context) {
+    				ctx := context.WithValue(context.TODO(), "ishell", c)
+    				fmt.Println(color.WhiteString("Input:"), strings.Join(c.RawArgs, " "))
+    				handler(ctx)
+    			},
+    		})
+	    }
+
 	}
+
+
 	shell.Run()
 	shell.Close()
 }
