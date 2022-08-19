@@ -54,10 +54,11 @@ func (kvs KVS) Print() {
 	case "json":
 		{
 			//Convert key value pairs to string or else JSON Marshaling breaks
-			kvmaps := make([]map[string]string, len(kvs))
+			kvmaps := make([]map[string]interface{}, len(kvs))
 			for i := 0; i < len(kvs); i++ {
-				kvmaps[i] = make(map[string]string)
-				kvmaps[i]["K"], kvmaps[i]["V"] = string(kvs[i].K), string(kvs[i].V)
+				kvmaps[i] = make(map[string]interface{})
+				//kvmaps[i]["K"], kvmaps[i]["V"] = string(kvs[i].K), string(kvs[i].V)
+				kvmaps[i][string(kvs[i].K)] = string(kvs[i].V)
 			}
 			out, _ := json.MarshalIndent(kvmaps, "", " ")
 			fmt.Println(string(out))
