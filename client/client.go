@@ -32,7 +32,25 @@ func (kvs KVS) Print() {
 	}
 
 	switch formatter {
-	case "table":
+	case "json":
+		{
+			//Convert key value pairs to string or else JSON Marshaling breaks
+			kvmaps := make([]map[string]interface{}, len(kvs))
+			for i := 0; i < len(kvs); i++ {
+				kvmaps[i] = make(map[string]interface{})
+				//kvmaps[i]["K"], kvmaps[i]["V"] = string(kvs[i].K), string(kvs[i].V)
+				kvmaps[i][string(kvs[i].K)] = string(kvs[i].V)
+			}
+			out, _ := json.MarshalIndent(kvmaps, "", " ")
+			fmt.Println(string(out))
+		}
+	case "raw":
+		{
+			for _, kv := range kvs {
+				fmt.Println(kv.K, "\t=>\t", kv.V)
+			}
+		}
+	default: // table
 		{
 			if len(kvs) == 0 {
 				return
@@ -51,24 +69,7 @@ func (kvs KVS) Print() {
 				fmt.Fprintf(os.Stderr, "%d Record Found\n", len(kvs))
 			}
 		}
-	case "json":
-		{
-			//Convert key value pairs to string or else JSON Marshaling breaks
-			kvmaps := make([]map[string]interface{}, len(kvs))
-			for i := 0; i < len(kvs); i++ {
-				kvmaps[i] = make(map[string]interface{})
-				//kvmaps[i]["K"], kvmaps[i]["V"] = string(kvs[i].K), string(kvs[i].V)
-				kvmaps[i][string(kvs[i].K)] = string(kvs[i].V)
-			}
-			out, _ := json.MarshalIndent(kvmaps, "", " ")
-			fmt.Println(string(out))
-		}
-	default:
-		{
-			for _, kv := range kvs {
-				fmt.Println(kv.K, "\t=>\t", kv.V)
-			}
-		}
+
 	}
 }
 
