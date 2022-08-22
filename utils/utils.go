@@ -33,11 +33,13 @@ func PrintTable(data [][]string) {
 
 func OutputWithElapse(f func() error) error {
 	tt := time.Now()
+
+	fmt.Fprintf(os.Stderr, "\033[33mOutput:\033[0m\n")
 	err := f()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s, Elapse: %d ms\n", err, time.Since(tt)/time.Millisecond)
+		fmt.Fprintf(os.Stderr, "\033[31mError\033[0m: %s, Elapse: %d ms\n", err, time.Since(tt)/time.Millisecond)
 	} else {
-		fmt.Fprintf(os.Stderr, "Success, Elapse: %d ms\n", time.Since(tt)/time.Millisecond)
+		fmt.Fprintf(os.Stderr, "\033[32mSuccess\033[0m, Elapse: %d ms\n", time.Since(tt)/time.Millisecond)
 	}
 	return err
 }
