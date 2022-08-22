@@ -71,7 +71,13 @@ func (c *rawkvClient) BatchPut(ctx context.Context, kvs []KV) error {
 
 func (c *rawkvClient) Get(ctx context.Context, k Key) (KV, error) {
 	v, err := c.rawClient.Get(context.TODO(), k)
-	return KV{k, v}, err
+	if err != nil {
+		return KV{}, err
+	}
+	if v == nil {
+		return KV{}, errors.New("key not found")
+	}
+	return KV{k, v}, nil
 }
 
 func (c *rawkvClient) Scan(ctx context.Context, prefix []byte) (KVS, int, error) {
