@@ -22,7 +22,9 @@ var (
 	pdAddr         = flag.String("pd", "localhost:2379", "PD addr")
 	clientLog      = flag.String("log-file", "/dev/null", "TiKV client log file")
 	clientLogLevel = flag.String("log-level", "info", "TiKV client log level")
-	clientmode     = flag.String("mode", "txn", "TiKV API mode, accepted values: raw/txn")
+	clientmode     = flag.String("mode", "txn", "TiKV API mode, accepted values: [raw | txn]")
+
+	resultFmt = flag.String("output-format", "table", "output format, accepted values: [table | json]")
 )
 var (
 	logo string = ""
@@ -104,6 +106,10 @@ func main() {
 	}
 	fmt.Fprintf(os.Stderr, "done\n")
 	utils.InitBuiltinVaribles()
+
+	// Set output format
+	utils.SysVarSet(utils.SysVarPrintFormatKey, *resultFmt)
+
 	showWelcomeMessage()
 
 	// set shell prompts
