@@ -123,39 +123,6 @@ func (c PrintSysVarsCmd) Handler() func(ctx context.Context) {
 	}
 }
 
-type SetSysVarsCmd struct{}
-
-func (c SetSysVarsCmd) Name() string    { return "setsysenv" }
-func (c SetSysVarsCmd) Alias() []string { return []string{"setsysenv"} }
-func (c SetSysVarsCmd) Help() string {
-	return `set system env variables, setsysenv [key] [value]`
-}
-
-func (c SetSysVarsCmd) Handler() func(ctx context.Context) {
-	return func(ctx context.Context) {
-		utils.OutputWithElapse(func() error {
-			ic := ctx.Value("ishell").(*ishell.Context)
-			if len(ic.Args) < 1 {
-				fmt.Println(c.Help())
-				return errors.New("wrong args number")
-			}
-
-			varName := ic.Args[0]
-			if !strings.HasPrefix(varName, "$") {
-				return errors.New("varname should have $ as prefix")
-			}
-			varName = varName[1:]
-			if val, ok := utils.VarGet(varName); ok {
-				fmt.Printf("string:\"%s\" bytes: %v\n", val, val)
-			} else {
-				return errors.New("no such variable")
-			}
-			return nil
-
-		})
-	}
-}
-
 type HexCmd struct{}
 
 func (c HexCmd) Name() string    { return "hexdump" }
@@ -177,6 +144,52 @@ func (c HexCmd) Handler() func(ctx context.Context) {
 			utils.Print(fmt.Sprintf("string: %s\nbytes: %v\nhexLit: h'%s'", s,
 				utils.Bytes2hex([]byte(s)),
 				utils.Bytes2hex([]byte(s))))
+			return nil
+		})
+	}
+}
+
+type SysVarCmd struct {
+}
+
+func NewSysVarCmd() SysVarCmd {
+	return SysVarCmd{}
+}
+
+func (c SysVarCmd) Name() string    { return "sysvar" }
+func (c SysVarCmd) Alias() []string { return []string{"sysvar", "let"} }
+func (c SysVarCmd) Help() string {
+	return `set system variables, usage:
+			    sysvar <varname>=<string value>, variable name and value are both string
+				  example: scan $varname or get $varname`
+}
+
+func (c SysVarCmd) Handler() func(ctx context.Context) {
+	return func(ctx context.Context) {
+		utils.OutputWithElapse(func() error {
+			ic := utils.ExtractIshellContext(ctx)
+			if len(ic.Args) < 1 {
+				utils.Print(c.Help())
+				return errors.New("wrong args")
+			}
+			stmt := strings.Join(ic.RawArgs[1:], " ")
+			parts := strings.Split(stmt, "=")
+			if len(parts) != 2 {
+				utils.Print(c.Help())
+				return errors.New("wrong format")
+			}
+			varName, varValue := parts[0], parts[1]
+			varName = strings.TrimSpace(varName)
+
+			if !utils.IsStringLit(varValue) {
+				return errors.New("wrong format for value")
+			}
+			// it's a hex string literal
+			value, err := utils.GetStringLit(varValue)
+			if err != nil {
+				return err
+			}
+			utils.SysVarSet(varName, string(value))
 			return nil
 		})
 	}
