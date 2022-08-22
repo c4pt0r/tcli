@@ -132,9 +132,9 @@ func main() {
 			Aliases: cmd.Alias(),
 			Func: func(c *ishell.Context) {
 				ctx := context.WithValue(context.TODO(), "ishell", c)
-				fmt.Fprintln(os.Stderr, color.WhiteString("Input:"), c.RawArgs)
+				fmt.Fprintln(os.Stderr, color.YellowString("Input:"), c.RawArgs)
 				for _, arg := range c.Args {
-					fmt.Fprintln(os.Stderr, color.WhiteString("Arg:"), arg)
+					fmt.Fprintln(os.Stderr, color.YellowString("Arg:"), arg)
 				}
 				handler(ctx)
 			},
