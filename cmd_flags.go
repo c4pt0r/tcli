@@ -11,6 +11,7 @@ var (
 	DeleteOptWithPrefix string = "prefix-mode"
 	DeleteOptBatchSize  string = "batch-size"
 	DeleteOptLimit      string = "limit"
+	DeleteOptYes        string = "yes"
 )
 
 var (

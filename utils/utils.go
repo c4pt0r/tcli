@@ -133,6 +133,23 @@ func SetOptByString(ss []string, props *properties.Properties) error {
 	return nil
 }
 
+// GetArgsAndOptionFlag returns args and option flag
+// Example:
+// ['arg1', 'arg2', '--option-a=value', '--option-b'] => {args: ['arg1', 'arg2'], optionFlag: ['--option-a=value', '--option-b']}
+// ['arg1', '--option1', 'arg2', '--option2'] => {args: ['arg1', 'arg2'], optionFlag: ['--option1', '--option2']}
+func GetArgsAndOptionFlag(rawArgs []string) ([]string, []string) {
+	args := []string{}
+	optionFlag := []string{}
+	for _, arg := range rawArgs {
+		if strings.HasPrefix(arg, "--") {
+			optionFlag = append(optionFlag, arg)
+		} else {
+			args = append(args, arg)
+		}
+	}
+	return args, optionFlag
+}
+
 /*
 func SetOptByString(ss []string, props *properties.Properties) error {
 	// hack

@@ -106,20 +106,23 @@ func (c LoadCsvCmd) Handler() func(ctx context.Context) {
 			var err error
 			ic := utils.ExtractIshellContext(ctx)
 			if len(ic.Args) == 0 {
-				utils.Print(c.Help())
+				utils.Print(c.LongHelp())
 				return nil
 			}
 
+			args, flags := utils.GetArgsAndOptionFlag(ic.RawArgs)
+
 			// set filename
 			var csvFile string
-			if len(ic.Args) > 0 {
-				csvFile = ic.Args[0]
+			if len(args) > 1 { // args[0] is the command name
+				csvFile = args[1]
 			}
 
 			// set prefix
 			var keyPrefix []byte
-			if len(ic.Args) > 1 && !(ic.RawArgs[2] == `""` || ic.RawArgs[2] == `''`) {
-				keyPrefix, err = utils.GetStringLit(ic.RawArgs[2])
+			if len(args) > 2 {
+				var err error
+				keyPrefix, err = utils.GetStringLit(args[2])
 				if err != nil {
 					return err
 				}
@@ -128,7 +131,7 @@ func (c LoadCsvCmd) Handler() func(ctx context.Context) {
 			// set prop
 			prop := properties.NewProperties()
 			if len(ic.Args) > 2 {
-				err = utils.SetOptByString(ic.RawArgs[3:], prop)
+				err = utils.SetOptByString(flags, prop)
 				if err != nil {
 					return nil
 				}
