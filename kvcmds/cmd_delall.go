@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/c4pt0r/tcli"
 	"github.com/c4pt0r/tcli/utils"
 
 	"github.com/c4pt0r/tcli/client"
@@ -14,10 +15,16 @@ import (
 
 type DeleteAllCmd struct{}
 
+var _ tcli.Cmd = DeleteAllCmd{}
+
 func (c DeleteAllCmd) Name() string    { return "delall" }
 func (c DeleteAllCmd) Alias() []string { return []string{"dela", "removeall", "rma"} }
 func (c DeleteAllCmd) Help() string {
 	return `remove all key-value pairs, DANGEROUS`
+}
+
+func (c DeleteAllCmd) LongHelp() string {
+	return c.Help()
 }
 
 func (c DeleteAllCmd) Handler() func(ctx context.Context) {

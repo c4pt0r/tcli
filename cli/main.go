@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/c4pt0r/tcli"
 	"github.com/c4pt0r/tcli/client"
@@ -23,8 +24,7 @@ var (
 	clientLog      = flag.String("log-file", "/dev/null", "TiKV client log file")
 	clientLogLevel = flag.String("log-level", "info", "TiKV client log level")
 	clientmode     = flag.String("mode", "txn", "TiKV API mode, accepted values: [raw | txn]")
-
-	resultFmt = flag.String("output-format", "table", "output format, accepted values: [table | json]")
+	resultFmt      = flag.String("output-format", "table", "output format, accepted values: [table | json]")
 )
 var (
 	logo string = ""
@@ -86,14 +86,14 @@ func showWelcomeMessage() {
 		log.F(err)
 	}
 	for _, member := range members {
-		log.I("pd instance info:", member)
+		log.D("pd instance info:", member)
 	}
 	stores, err := client.GetTiKVClient().GetStores()
 	if err != nil {
 		log.F(err)
 	}
 	for _, store := range stores {
-		log.I("tikv instance info:", store)
+		log.D("tikv instance info:", store)
 	}
 }
 
@@ -119,22 +119,32 @@ func main() {
 		shell.SetPrompt(fmt.Sprintf("%s> ", client.GetTiKVClient().GetClientMode()))
 	} else {
 		pdLeaderAddr := client.GetTiKVClient().GetPDClient().GetLeaderAddr()
-		shell.SetPrompt(fmt.Sprintf("%s(%s)> ", client.GetTiKVClient().GetClientMode(), pdLeaderAddr))
+		shell.SetPrompt(fmt.Sprintf("%s @ %s> ", client.GetTiKVClient().GetClientMode(), pdLeaderAddr))
 	}
 	shell.EOF(func(c *ishell.Context) { shell.Close() })
+	shell.AutoHelp(false)
 
 	// register shell commands
 	for _, cmd := range RegisteredCmds {
 		handler := cmd.Handler()
+		longhelp := cmd.LongHelp()
 		shell.AddCmd(&ishell.Cmd{
-			Name:    cmd.Name(),
-			Help:    cmd.Help(),
-			Aliases: cmd.Alias(),
+			Name:     cmd.Name(),
+			Help:     cmd.Help(),
+			LongHelp: cmd.LongHelp(),
+			Aliases:  cmd.Alias(),
 			Func: func(c *ishell.Context) {
 				ctx := context.WithValue(context.TODO(), "ishell", c)
-				fmt.Fprintln(os.Stderr, color.YellowString("Input:"), c.RawArgs)
-				for _, arg := range c.Args {
-					fmt.Fprintln(os.Stderr, color.YellowString("Arg:"), arg)
+				if strings.ToLower(*clientLogLevel) == "debug" {
+					fmt.Fprintln(os.Stderr, color.YellowString("Input:"), c.RawArgs)
+					for _, arg := range c.Args {
+						fmt.Fprintln(os.Stderr, color.YellowString("Arg:"), arg)
+					}
+					fmt.Fprintf(os.Stderr, "\033[33mOutput:\033[0m\n")
+				}
+				if len(c.Args) > 0 && c.Args[0] == "--help" {
+					c.Println(longhelp)
+					return
 				}
 				handler(ctx)
 			},

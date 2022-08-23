@@ -17,6 +17,8 @@ import (
 
 type LoadCsvCmd struct{}
 
+var _ tcli.Cmd = LoadCsvCmd{}
+
 func (c LoadCsvCmd) Name() string    { return "loadcsv" }
 func (c LoadCsvCmd) Alias() []string { return []string{"lcsv"} }
 func (c LoadCsvCmd) Help() string {
@@ -24,6 +26,10 @@ func (c LoadCsvCmd) Help() string {
 	                 opts:
 			           batch-size: int, how many records in one tikv transaction, default: 1000`
 
+}
+
+func (c LoadCsvCmd) LongHelp() string {
+	return c.Help()
 }
 
 func (c LoadCsvCmd) processCSV(prop *properties.Properties, rc io.Reader, keyPrefix []byte) error {

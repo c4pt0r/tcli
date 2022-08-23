@@ -8,6 +8,8 @@ import (
 type Cmd interface {
 	// Help is a help message
 	Help() string
+	// LongHelp is a long help message
+	LongHelp() string
 	// Name is the name of the command
 	Name() string
 	// Alias is the alias of the command

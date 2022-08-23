@@ -128,9 +128,9 @@ const (
 func (mode TiKV_MODE) String() string {
 	switch mode {
 	case RAW_CLIENT:
-		return "TiKV Raw Mode"
+		return "Mode: Raw"
 	case TXN_CLIENT:
-		return "TiKV Txn Mode"
+		return "Mode: Txn"
 	}
 	return "unknown"
 }

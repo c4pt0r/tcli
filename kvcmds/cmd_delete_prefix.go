@@ -15,10 +15,16 @@ import (
 
 type DeletePrefixCmd struct{}
 
+var _ tcli.Cmd = &DeletePrefixCmd{}
+
 func (c DeletePrefixCmd) Name() string    { return "delp" }
 func (c DeletePrefixCmd) Alias() []string { return []string{"deletep", "removep", "rmp"} }
 func (c DeletePrefixCmd) Help() string {
 	return `delete kv pairs with specific prefix, usage: delp(deletep/rmp) keyPrefix [opts]`
+}
+
+func (c DeletePrefixCmd) LongHelp() string {
+	return c.Help()
 }
 
 func (c DeletePrefixCmd) Handler() func(ctx context.Context) {

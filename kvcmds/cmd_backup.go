@@ -16,12 +16,29 @@ import (
 	"github.com/magiconair/properties"
 )
 
+var _ tcli.Cmd = BackupCmd{}
+
 type BackupCmd struct{}
 
 func (c BackupCmd) Name() string    { return "backup" }
 func (c BackupCmd) Alias() []string { return []string{"backup"} }
 func (c BackupCmd) Help() string {
-	return `backup <prefix> <outfile> <opts>, opts: type=csv batch-size=1000(default) concurrent=1, example: backup * outfile`
+	return "dumps kv pairs to a csv file"
+}
+
+func (c BackupCmd) LongHelp() string {
+	var buf bytes.Buffer
+	buf.WriteString(c.Help())
+	buf.WriteString(`
+Usage: 
+	backup <prefix> <outfile> <opts>
+opts:
+	type=csv
+	batch-size=1000(default)
+	concurrent=1
+example:
+	backup * outfile`)
+	return buf.String()
 }
 
 func writeKvsToCsvFile(w *csv.Writer, kvs client.KVS) error {

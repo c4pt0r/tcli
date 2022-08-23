@@ -3,6 +3,7 @@ package kvcmds
 import (
 	"context"
 
+	"github.com/c4pt0r/tcli"
 	"github.com/c4pt0r/tcli/utils"
 
 	"github.com/manifoldco/promptui"
@@ -13,6 +14,8 @@ type BenchWorkload interface {
 	Run(ctx context.Context) error
 	Stop(ctx context.Context) error
 }
+
+var _ tcli.Cmd = BenchCmd{}
 
 type BenchCmd struct {
 	Workloads []BenchWorkload
@@ -30,6 +33,11 @@ func NewBenchCmd(ww ...BenchWorkload) BenchCmd {
 
 func (c BenchCmd) Name() string    { return "bench" }
 func (c BenchCmd) Alias() []string { return []string{"benchmark"} }
+
+func (c BenchCmd) LongHelp() string {
+	return c.Help()
+}
+
 func (c BenchCmd) Help() string {
 	return `bench [type], type: ycsb`
 }

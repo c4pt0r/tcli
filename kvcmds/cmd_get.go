@@ -3,6 +3,7 @@ package kvcmds
 import (
 	"context"
 
+	"github.com/c4pt0r/tcli"
 	"github.com/c4pt0r/tcli/utils"
 
 	"github.com/c4pt0r/tcli/client"
@@ -10,10 +11,16 @@ import (
 
 type GetCmd struct{}
 
+var _ tcli.Cmd = GetCmd{}
+
 func (c GetCmd) Name() string    { return "get" }
 func (c GetCmd) Alias() []string { return []string{"g"} }
 func (c GetCmd) Help() string {
 	return `get [key]`
+}
+
+func (c GetCmd) LongHelp() string {
+	return c.Help()
 }
 
 func (c GetCmd) Handler() func(ctx context.Context) {

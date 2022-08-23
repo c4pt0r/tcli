@@ -3,6 +3,7 @@ package kvcmds
 import (
 	"context"
 
+	"github.com/c4pt0r/tcli"
 	"github.com/c4pt0r/tcli/utils"
 
 	"github.com/c4pt0r/tcli/client"
@@ -10,10 +11,16 @@ import (
 
 type DeleteCmd struct{}
 
+var _ tcli.Cmd = &DeleteCmd{}
+
 func (c DeleteCmd) Name() string    { return "del" }
 func (c DeleteCmd) Alias() []string { return []string{"remove", "delete", "rm"} }
 func (c DeleteCmd) Help() string {
 	return `delete a single kv pair, usage: del(delete/rm/remove) [key]`
+}
+
+func (c DeleteCmd) LongHelp() string {
+	return c.Help()
 }
 
 func (c DeleteCmd) Handler() func(ctx context.Context) {

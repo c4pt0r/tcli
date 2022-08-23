@@ -6,17 +6,19 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/c4pt0r/tcli"
 	"github.com/c4pt0r/tcli/utils"
 
 	"github.com/abiosoft/ishell"
 )
 
-type VarCmd struct {
-}
+type VarCmd struct{}
 
 func NewVarCmd() VarCmd {
 	return VarCmd{}
 }
+
+var _ tcli.Cmd = VarCmd{}
 
 func (c VarCmd) Name() string    { return "var" }
 func (c VarCmd) Alias() []string { return []string{"var", "let"} }
@@ -24,6 +26,10 @@ func (c VarCmd) Help() string {
 	return `set variables, usage:
 			    var <varname>=<string value>, variable name and value are both string
 				  example: scan $varname or get $varname`
+}
+
+func (c VarCmd) LongHelp() string {
+	return c.Help()
 }
 
 func (c VarCmd) Handler() func(ctx context.Context) {
@@ -59,10 +65,16 @@ func (c VarCmd) Handler() func(ctx context.Context) {
 
 type EchoCmd struct{}
 
+var _ tcli.Cmd = EchoCmd{}
+
 func (c EchoCmd) Name() string    { return "echo" }
 func (c EchoCmd) Alias() []string { return []string{"echo"} }
 func (c EchoCmd) Help() string {
 	return `echo $<varname>`
+}
+
+func (c EchoCmd) LongHelp() string {
+	return c.Help()
 }
 
 func (c EchoCmd) Handler() func(ctx context.Context) {
@@ -91,10 +103,16 @@ func (c EchoCmd) Handler() func(ctx context.Context) {
 
 type PrintVarsCmd struct{}
 
+var _ tcli.Cmd = PrintVarsCmd{}
+
 func (c PrintVarsCmd) Name() string    { return "env" }
 func (c PrintVarsCmd) Alias() []string { return []string{"env"} }
 func (c PrintVarsCmd) Help() string {
 	return `print env variables`
+}
+
+func (c PrintVarsCmd) LongHelp() string {
+	return c.Help()
 }
 
 func (c PrintVarsCmd) Handler() func(ctx context.Context) {
@@ -108,10 +126,16 @@ func (c PrintVarsCmd) Handler() func(ctx context.Context) {
 
 type PrintSysVarsCmd struct{}
 
+var _ tcli.Cmd = PrintSysVarsCmd{}
+
 func (c PrintSysVarsCmd) Name() string    { return "sysenv" }
 func (c PrintSysVarsCmd) Alias() []string { return []string{"sysenv"} }
 func (c PrintSysVarsCmd) Help() string {
 	return `print system env variables`
+}
+
+func (c PrintSysVarsCmd) LongHelp() string {
+	return c.Help()
 }
 
 func (c PrintSysVarsCmd) Handler() func(ctx context.Context) {
@@ -125,10 +149,16 @@ func (c PrintSysVarsCmd) Handler() func(ctx context.Context) {
 
 type HexCmd struct{}
 
+var _ tcli.Cmd = HexCmd{}
+
 func (c HexCmd) Name() string    { return "hexdump" }
 func (c HexCmd) Alias() []string { return []string{"hex"} }
 func (c HexCmd) Help() string {
 	return `hexdump <string>`
+}
+
+func (c HexCmd) LongHelp() string {
+	return c.Help()
 }
 
 func (c HexCmd) Handler() func(ctx context.Context) {
@@ -149,8 +179,9 @@ func (c HexCmd) Handler() func(ctx context.Context) {
 	}
 }
 
-type SysVarCmd struct {
-}
+type SysVarCmd struct{}
+
+var _ tcli.Cmd = SysVarCmd{}
 
 func NewSysVarCmd() SysVarCmd {
 	return SysVarCmd{}
@@ -162,6 +193,10 @@ func (c SysVarCmd) Help() string {
 	return `set system variables, usage:
 			    sysvar <varname>=<string value>, variable name and value are both string
 				  example: scan $varname or get $varname`
+}
+
+func (c SysVarCmd) LongHelp() string {
+	return c.Help()
 }
 
 func (c SysVarCmd) Handler() func(ctx context.Context) {

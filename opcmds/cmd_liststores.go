@@ -3,6 +3,7 @@ package opcmds
 import (
 	"context"
 
+	"github.com/c4pt0r/tcli"
 	"github.com/c4pt0r/tcli/utils"
 
 	"github.com/c4pt0r/tcli/client"
@@ -10,10 +11,16 @@ import (
 
 type ListStoresCmd struct{}
 
+var _ tcli.Cmd = ListStoresCmd{}
+
 func (c ListStoresCmd) Name() string    { return ".stores" }
 func (c ListStoresCmd) Alias() []string { return []string{".stores"} }
 func (c ListStoresCmd) Help() string {
 	return "list tikv stores in cluster"
+}
+
+func (c ListStoresCmd) LongHelp() string {
+	return c.Help()
 }
 
 func (c ListStoresCmd) Handler() func(ctx context.Context) {

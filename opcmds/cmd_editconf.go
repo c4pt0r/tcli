@@ -10,10 +10,16 @@ import (
 
 type ConfigEditorCmd struct{}
 
+var _ ConfigEditorCmd = ConfigEditorCmd{}
+
 func (c ConfigEditorCmd) Name() string    { return ".config" }
 func (c ConfigEditorCmd) Alias() []string { return []string{".config"} }
 func (c ConfigEditorCmd) Help() string {
 	return "edit tikv config"
+}
+
+func (c ConfigEditorCmd) LongHelp() string {
+	return c.Help()
 }
 
 func (c ConfigEditorCmd) Handler() func(ctx context.Context) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/c4pt0r/tcli"
 	"github.com/c4pt0r/tcli/utils"
 
 	"github.com/c4pt0r/tcli/client"
@@ -11,10 +12,16 @@ import (
 
 type PutCmd struct{}
 
+var _ tcli.Cmd = PutCmd{}
+
 func (c PutCmd) Name() string    { return "put" }
 func (c PutCmd) Alias() []string { return []string{"put", "set"} }
 func (c PutCmd) Help() string {
 	return `put [key] [value]`
+}
+
+func (c PutCmd) LongHelp() string {
+	return c.Help()
 }
 
 func (c PutCmd) Handler() func(ctx context.Context) {

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/abiosoft/ishell"
+	"github.com/c4pt0r/log"
 	"github.com/magiconair/properties"
 	"github.com/manifoldco/promptui"
 	"github.com/olekukonko/tablewriter"
@@ -33,11 +34,9 @@ func PrintTable(data [][]string) {
 
 func OutputWithElapse(f func() error) error {
 	tt := time.Now()
-
-	fmt.Fprintf(os.Stderr, "\033[33mOutput:\033[0m\n")
 	err := f()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "\033[31mError\033[0m: %s, Elapse: %d ms\n", err, time.Since(tt)/time.Millisecond)
+		fmt.Fprintf(os.Stderr, "\033[31mError: %s\033[0m, Elapse: %d ms\n", err, time.Since(tt)/time.Millisecond)
 	} else {
 		fmt.Fprintf(os.Stderr, "\033[32mSuccess\033[0m, Elapse: %d ms\n", time.Since(tt)/time.Millisecond)
 	}
@@ -79,6 +78,9 @@ func IsStringLit(raw string) bool {
 }
 
 func GetStringLit(raw string) ([]byte, error) {
+	if strings.HasPrefix(raw, "--") {
+		return nil, fmt.Errorf("wrong format: [%s], it seems a option flag?", raw)
+	}
 	if raw[0] == '$' {
 		varVal, ok := VarGet(raw[1:])
 		if !ok {
@@ -103,6 +105,31 @@ func GetStringLit(raw string) ([]byte, error) {
 		return []byte(val), nil
 	}
 	return []byte(raw), nil
+}
+
+func SetOptByString2(ss []string, props *properties.Properties) error {
+	for _, flag := range ss {
+		if strings.HasPrefix(flag, "--") {
+			flag = flag[2:]
+			parts := strings.Split(flag, "=")
+			log.W(parts)
+			switch len(parts) {
+			case 1:
+				{
+					// means that's a bool option
+					props.Set(parts[0], "true")
+				}
+			case 2:
+				{
+					k, v := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+					props.Set(k, v)
+				}
+			}
+		} else {
+			return fmt.Errorf("Wrong parameter: %s ", flag)
+		}
+	}
+	return nil
 }
 
 func SetOptByString(ss []string, props *properties.Properties) error {

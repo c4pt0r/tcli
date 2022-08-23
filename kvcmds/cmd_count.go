@@ -16,10 +16,16 @@ import (
 
 type CountCmd struct{}
 
+var _ tcli.Cmd = &CountCmd{}
+
 func (c CountCmd) Name() string    { return "count" }
 func (c CountCmd) Alias() []string { return []string{"cnt", "count", "count"} }
 func (c CountCmd) Help() string {
 	return `count [*|key prefix], count all keys or keys with specific prefix`
+}
+
+func (c CountCmd) LongHelp() string {
+	return c.Help()
 }
 
 func (c CountCmd) Handler() func(ctx context.Context) {

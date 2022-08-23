@@ -15,6 +15,8 @@ import (
 
 type ScanCmd struct{}
 
+var _ tcli.Cmd = ScanCmd{}
+
 func (c ScanCmd) Name() string    { return "scan" }
 func (c ScanCmd) Alias() []string { return []string{"scan"} }
 func (c ScanCmd) Help() string {
@@ -25,6 +27,10 @@ func (c ScanCmd) Help() string {
                   key-only: true(1)|false(0)
                   strict-prefix: true(1)|false(0)
                   count-only: true(1)|false(0)`
+}
+
+func (c ScanCmd) LongHelp() string {
+	return c.Help()
 }
 
 func (c ScanCmd) Handler() func(ctx context.Context) {
@@ -60,10 +66,15 @@ func (c ScanCmd) Handler() func(ctx context.Context) {
 
 type ScanPrefixCmd struct{}
 
+var _ tcli.Cmd = ScanPrefixCmd{}
+
 func (c ScanPrefixCmd) Name() string    { return "scanp" }
 func (c ScanPrefixCmd) Alias() []string { return []string{"scanp"} }
 func (c ScanPrefixCmd) Help() string {
 	return `scan keys with prefix, equals to "scan [key prefix] strict-prefix=true"`
+}
+func (c ScanPrefixCmd) LongHelp() string {
+	return c.Help()
 }
 
 func (c ScanPrefixCmd) Handler() func(ctx context.Context) {
@@ -101,10 +112,16 @@ func (c ScanPrefixCmd) Handler() func(ctx context.Context) {
 
 type HeadCmd struct{}
 
+var _ tcli.Cmd = HeadCmd{}
+
 func (c HeadCmd) Name() string    { return "head" }
 func (c HeadCmd) Alias() []string { return []string{"head"} }
 func (c HeadCmd) Help() string {
 	return `scan keys from $head, equals to "scan $head limit=N", usage: head <limit>`
+}
+
+func (c HeadCmd) LongHelp() string {
+	return c.Help()
 }
 
 func (c HeadCmd) Handler() func(ctx context.Context) {
