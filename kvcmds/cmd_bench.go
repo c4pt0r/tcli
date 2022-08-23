@@ -5,7 +5,6 @@ import (
 
 	"github.com/c4pt0r/tcli"
 	"github.com/c4pt0r/tcli/utils"
-
 	"github.com/manifoldco/promptui"
 )
 

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/abiosoft/ishell"
-	"github.com/c4pt0r/log"
 	"github.com/magiconair/properties"
 	"github.com/manifoldco/promptui"
 	"github.com/olekukonko/tablewriter"
@@ -107,31 +106,34 @@ func GetStringLit(raw string) ([]byte, error) {
 	return []byte(raw), nil
 }
 
-func SetOptByString2(ss []string, props *properties.Properties) error {
+func SetOptByString(ss []string, props *properties.Properties) error {
 	for _, flag := range ss {
 		if strings.HasPrefix(flag, "--") {
 			flag = flag[2:]
 			parts := strings.Split(flag, "=")
-			log.W(parts)
+
 			switch len(parts) {
 			case 1:
 				{
-					// means that's a bool option
-					props.Set(parts[0], "true")
+					// parse option flag like --option-bool
+					k := strings.TrimSpace(parts[0])
+					props.Set(k, "true")
 				}
 			case 2:
 				{
+					// parse option flag like --option-a=value
 					k, v := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
 					props.Set(k, v)
 				}
 			}
 		} else {
-			return fmt.Errorf("Wrong parameter: %s ", flag)
+			return fmt.Errorf("wrong flag format: [%s] ", flag)
 		}
 	}
 	return nil
 }
 
+/*
 func SetOptByString(ss []string, props *properties.Properties) error {
 	// hack
 	var items []string
@@ -159,6 +161,7 @@ func SetOptByString(ss []string, props *properties.Properties) error {
 	}
 	return nil
 }
+*/
 
 func ContextWithProp(ctx context.Context, p *properties.Properties) context.Context {
 	return context.WithValue(ctx, propertiesKey, p)

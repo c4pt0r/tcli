@@ -20,17 +20,28 @@ var _ tcli.Cmd = ScanCmd{}
 func (c ScanCmd) Name() string    { return "scan" }
 func (c ScanCmd) Alias() []string { return []string{"scan"} }
 func (c ScanCmd) Help() string {
-	return `Scan key-value pairs in range, usage: scan [start key] [opts]
-                opt format: key1=value1,key2=value2,key3=value3, 
-                scan options:
-                  limit: integer, default:100
-                  key-only: true(1)|false(0)
-                  strict-prefix: true(1)|false(0)
-                  count-only: true(1)|false(0)`
+	return `Scan keys from start key, use "scan --help" for more details`
 }
 
 func (c ScanCmd) LongHelp() string {
-	return c.Help()
+	s := c.Help()
+	s += `
+Usage:
+	scan <start key> <options>
+Options:
+	--limit=<limit>, default 100
+	--key-only=<true|false>, default false
+	--strict-prefix=<true|false>, default false
+	--count-only=<true|false>, default false
+Examples:
+	scan "a" --limit=10
+	scan "a" --limit=10 --key-only=true
+	scan "a" --limit=10 --strict-prefix
+	scan "a" --limit=10 --count-only
+	scan "a" --limit=10 --strict-prefix --key-only=true
+	scan $head --limit=10 --key-only=true
+`
+	return s
 }
 
 func (c ScanCmd) Handler() func(ctx context.Context) {

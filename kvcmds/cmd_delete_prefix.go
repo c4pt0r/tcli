@@ -4,12 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/c4pt0r/tcli/utils"
-
-	"github.com/c4pt0r/tcli/client"
-
 	"github.com/c4pt0r/tcli"
-
+	"github.com/c4pt0r/tcli/client"
+	"github.com/c4pt0r/tcli/utils"
 	"github.com/magiconair/properties"
 )
 
@@ -20,11 +17,20 @@ var _ tcli.Cmd = &DeletePrefixCmd{}
 func (c DeletePrefixCmd) Name() string    { return "delp" }
 func (c DeletePrefixCmd) Alias() []string { return []string{"deletep", "removep", "rmp"} }
 func (c DeletePrefixCmd) Help() string {
-	return `delete kv pairs with specific prefix, usage: delp(deletep/rmp) keyPrefix [opts]`
+	return `delete kv pairs with specific prefix`
 }
 
 func (c DeletePrefixCmd) LongHelp() string {
-	return c.Help()
+	s := c.Help()
+	s += `
+Usage:
+	delp <prefix> [options]
+Alias:
+	deletep, removep, rmp
+Options:
+	--limit, default: 1000
+`
+	return s
 }
 
 func (c DeletePrefixCmd) Handler() func(ctx context.Context) {

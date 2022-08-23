@@ -7,12 +7,9 @@ import (
 	"errors"
 	"os"
 
-	"github.com/c4pt0r/tcli/utils"
-
-	"github.com/c4pt0r/tcli/client"
-
 	"github.com/c4pt0r/tcli"
-
+	"github.com/c4pt0r/tcli/client"
+	"github.com/c4pt0r/tcli/utils"
 	"github.com/magiconair/properties"
 )
 

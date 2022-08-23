@@ -22,14 +22,24 @@ var _ tcli.Cmd = LoadCsvCmd{}
 func (c LoadCsvCmd) Name() string    { return "loadcsv" }
 func (c LoadCsvCmd) Alias() []string { return []string{"lcsv"} }
 func (c LoadCsvCmd) Help() string {
-	return `loadfile [filename] [key prefix] [opts], only supports CSV now, when "key prefix" is set, will automatically add prefix to the original key,
-	                 opts:
-			           batch-size: int, how many records in one tikv transaction, default: 1000`
+	return `load csv file, use "loadcsv --help" for more details`
 
 }
 
 func (c LoadCsvCmd) LongHelp() string {
-	return c.Help()
+	s := c.Help()
+	s += `
+Usage:
+	loadcsv [filename] <key prefix> <options>
+Alias:
+	lcsv
+Options:
+	--batch-size: int, how many records in one tikv transaction, default: 1000
+Examples:
+	loadcsv sample.csv
+	loadcsv sample.csv "prefix_" --batch-size=100
+`
+	return s
 }
 
 func (c LoadCsvCmd) processCSV(prop *properties.Properties, rc io.Reader, keyPrefix []byte) error {

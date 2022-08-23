@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/c4pt0r/tcli"
-	"github.com/c4pt0r/tcli/utils"
-
-	"github.com/c4pt0r/tcli/client"
-
 	"github.com/c4pt0r/log"
+	"github.com/c4pt0r/tcli"
+	"github.com/c4pt0r/tcli/client"
+	"github.com/c4pt0r/tcli/utils"
 )
 
 type DeleteAllCmd struct{}
@@ -24,7 +22,14 @@ func (c DeleteAllCmd) Help() string {
 }
 
 func (c DeleteAllCmd) LongHelp() string {
-	return c.Help()
+	s := c.Help()
+	s += `
+Usage:
+	delall
+Alias:
+	dela, removeall, rma
+`
+	return s
 }
 
 func (c DeleteAllCmd) Handler() func(ctx context.Context) {

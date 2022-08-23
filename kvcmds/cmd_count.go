@@ -5,12 +5,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/c4pt0r/tcli/utils"
-
-	"github.com/c4pt0r/tcli/client"
-
 	"github.com/c4pt0r/tcli"
-
+	"github.com/c4pt0r/tcli/client"
+	"github.com/c4pt0r/tcli/utils"
 	"github.com/magiconair/properties"
 )
 
@@ -19,13 +16,20 @@ type CountCmd struct{}
 var _ tcli.Cmd = &CountCmd{}
 
 func (c CountCmd) Name() string    { return "count" }
-func (c CountCmd) Alias() []string { return []string{"cnt", "count", "count"} }
+func (c CountCmd) Alias() []string { return []string{"cnt"} }
 func (c CountCmd) Help() string {
-	return `count [*|key prefix], count all keys or keys with specific prefix`
+	return `count keys or keys with specific prefix`
 }
 
 func (c CountCmd) LongHelp() string {
-	return c.Help()
+	s := c.Help()
+	s += `
+Usage:
+	count [key prefix | *]
+Alias:
+	cnt
+`
+	return s
 }
 
 func (c CountCmd) Handler() func(ctx context.Context) {

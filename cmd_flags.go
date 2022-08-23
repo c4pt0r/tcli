@@ -15,8 +15,6 @@ var (
 
 var (
 	LoadFileOptBatchSize string = "batch-size"
-	// LoadFileOptConcurrent string = "concurrent"
-
 )
 
 var (
