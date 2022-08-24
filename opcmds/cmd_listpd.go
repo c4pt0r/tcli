@@ -4,9 +4,6 @@ import (
 	"context"
 
 	"github.com/c4pt0r/tcli"
-	"github.com/c4pt0r/tcli/utils"
-
-	"github.com/c4pt0r/tcli/client"
 )
 
 type ListPDCmd struct{}
@@ -25,20 +22,24 @@ func (c ListPDCmd) LongHelp() string {
 
 func (c ListPDCmd) Handler() func(ctx context.Context) {
 	return func(ctx context.Context) {
-		utils.OutputWithElapse(func() error {
-			pds, err := client.GetTiKVClient().GetPDClient().GetAllMembers(context.TODO())
-			if err != nil {
-				return err
-			}
+		/*
+			utils.OutputWithElapse(func() error {
+				pds, err := client.GetTiKVClient().GetPDClient().GetAllMembers(context.TODO())
+				if err != nil {
+					return err
+				}
 
-			var output [][]string = [][]string{
-				(client.PDInfo).TableTitle(client.PDInfo{}),
-			}
-			for _, pd := range pds {
-				output = append(output, pd.Flatten())
-			}
-			utils.PrintTable(output)
-			return nil
-		})
+				var output [][]string = [][]string{
+					(client.PDInfo).TableTitle(client.PDInfo{}),
+				}
+				for _, pd := range pds {
+					//TODO
+					panic("not implemented")
+					//output = append(output, pd.Flatten())
+				}
+				utils.PrintTable(output)
+				return nil
+			})
+		*/
 	}
 }
