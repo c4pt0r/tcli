@@ -54,6 +54,7 @@ var RegisteredCmds = []tcli.Cmd{
 	kvcmds.PrintSysVarsCmd{},
 	kvcmds.SysVarCmd{},
 	opcmds.ListStoresCmd{},
+	opcmds.ListPDCmd{},
 	//opcmds.ConnectCmd{},
 	//opcmds.ConfigEditorCmd{},
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/c4pt0r/tcli/utils"
 
@@ -51,12 +52,18 @@ func (c *txnkvClient) GetStores() ([]StoreInfo, error) {
 		return nil, err
 	}
 	for _, store := range stores {
+		labels := store.GetLabels()
+		var strLabels []string
+		for _, label := range labels {
+			strLabels = append(strLabels, fmt.Sprintf("%s=%s", label.Key, label.Value))
+		}
 		ret = append(ret, StoreInfo{
 			ID:            fmt.Sprintf("%d", store.GetId()),
 			Version:       store.GetVersion(),
 			Addr:          store.GetAddress(),
 			State:         store.GetState().String(),
 			StatusAddress: store.GetStatusAddress(),
+			Labels:        strings.Join(strLabels, ","),
 		})
 	}
 	return ret, nil
@@ -226,4 +233,16 @@ func (c *txnkvClient) BatchDelete(ctx context.Context, kvs []KV) error {
 		}
 	}
 	return tx.Commit(context.Background())
+}
+
+func (c *txnkvClient) GetPDs() ([]PDInfo, error) {
+	pds, err := c.txnClient.GetPDClient().GetAllMembers(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	var ret []PDInfo
+	for _, pd := range pds {
+		ret = append(ret, PDInfo{Name: pd.Name, ClientURLs: pd.GetClientUrls()})
+	}
+	return ret, nil
 }

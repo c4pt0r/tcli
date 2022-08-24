@@ -38,7 +38,6 @@ func (kvs KVS) Print() {
 			kvmaps := make([]map[string]interface{}, len(kvs))
 			for i := 0; i < len(kvs); i++ {
 				kvmaps[i] = make(map[string]interface{})
-				//kvmaps[i]["K"], kvmaps[i]["V"] = string(kvs[i].K), string(kvs[i].V)
 				kvmaps[i][string(kvs[i].K)] = string(kvs[i].V)
 			}
 			out, _ := json.MarshalIndent(kvmaps, "", " ")
@@ -105,6 +104,7 @@ type Client interface {
 	GetClientMode() TiKV_MODE
 	GetClusterID() string
 	GetStores() ([]StoreInfo, error)
+	GetPDs() ([]PDInfo, error)
 	GetPDClient() pd.Client
 
 	Put(ctx context.Context, kv KV) error
@@ -145,6 +145,7 @@ type StoreInfo struct {
 	Addr          string
 	State         string
 	StatusAddress string
+	Labels        string
 }
 
 type PDInfo struct {
@@ -153,22 +154,23 @@ type PDInfo struct {
 }
 
 func (StoreInfo) TableTitle() []string {
-	return []string{"Store ID", "Version", "Address", "State", "Status Address"}
+	return []string{"Store ID", "Version", "Address", "State", "Status Address", "Labels"}
 }
 
-func (s *StoreInfo) Flatten() []string {
-	return []string{s.ID, s.Version, s.Addr, s.State, s.StatusAddress}
+func (s StoreInfo) Flatten() []string {
+	return []string{s.ID, s.Version, s.Addr, s.State, s.StatusAddress, s.Labels}
 }
 
 func (s StoreInfo) String() string {
-	return fmt.Sprintf("store_id:\"%s\" version:\"%s\" addr:\"%s\" state:\"%s\" status_addr:\"%s\"", s.ID, s.Version, s.Addr, s.State, s.StatusAddress)
+	return fmt.Sprintf("store_id:\"%s\" version:\"%s\" addr:\"%s\" state:\"%s\" status_addr:\"%s\" labels:\"%s\"",
+		s.ID, s.Version, s.Addr, s.State, s.StatusAddress, s.Labels)
 }
 
 func (p PDInfo) TableTitle() []string {
 	return []string{"Name", "Client URLs"}
 }
 
-func (p *PDInfo) Flatten() []string {
+func (p PDInfo) Flatten() []string {
 	return []string{p.Name, strings.Join(p.ClientURLs, ",")}
 }
 

@@ -47,12 +47,15 @@ func (c *rawkvClient) GetClusterID() string {
 }
 
 func (c *rawkvClient) GetStores() ([]StoreInfo, error) {
-	return nil, errors.New("rawkvClient does not support GetStores()")
+	panic("rawkvClient does not support GetStores()")
+}
+
+func (c *rawkvClient) GetPDs() ([]PDInfo, error) {
+	panic("rawkvClient does not support GetPDs()")
 }
 
 func (c *rawkvClient) GetPDClient() pd.Client {
-	log.Fatal("rawkvClient does not support GetPDClient()")
-	return nil
+	panic("rawkvClient does not support GetPDClient()")
 }
 
 func (c *rawkvClient) Put(ctx context.Context, kv KV) error {
@@ -89,6 +92,7 @@ func (c *rawkvClient) Scan(ctx context.Context, prefix []byte) (KVS, int, error)
 	// count only mode will ignore this
 	limit := scanOpts.GetInt(tcli.ScanOptLimit, 100)
 	if countOnly {
+		// BUG, TODO
 		limit = MaxRawKVScanLimit
 	}
 
