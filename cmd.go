@@ -14,7 +14,9 @@ type Cmd interface {
 	Name() string
 	// Alias is the alias of the command
 	Alias() []string
-	// Handler is the handler of the command. A *ishell.Context object named
+	// Handler is the handler of the command
 	// `ishell` is stored in ctx
 	Handler() func(ctx context.Context)
+	// Completer
+	// Completer() func(ctx context.Context, args []string) []string
 }
