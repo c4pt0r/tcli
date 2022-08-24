@@ -29,7 +29,7 @@ func (c PutCmd) Handler() func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
 			ic := utils.ExtractIshellContext(ctx)
 			if len(ic.Args) < 2 {
-				fmt.Println(c.Help())
+				fmt.Println(c.LongHelp())
 				return nil
 			}
 			k, err := utils.GetStringLit(ic.RawArgs[1])

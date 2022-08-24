@@ -28,7 +28,7 @@ func (c GetCmd) Handler() func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
 			ic := utils.ExtractIshellContext(ctx)
 			if len(ic.Args) < 1 {
-				utils.Print(c.Help())
+				utils.Print(c.LongHelp())
 				return nil
 			}
 			s := ic.RawArgs[1]

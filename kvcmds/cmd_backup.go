@@ -56,7 +56,7 @@ func (c BackupCmd) Handler() func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
 			ic := utils.ExtractIshellContext(ctx)
 			if len(ic.Args) < 2 {
-				utils.Print(c.Help())
+				utils.Print(c.LongHelp())
 				return nil
 			}
 			prefix, err := utils.GetStringLit(ic.Args[0])

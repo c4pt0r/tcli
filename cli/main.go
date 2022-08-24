@@ -128,7 +128,7 @@ func main() {
 	// register shell commands
 	for _, cmd := range RegisteredCmds {
 		handler := cmd.Handler()
-		completer := cmd.Completer()
+		//completer := cmd.Completer()
 		longhelp := cmd.LongHelp()
 		shell.AddCmd(&ishell.Cmd{
 			Name:     cmd.Name(),
