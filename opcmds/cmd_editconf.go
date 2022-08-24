@@ -3,10 +3,11 @@ package opcmds
 import (
 	"context"
 
-	"github.com/c4pt0r/tcli/utils"
-
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/c4pt0r/tcli/utils"
 )
+
+// not implemented yet
 
 type ConfigEditorCmd struct{}
 

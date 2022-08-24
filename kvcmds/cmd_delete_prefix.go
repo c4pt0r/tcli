@@ -28,6 +28,7 @@ Usage:
 Alias:
 	deletep, removep, rmp
 Options:
+	--yes, force yes
 	--limit, default: 1000
 `
 	return s
@@ -54,8 +55,15 @@ func (c DeletePrefixCmd) Handler() func(ctx context.Context) {
 			}
 			opt.Set(tcli.DeleteOptWithPrefix, "true")
 			limit := opt.GetInt(tcli.DeleteOptLimit, 1000)
-			ret := utils.AskYesNo(fmt.Sprintf("Delete with prefix: %s, limit %d, are you sure?", string(k), limit), "no")
-			if ret == 1 {
+
+			var yes bool
+			if utils.HasForceYes(ctx) {
+				yes = true
+			} else {
+				yes = utils.AskYesNo("Are you sure to delete kv pairs with prefix: %s", string(k)) == 1
+			}
+
+			if yes {
 				utils.Print("Your call")
 				lastKey, cnt, err := client.GetTiKVClient().DeletePrefix(ctx, k, limit)
 				if err != nil {

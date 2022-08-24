@@ -270,6 +270,17 @@ func AskYesNo(msg string, def string) int {
 	return -1
 }
 
+func HasForceYes(ctx context.Context) bool {
+	ic := ExtractIshellContext(ctx)
+	_, flags := GetArgsAndOptionFlag(ic.Args)
+	for _, flag := range flags {
+		if flag == "--yes" {
+			return true
+		}
+	}
+	return false
+}
+
 func Print(a ...interface{}) {
 	fmt.Println(a...)
 }

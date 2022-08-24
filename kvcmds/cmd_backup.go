@@ -29,12 +29,13 @@ func (c BackupCmd) LongHelp() string {
 	buf.WriteString(`
 Usage: 
 	backup <prefix> <outfile> <opts>
-opts:
-	type=csv
-	batch-size=1000(default)
-	concurrent=1
-example:
-	backup * outfile`)
+Options:
+	--batch-size=<size>, default 1000
+Example:
+	backup "t_" backup.csv --batch-size=5000
+	backup * backup.csv
+	backup $head  backup.csv
+`)
 	return buf.String()
 }
 

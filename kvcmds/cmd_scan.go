@@ -4,12 +4,9 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/c4pt0r/tcli/utils"
-
-	"github.com/c4pt0r/tcli/client"
-
 	"github.com/c4pt0r/tcli"
-
+	"github.com/c4pt0r/tcli/client"
+	"github.com/c4pt0r/tcli/utils"
 	"github.com/magiconair/properties"
 )
 
@@ -49,7 +46,7 @@ func (c ScanCmd) Handler() func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
 			ic := utils.ExtractIshellContext(ctx)
 			if len(ic.Args) < 1 {
-				utils.Print(c.Help())
+				utils.Print(c.LongHelp())
 				return nil
 			}
 			s := ic.RawArgs[1]

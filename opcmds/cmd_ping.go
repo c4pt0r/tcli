@@ -6,6 +6,8 @@ import (
 	"github.com/c4pt0r/tcli"
 )
 
+// not implemented yet
+
 type PingCmd struct{}
 
 var _ tcli.Cmd = PingCmd{}

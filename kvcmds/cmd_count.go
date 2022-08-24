@@ -37,7 +37,7 @@ func (c CountCmd) Handler() func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
 			ic := utils.ExtractIshellContext(ctx)
 			if len(ic.Args) < 1 {
-				utils.Print(c.Help())
+				utils.Print(c.LongHelp())
 				return nil
 			}
 			prefix, err := utils.GetStringLit(ic.RawArgs[1])
@@ -46,10 +46,16 @@ func (c CountCmd) Handler() func(ctx context.Context) {
 			}
 			promptMsg := fmt.Sprintf("Are you going to count all keys with prefix :%s", prefix)
 			if string(prefix) == "*" {
-				promptMsg = "Are you going to count all keys? (may be very slow when your DB is large)"
+				promptMsg = "Are you going to count all keys? (may be very slow when your data is huge)"
 			}
-			ret := utils.AskYesNo(promptMsg, "no")
-			if ret == 1 {
+
+			var yes bool
+			if utils.HasForceYes(ctx) {
+				yes = true
+			} else {
+				yes = utils.AskYesNo(promptMsg, "no") == 1
+			}
+			if yes {
 				scanOpt := properties.NewProperties()
 				scanOpt.Set(tcli.ScanOptCountOnly, "true")
 				scanOpt.Set(tcli.ScanOptKeyOnly, "true")

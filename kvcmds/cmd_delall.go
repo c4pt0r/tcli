@@ -26,6 +26,8 @@ func (c DeleteAllCmd) LongHelp() string {
 	s += `
 Usage:
 	delall
+Options:
+	--yes, force yes
 Alias:
 	dela, removeall, rma
 `
@@ -35,8 +37,13 @@ Alias:
 func (c DeleteAllCmd) Handler() func(ctx context.Context) {
 	return func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
-			ret := utils.AskYesNo(fmt.Sprintf("Delete all keys, are you sure?"), "no")
-			if ret == 1 {
+			var yes bool
+			if utils.HasForceYes(ctx) {
+				yes = true
+			} else {
+				yes = utils.AskYesNo(fmt.Sprintf("Delete all keys, are you sure?"), "no") == 1
+			}
+			if yes {
 				utils.Print("Your call")
 				var total int
 				// TODO limit should not be fixed

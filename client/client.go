@@ -163,3 +163,15 @@ func (s *StoreInfo) Flatten() []string {
 func (s StoreInfo) String() string {
 	return fmt.Sprintf("store_id:\"%s\" version:\"%s\" addr:\"%s\" state:\"%s\" status_addr:\"%s\"", s.ID, s.Version, s.Addr, s.State, s.StatusAddress)
 }
+
+func (p PDInfo) TableTitle() []string {
+	return []string{"Name", "Client URLs"}
+}
+
+func (p *PDInfo) Flatten() []string {
+	return []string{p.Name, strings.Join(p.ClientURLs, ",")}
+}
+
+func (p PDInfo) String() string {
+	return fmt.Sprintf("name:\"%s\" client_urls:\"%s\"", p.Name, strings.Join(p.ClientURLs, ","))
+}
