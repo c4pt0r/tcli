@@ -29,7 +29,7 @@ Alias:
 	deletep, removep, rmp
 Options:
 	--yes, force yes
-	--limit, default: 1000
+	--limit=<limit>, default: 1000
 `
 	return s
 }

@@ -34,23 +34,27 @@ Usage:
 Alias:
 	lcsv
 Options:
-	--batch-size: int, how many records in one tikv transaction, default: 1000
+	--batch-size=<size>: int, how many records in one tikv transaction, default: 1000
 Examples:
-	loadcsv sample.csv
+	# load csv file to tikv
+	loadcsv sample.csv 
+
+	# load csv file to tikv with key prefix: "prefix_"
 	loadcsv sample.csv "prefix_" --batch-size=100
+
+	# load csv file to tikv with key prefix and skip first row (header)
+	loadcsv sample.csv "prefix_" --batch-size=100 --skip-rows=1
 `
 	return s
 }
 
 func (c LoadCsvCmd) processCSV(prop *properties.Properties, rc io.Reader, keyPrefix []byte) error {
 	r := csv.NewReader(rc)
-	if _, err := r.Read(); err != nil { //read header
-		return err
-	}
 	var cnt int
 	var batch []client.KV
 
 	batchSize := prop.GetInt(tcli.LoadFileOptBatchSize, 1000)
+	skips := prop.GetInt(tcli.LoadFileoptSkipRows, 0)
 	for {
 		rawRec, err := r.Read()
 		if err != nil {
@@ -58,6 +62,13 @@ func (c LoadCsvCmd) processCSV(prop *properties.Properties, rc io.Reader, keyPre
 				break
 			}
 			return err
+		}
+		if skips > 0 {
+			skips--
+			continue
+		}
+		if len(rawRec) != 2 {
+			return fmt.Errorf("invalid csv record: %v, format should be: <key>,<value>", rawRec)
 		}
 		k, _ := utils.GetStringLit(rawRec[0])
 		v, _ := utils.GetStringLit(rawRec[1])
@@ -74,7 +85,6 @@ func (c LoadCsvCmd) processCSV(prop *properties.Properties, rc io.Reader, keyPre
 			K: key,
 			V: v,
 		})
-
 		if len(batch) == batchSize {
 			// do insert
 			err := client.GetTiKVClient().BatchPut(context.TODO(), batch)

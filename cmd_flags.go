@@ -38,10 +38,12 @@ var DeleteOptsKeywordList = []string{
 ///////////////// loadcsv options //////////////////////
 var (
 	LoadFileOptBatchSize string = "batch-size"
+	LoadFileoptSkipRows  string = "skip-rows"
 )
 
 var LoadFileOptsKeywordList = []string{
 	LoadFileOptBatchSize,
+	LoadFileoptSkipRows,
 }
 
 //////////////// end of loadcsv options ///////////////

@@ -32,7 +32,10 @@ Usage:
 Options:
 	--batch-size=<size>, default 1000
 Example:
+	# backup all kvs with prefix "t_" to csv file
 	backup "t_" backup.csv --batch-size=5000
+
+	# backup all kvs to csv file
 	backup * backup.csv
 	backup $head  backup.csv
 `)

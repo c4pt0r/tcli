@@ -31,10 +31,18 @@ Options:
 	--strict-prefix=<true|false>, default false
 	--count-only=<true|false>, default false
 Examples:
+	# scan from "a", max 10 keys
 	scan "a" --limit=10
+
+	# scan from "a", max 10 keys, output key-only
 	scan "a" --limit=10 --key-only=true
+
+	# scan from "a", max 10 keys, output key-only, the result keys are strictly prefix
 	scan "a" --limit=10 --strict-prefix
+
+	# scan from "a", count the number of keys, max 10 keys
 	scan "a" --limit=10 --count-only
+
 	scan "a" --limit=10 --strict-prefix --key-only=true
 	scan $head --limit=10 --key-only=true
 `
