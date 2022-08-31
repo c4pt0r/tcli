@@ -91,6 +91,24 @@ func (c *txnkvClient) Put(ctx context.Context, kv KV) error {
 	return nil
 }
 
+func (c *txnkvClient) PutJson(ctx context.Context, kv KV) error {
+	tx, err := c.txnClient.Begin()
+	if err != nil {
+		return err
+	}
+
+	tx.Set(kv.K, kv.V)
+
+	err = tx.Commit(context.TODO())
+	if err != nil {
+		err = tx.Rollback()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (c *txnkvClient) Scan(ctx context.Context, startKey []byte) (KVS, int, error) {
 	scanOpts := utils.PropFromContext(ctx)
 	tx, err := c.txnClient.Begin()
@@ -153,6 +171,18 @@ func (c *txnkvClient) BatchPut(ctx context.Context, kvs []KV) error {
 }
 
 func (c *txnkvClient) Get(ctx context.Context, k Key) (KV, error) {
+	tx, err := c.txnClient.Begin()
+	if err != nil {
+		return KV{}, err
+	}
+	v, err := tx.Get(context.TODO(), k)
+	if err != nil {
+		return KV{}, err
+	}
+	return KV{K: k, V: v}, nil
+}
+
+func (c *txnkvClient) GetJson(ctx context.Context, k Key) (KV, error) {
 	tx, err := c.txnClient.Begin()
 	if err != nil {
 		return KV{}, err

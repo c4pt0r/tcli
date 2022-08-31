@@ -12,6 +12,7 @@ require (
 	github.com/magiconair/properties v1.8.0
 	github.com/manifoldco/promptui v0.8.0
 	github.com/olekukonko/tablewriter v0.0.5
+	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852 // indirect
 	github.com/pingcap/go-ycsb v0.0.0-20210727125954-0c816a248fc3
 	github.com/pingcap/log v0.0.0-20210317133921-96f4fcab92a4
 	github.com/pkg/errors v0.9.1

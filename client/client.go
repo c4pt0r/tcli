@@ -108,6 +108,7 @@ type Client interface {
 	GetPDClient() pd.Client
 
 	Put(ctx context.Context, kv KV) error
+	PutJson(ctx context.Context, kv KV) error
 	BatchPut(ctx context.Context, kv []KV) error
 
 	Get(ctx context.Context, k Key) (KV, error)
