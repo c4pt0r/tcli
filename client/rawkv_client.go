@@ -62,6 +62,10 @@ func (c *rawkvClient) Put(ctx context.Context, kv KV) error {
 	return c.rawClient.Put(context.TODO(), kv.K, kv.V)
 }
 
+func (c *rawkvClient) PutJson(ctx context.Context, kv KV) error {
+	return c.rawClient.Put(context.TODO(), kv.K, kv.V)
+}
+
 func (c *rawkvClient) BatchPut(ctx context.Context, kvs []KV) error {
 	for _, kv := range kvs {
 		err := c.rawClient.Put(context.TODO(), kv.K[:], kv.V[:])
@@ -74,6 +78,17 @@ func (c *rawkvClient) BatchPut(ctx context.Context, kvs []KV) error {
 
 func (c *rawkvClient) Get(ctx context.Context, k Key) (KV, error) {
 	v, err := c.rawClient.Get(context.TODO(), k)
+	if err != nil {
+		return KV{}, err
+	}
+	if v == nil {
+		return KV{}, errors.New("key not found")
+	}
+	return KV{k, v}, nil
+}
+
+func (c *rawkvClient) GetJson(ctx context.Context, k Key) (KV, error) {
+    v, err := c.rawClient.Get(context.TODO(), k)
 	if err != nil {
 		return KV{}, err
 	}

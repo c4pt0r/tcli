@@ -19,6 +19,8 @@ import (
 	plog "github.com/pingcap/log"
 )
 
+const Json_separator = "Xuan123#@!xuan"
+
 var (
 	pdAddr         = flag.String("pd", "localhost:2379", "PD addr")
 	clientLog      = flag.String("log-file", "/dev/null", "TiKV client log file")
@@ -37,11 +39,13 @@ var RegisteredCmds = []tcli.Cmd{
 	kvcmds.ScanPrefixCmd{},
 	kvcmds.HeadCmd{},
 	kvcmds.PutCmd{},
+	kvcmds.PutJsonCmd{},
 	kvcmds.BackupCmd{},
 	kvcmds.NewBenchCmd(
 		kvcmds.NewYcsbBench(*pdAddr),
 	),
 	kvcmds.GetCmd{},
+	kvcmds.GetJsonCmd{},
 	kvcmds.LoadCsvCmd{},
 	kvcmds.DeleteCmd{},
 	kvcmds.DeletePrefixCmd{},
@@ -126,31 +130,62 @@ func main() {
 	shell.AutoHelp(false)
 
 	// register shell commands
-	for _, cmd := range RegisteredCmds {
+	for i, cmd := range RegisteredCmds {
 		handler := cmd.Handler()
-		//completer := cmd.Completer()
 		longhelp := cmd.LongHelp()
-		shell.AddCmd(&ishell.Cmd{
-			Name:     cmd.Name(),
-			Help:     cmd.Help(),
-			LongHelp: cmd.LongHelp(),
-			Aliases:  cmd.Alias(),
-			Func: func(c *ishell.Context) {
-				ctx := context.WithValue(context.TODO(), "ishell", c)
-				if strings.ToLower(*clientLogLevel) == "debug" {
-					fmt.Fprintln(os.Stderr, color.YellowString("Input:"), c.RawArgs)
-					for _, arg := range c.Args {
-						fmt.Fprintln(os.Stderr, color.YellowString("Arg:"), arg)
-					}
-					fmt.Fprintf(os.Stderr, "\033[33mOutput:\033[0m\n")
-				}
-				if len(c.Args) > 0 && c.Args[0] == "--help" {
-					c.Println(longhelp)
-					return
-				}
-				handler(ctx)
-			},
-		})
+        // putjson is when i == 4. We need a multi-line input
+        if i == 4 {
+    		shell.AddCmd(&ishell.Cmd{
+    			Name:    cmd.Name(),
+    			Help:    cmd.Help(),
+    			LongHelp: cmd.LongHelp(),
+    			Aliases: cmd.Alias(),
+    			Func: func(c *ishell.Context) {
+    			    c.ShowPrompt(false)
+                    defer c.ShowPrompt(true)
+                    /* first type in a key, then enter.
+                     screen print "Please enter a json value end with 'EOF'."
+                     now input the multi-line json value. It has to end with "EOF".*/
+                    c.Println("Please enter a json value end with 'EOF'.")
+                    lines := c.ReadMultiLines("EOF")
+                    /* connect the key and value with Json_separator to one long string.
+                       the value of Json_separator and "EOF" should be strings that will not exist in the customer input.
+                       separate the combined string later on by Json_separator and get the key and multi-line jsonvalue
+                    */
+                    if len(c.Args) == 1 {
+                        c.Args[0] = c.Args[0] + Json_separator + lines
+                        c.RawArgs[1] = c.RawArgs[1] + " " + lines
+                    }
+    				ctx := context.WithValue(context.TODO(), "ishell", c)
+    				fmt.Println(color.WhiteString("Input:"), strings.Join(c.RawArgs, " "))
+    				fmt.Print("\n")
+    				handler(ctx)
+    			},
+    		})
+	    } else {
+    		shell.AddCmd(&ishell.Cmd{
+    			Name:     cmd.Name(),
+    			Help:     cmd.Help(),
+    			LongHelp: cmd.LongHelp(),
+    			Aliases:  cmd.Alias(),
+    			Func: func(c *ishell.Context) {
+    				ctx := context.WithValue(context.TODO(), "ishell", c)
+    				if strings.ToLower(*clientLogLevel) == "debug" {
+    					fmt.Fprintln(os.Stderr, color.YellowString("Input:"), c.RawArgs)
+    					for _, arg := range c.Args {
+    						fmt.Fprintln(os.Stderr, color.YellowString("Arg:"), arg)
+    					}
+    					fmt.Fprintf(os.Stderr, "\033[33mOutput:\033[0m\n")
+    				}
+    				if len(c.Args) > 0 && c.Args[0] == "--help" {
+    					c.Println(longhelp)
+    					return
+    				}
+    				handler(ctx)
+    			},
+    		})
+
+	    }
 	}
 	shell.Run()
 	shell.Close()
