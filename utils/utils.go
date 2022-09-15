@@ -35,9 +35,9 @@ func OutputWithElapse(f func() error) error {
 	tt := time.Now()
 	err := f()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "\033[31mError: %s\033[0m, Elapse: %d ms\n", err, time.Since(tt)/time.Millisecond)
+		fmt.Fprintf(os.Stderr, "\033[31mError: %s\033[0m\nElapse: %d ms\n", err, time.Since(tt)/time.Millisecond)
 	} else {
-		fmt.Fprintf(os.Stderr, "\033[32mSuccess\033[0m, Elapse: %d ms\n", time.Since(tt)/time.Millisecond)
+		fmt.Fprintf(os.Stderr, "\033[32mSuccess\033[0m\nElapse: %d ms\n", time.Since(tt)/time.Millisecond)
 	}
 	return err
 }

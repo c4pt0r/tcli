@@ -130,6 +130,7 @@ func main() {
 		handler := cmd.Handler()
 		//completer := cmd.Completer()
 		longhelp := cmd.LongHelp()
+		shell.SetHomeHistoryPath(".tcli.history")
 		shell.AddCmd(&ishell.Cmd{
 			Name:     cmd.Name(),
 			Help:     cmd.Help(),
