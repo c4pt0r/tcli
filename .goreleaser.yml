@@ -1,0 +1,30 @@
+# Official documentation at http://goreleaser.com
+project_name: tcli
+builds:
+  - env:
+      - CGO_ENABLED=0
+    binary: tcli
+    main: ./cli/main.go
+    goos:
+      - windows
+      - linux
+      - darwin
+    ignore:
+      - goarch: arm
+      - goarch: arm64
+      - goarch: 386
+    ldflags:
+      - -w
+      - -s
+dist: release
+archives:
+  - name_template: "{{ .Binary }}-{{ .Os }}-{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next-{{.ShortCommit}}"
