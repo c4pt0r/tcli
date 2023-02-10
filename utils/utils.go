@@ -33,8 +33,9 @@ func PrintTable(data [][]string) {
 
 func PrintTableNoWrap(data [][]string) {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader(data[0])
 	table.SetAutoWrapText(false)
+	table.SetAutoFormatHeaders(false)
+	table.SetHeader(data[0])
 	table.SetBorders(tablewriter.Border{Left: true, Top: true, Right: true, Bottom: true})
 	table.SetCenterSeparator("|")
 	table.AppendBulk(data[1:])

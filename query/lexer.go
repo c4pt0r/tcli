@@ -28,6 +28,7 @@ const (
 	DESC     TokenType = 17
 	TRUE     TokenType = 18
 	FALSE    TokenType = 19
+	AS       TokenType = 20
 )
 
 var (
@@ -139,6 +140,23 @@ func (l *Lexer) Split() []*Token {
 				strStart = false
 				token := &Token{
 					Tp:   STRING,
+					Data: curr,
+					Pos:  tokStartPos,
+				}
+				ret = append(ret, token)
+				curr = ""
+			} else {
+				curr += string(char)
+			}
+		case '`':
+			if !strStart {
+				strStart = true
+				strStartChar = char
+				tokStartPos = i
+			} else if strStartChar == char {
+				strStart = false
+				token := &Token{
+					Tp:   NAME,
 					Data: curr,
 					Pos:  tokStartPos,
 				}
@@ -341,6 +359,9 @@ func buildToken(curr string, pos int) *Token {
 		return token
 	case "false":
 		token.Tp = FALSE
+		return token
+	case "as":
+		token.Tp = AS
 		return token
 	default:
 		if isNumber(curr) {

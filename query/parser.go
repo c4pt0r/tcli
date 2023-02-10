@@ -6,9 +6,10 @@ import (
 )
 
 var (
-	ErrSyntaxStartWhere    = errors.New("Syntax Error: not start with `where`")
-	ErrSyntaxEmptyFields   = errors.New("Syntax Error: empty select fields")
-	ErrSyntaxInvalidFields = errors.New("Syntax Error: invalid fields")
+	ErrSyntaxStartWhere       = errors.New("Syntax Error: not start with `where`")
+	ErrSyntaxEmptyFields      = errors.New("Syntax Error: empty select fields")
+	ErrSyntaxInvalidFields    = errors.New("Syntax Error: invalid fields")
+	ErrSyntaxInvalidFieldName = errors.New("Syntax Error: invalid field name")
 )
 
 const MaxNestLevel = 1e5
@@ -266,9 +267,10 @@ func (p *Parser) parseOperand() (Expression, error) {
 
 func (p *Parser) parseSelect() (*SelectStmt, error) {
 	var (
-		fields    = []Expression{}
-		allFields = false
-		err       error
+		fields     = []Expression{}
+		fieldNames = []string{}
+		allFields  = false
+		err        error
 	)
 	err = p.expect(&Token{Tp: SELECT, Data: "select"})
 	if err != nil {
@@ -291,7 +293,17 @@ func (p *Parser) parseSelect() (*SelectStmt, error) {
 		if err != nil {
 			return nil, err
 		}
+		fieldName := field.String()
+		if p.tok != nil && p.tok.Tp == AS {
+			p.next()
+			if p.tok.Tp != NAME {
+				return nil, ErrSyntaxInvalidFieldName
+			}
+			fieldName = p.tok.Data
+		}
+
 		fields = append(fields, field)
+		fieldNames = append(fieldNames, fieldName)
 		if p.tok != nil && p.tok.Tp == WHERE {
 			break
 		}
@@ -307,8 +319,9 @@ func (p *Parser) parseSelect() (*SelectStmt, error) {
 	}
 
 	return &SelectStmt{
-		Fields:    fields,
-		AllFields: allFields,
+		Fields:     fields,
+		FieldNames: fieldNames,
+		AllFields:  allFields,
 	}, nil
 }
 
@@ -353,7 +366,7 @@ func (p *Parser) parseLimit() (*LimitStmt, error) {
 	return ret, nil
 }
 
-func (p *Parser) parseOrderBy() (*OrderStmt, error) {
+func (p *Parser) parseOrderBy(selStmt *SelectStmt) (*OrderStmt, error) {
 	var (
 		err         error
 		shouldBreak bool         = false
@@ -377,6 +390,37 @@ func (p *Parser) parseOrderBy() (*OrderStmt, error) {
 		switch field.ReturnType() {
 		case TSTR, TNUMBER, TBOOL:
 			break
+		case TIDENT:
+			// Check can convert to name expression
+			nexpr, ok := field.(*NameExpr)
+			if !ok {
+				return nil, errors.New("Syntax error: invalid field name")
+			}
+			// Check has select statement
+			if selStmt == nil {
+				return nil, fmt.Errorf("Syntax error: unknown field %s in select statement", nexpr.Data)
+			}
+			fieldName := nexpr.Data
+			foundIdx := -1
+			// Found field in select statement
+			for i, fname := range selStmt.FieldNames {
+				if fname == fieldName {
+					foundIdx = i
+					break
+				}
+			}
+			// Not found return error
+			if foundIdx < 0 {
+				return nil, fmt.Errorf("Syntax error: unknown field %s in select statement", nexpr.Data)
+			}
+			// Found then check return type is valid
+			field = selStmt.Fields[foundIdx]
+			switch field.ReturnType() {
+			case TSTR, TNUMBER, TBOOL:
+				break
+			default:
+				return nil, errors.New("Syntax error: order by field is wrong type.")
+			}
 		default:
 			return nil, errors.New("Syntax error: order by field is wrong type.")
 		}
@@ -453,7 +497,7 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 			if orderStmt != nil {
 				return nil, errors.New("Syntax error duplicate order by expression")
 			}
-			orderStmt, err = p.parseOrderBy()
+			orderStmt, err = p.parseOrderBy(selectStmt)
 			if err != nil {
 				return nil, err
 			}

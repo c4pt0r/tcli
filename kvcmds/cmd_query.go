@@ -59,7 +59,7 @@ func (c QueryCmd) Handler() func(ctx context.Context) {
 				return err
 			}
 			ret := [][]string{
-				plan.FieldNames(),
+				plan.FieldNameList(),
 			}
 			for {
 				cols, err := plan.Next()

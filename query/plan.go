@@ -276,21 +276,18 @@ func (p *LimitPlan) Explain() []string {
 }
 
 type ProjectionPlan struct {
-	Txn       Txn
-	ChildPlan Plan
-	AllFields bool
-	Fields    []Expression
+	Txn        Txn
+	ChildPlan  Plan
+	AllFields  bool
+	FieldNames []string
+	Fields     []Expression
 }
 
-func (p *ProjectionPlan) FieldNames() []string {
+func (p *ProjectionPlan) FieldNameList() []string {
 	if p.AllFields {
 		return []string{"Key", "Value"}
 	}
-	ret := []string{}
-	for _, field := range p.Fields {
-		ret = append(ret, field.String())
-	}
-	return ret
+	return p.FieldNames
 }
 
 func (p *ProjectionPlan) Next() ([]Column, error) {

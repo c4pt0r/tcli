@@ -136,11 +136,12 @@ type Expression interface {
 }
 
 type SelectStmt struct {
-	AllFields bool
-	Fields    []Expression
-	Where     *WhereStmt
-	Order     *OrderStmt
-	Limit     *LimitStmt
+	AllFields  bool
+	FieldNames []string
+	Fields     []Expression
+	Where      *WhereStmt
+	Order      *OrderStmt
+	Limit      *LimitStmt
 }
 
 type WhereStmt struct {

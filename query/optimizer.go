@@ -42,10 +42,11 @@ func (o *Optimizer) BuildPlan(t Txn) (*ProjectionPlan, error) {
 			return nil, err
 		}
 		return &ProjectionPlan{
-			Txn:       t,
-			ChildPlan: fp,
-			AllFields: o.stmt.AllFields,
-			Fields:    o.stmt.Fields,
+			Txn:        t,
+			ChildPlan:  fp,
+			AllFields:  o.stmt.AllFields,
+			FieldNames: o.stmt.FieldNames,
+			Fields:     o.stmt.Fields,
 		}, nil
 	}
 
@@ -64,10 +65,11 @@ func (o *Optimizer) BuildPlan(t Txn) (*ProjectionPlan, error) {
 	}
 
 	return &ProjectionPlan{
-		Txn:       t,
-		ChildPlan: fp,
-		AllFields: o.stmt.AllFields,
-		Fields:    o.stmt.Fields,
+		Txn:        t,
+		ChildPlan:  fp,
+		AllFields:  o.stmt.AllFields,
+		FieldNames: o.stmt.FieldNames,
+		Fields:     o.stmt.Fields,
 	}, nil
 }
 
