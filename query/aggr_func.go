@@ -4,6 +4,7 @@ var (
 	aggrFuncMap = map[string]*AggrFunc{
 		"count": &AggrFunc{"count", 1, false, TNUMBER, newAggrCountFunc},
 		"sum":   &AggrFunc{"sum", 1, false, TNUMBER, newAggrSumFunc},
+		"avg":   &AggrFunc{"avg", 1, false, TNUMBER, newAggrAvgFunc},
 	}
 )
 
@@ -99,5 +100,40 @@ func (f *aggrSumFunc) Complete() (any, error) {
 func (f *aggrSumFunc) Clone() AggrFunction {
 	return &aggrSumFunc{
 		sum: 0,
+	}
+}
+
+// Aggr Avg
+type aggrAvgFunc struct {
+	sum   int64
+	count int64
+}
+
+func newAggrAvgFunc() AggrFunction {
+	return &aggrAvgFunc{
+		sum:   0,
+		count: 0,
+	}
+}
+
+func (f *aggrAvgFunc) Update(kv KVPair, args []Expression) error {
+	rarg, err := args[0].Execute(kv)
+	if err != nil {
+		return err
+	}
+	arg := toInt(rarg, 0)
+	f.sum += arg
+	f.count++
+	return nil
+}
+
+func (f *aggrAvgFunc) Complete() (any, error) {
+	return float64(f.sum) / float64(f.count), nil
+}
+
+func (f *aggrAvgFunc) Clone() AggrFunction {
+	return &aggrAvgFunc{
+		sum:   0,
+		count: 0,
 	}
 }
