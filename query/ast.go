@@ -142,6 +142,7 @@ type SelectStmt struct {
 	Where      *WhereStmt
 	Order      *OrderStmt
 	Limit      *LimitStmt
+	GroupBy    *GroupByStmt
 }
 
 type WhereStmt struct {
@@ -149,12 +150,22 @@ type WhereStmt struct {
 }
 
 type OrderField struct {
+	Name  string
 	Field Expression
 	Order TokenType
 }
 
 type OrderStmt struct {
 	Orders []OrderField
+}
+
+type GroupByField struct {
+	Name string
+	Expr Expression
+}
+
+type GroupByStmt struct {
+	Fields []GroupByField
 }
 
 type LimitStmt struct {
@@ -243,6 +254,9 @@ func (e *FunctionCallExpr) ReturnType() Type {
 	}
 	fnameKey := strings.ToLower(fname)
 	if funcObj, have := funcMap[fnameKey]; have {
+		return funcObj.ReturnType
+	}
+	if funcObj, have := aggrFuncMap[fnameKey]; have {
 		return funcObj.ReturnType
 	}
 	return TUNKNOWN

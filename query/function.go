@@ -1,6 +1,7 @@
 package query
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ var (
 		"str":      &Function{"str", 1, false, TSTR, funcToString},
 		"is_int":   &Function{"is_int", 1, false, TBOOL, funcIsInt},
 		"is_float": &Function{"is_float", 1, false, TBOOL, funcIsFloat},
+		"substr":   &Function{"substr", 3, false, TSTR, funcSubStr},
 	}
 )
 
@@ -192,4 +194,41 @@ func funcIsFloat(kv KVPair, args []Expression) (any, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+func funcSubStr(kv KVPair, args []Expression) (any, error) {
+	rarg, err := args[0].Execute(kv)
+	if err != nil {
+		return nil, err
+	}
+	val := toString(rarg)
+	if args[1].ReturnType() != TNUMBER {
+		return nil, errors.New("substr function require number type parameter for second parameter")
+	}
+	if args[2].ReturnType() != TNUMBER {
+		return nil, errors.New("substr function require number type parameter for third parameter")
+	}
+	rarg, err = args[1].Execute(kv)
+	if err != nil {
+		return nil, err
+	}
+	start := int(toInt(rarg, 0))
+	rarg, err = args[2].Execute(kv)
+	if err != nil {
+		return nil, err
+	}
+	length := int(toInt(rarg, 0))
+	vlen := len(val)
+	if start > vlen-1 {
+		return "", nil
+	}
+	length = min(length, vlen-start)
+	return val[start:length], nil
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

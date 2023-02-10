@@ -3,11 +3,19 @@ package query
 import (
 	"bytes"
 	"container/heap"
-	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 )
+
+type FinalPlan interface {
+	String() string
+	Explain() []string
+	Init() error
+	Next() ([]Column, error)
+	FieldNameList() []string
+}
 
 type Plan interface {
 	String() string
@@ -24,6 +32,11 @@ var (
 	_ Plan = (*MultiGetPlan)(nil)
 	_ Plan = (*LimitPlan)(nil)
 	_ Plan = (*OrderPlan)(nil)
+
+	_ FinalPlan = (*ProjectionPlan)(nil)
+	_ FinalPlan = (*AggregatePlan)(nil)
+	_ FinalPlan = (*FinalOrderPlan)(nil)
+	_ FinalPlan = (*FinalLimitPlan)(nil)
 )
 
 type Column []byte
@@ -162,6 +175,79 @@ func (p *PrefixScanPlan) Explain() []string {
 	return []string{p.String()}
 }
 
+type RangeScanPlan struct {
+	Txn    Txn
+	Filter *FilterExec
+	Start  []byte
+	End    []byte
+	iter   Cursor
+}
+
+func NewRangeScanPlan(t Txn, f *FilterExec, start []byte, end []byte) Plan {
+	return &RangeScanPlan{
+		Txn:    t,
+		Filter: f,
+		Start:  start,
+		End:    end,
+	}
+}
+
+func (p *RangeScanPlan) Init() (err error) {
+	p.iter, err = p.Txn.Cursor()
+	if err != nil {
+		return err
+	}
+	if p.Start != nil {
+		err = p.iter.Seek(p.Start)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p *RangeScanPlan) Next() ([]byte, []byte, error) {
+	for {
+		key, val, err := p.iter.Next()
+		if err != nil {
+			return nil, nil, err
+		}
+		if key == nil {
+			break
+		}
+
+		// Key is greater than End
+		if p.End != nil && bytes.Compare(key, p.End) > 0 {
+			break
+		}
+
+		// Filter with the expression
+		ok, err := p.Filter.Filter(NewKVP(key, val))
+		if err != nil {
+			return nil, nil, err
+		}
+		if ok {
+			return key, val, nil
+		}
+	}
+	return nil, nil, nil
+}
+
+func convertByteToString(val []byte) string {
+	if val == nil {
+		return "<nil>"
+	}
+	return string(val)
+}
+
+func (p *RangeScanPlan) String() string {
+	return fmt.Sprintf("RangeScanPlan{Start = '%s', End = '%s', Filter = '%s'}", convertByteToString(p.Start), convertByteToString(p.End), p.Filter.Explain())
+}
+
+func (p *RangeScanPlan) Explain() []string {
+	return []string{p.String()}
+}
+
 type MultiGetPlan struct {
 	Txn     Txn
 	Filter  *FilterExec
@@ -268,90 +354,6 @@ func (p *LimitPlan) String() string {
 }
 
 func (p *LimitPlan) Explain() []string {
-	ret := []string{p.String()}
-	for _, plan := range p.ChildPlan.Explain() {
-		ret = append(ret, plan)
-	}
-	return ret
-}
-
-type ProjectionPlan struct {
-	Txn        Txn
-	ChildPlan  Plan
-	AllFields  bool
-	FieldNames []string
-	Fields     []Expression
-}
-
-func (p *ProjectionPlan) FieldNameList() []string {
-	if p.AllFields {
-		return []string{"Key", "Value"}
-	}
-	return p.FieldNames
-}
-
-func (p *ProjectionPlan) Next() ([]Column, error) {
-	k, v, err := p.ChildPlan.Next()
-	if err != nil {
-		return nil, err
-	}
-	if k == nil && v == nil && err == nil {
-		return nil, nil
-	}
-	if p.AllFields {
-		return []Column{k, v}, nil
-	}
-	return p.processProjection(k, v)
-}
-
-func (p *ProjectionPlan) processProjection(key []byte, value []byte) ([]Column, error) {
-	nFields := len(p.Fields)
-	ret := make([]Column, nFields)
-	kvp := NewKVP(key, value)
-	for i := 0; i < nFields; i++ {
-		result, err := p.Fields[i].Execute(kvp)
-		if err != nil {
-			return nil, err
-		}
-		switch value := result.(type) {
-		case bool:
-			if value {
-				ret[i] = []byte("true")
-			} else {
-				ret[i] = []byte("false")
-			}
-		case []byte:
-			ret[i] = value
-		case string:
-			ret[i] = []byte(value)
-		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-			ret[i] = []byte(fmt.Sprintf("%d", value))
-		case float32, float64:
-			ret[i] = []byte(fmt.Sprintf("%f", value))
-		default:
-			if value == nil {
-				ret[i] = nil
-				break
-			}
-			return nil, errors.New("Expression result type not support")
-		}
-	}
-	return ret, nil
-}
-
-func (p *ProjectionPlan) String() string {
-	fields := []string{}
-	if p.AllFields {
-		fields = append(fields, "*")
-	} else {
-		for _, f := range p.Fields {
-			fields = append(fields, f.String())
-		}
-	}
-	return fmt.Sprintf("ProjectionPlan{Fields = <%s>}", strings.Join(fields, ", "))
-}
-
-func (p *ProjectionPlan) Explain() []string {
 	ret := []string{p.String()}
 	for _, plan := range p.ChildPlan.Explain() {
 		ret = append(ret, plan)
@@ -573,75 +575,314 @@ func (p *OrderPlan) Explain() []string {
 	return ret
 }
 
-type RangeScanPlan struct {
-	Txn    Txn
-	Filter *FilterExec
-	Start  []byte
-	End    []byte
-	iter   Cursor
+type FinalOrderPlan struct {
+	Txn        Txn
+	Orders     []OrderField
+	FieldNames []string
+	ChildPlan  FinalPlan
+	pos        int
+	total      int
+	sorted     *orderColumnsRowHeap
+	orderPos   []int
+	orderTypes []Type
 }
 
-func NewRangeScanPlan(t Txn, f *FilterExec, start []byte, end []byte) Plan {
-	return &RangeScanPlan{
-		Txn:    t,
-		Filter: f,
-		Start:  start,
-		End:    end,
+func (p *FinalOrderPlan) findOrderIdx(o OrderField) (int, error) {
+	fname := o.Name
+	for i, fn := range p.FieldNames {
+		if fname == fn {
+			return i, nil
+		}
 	}
+	return 0, fmt.Errorf("Cannot find field: %s", fname)
 }
 
-func (p *RangeScanPlan) Init() (err error) {
-	p.iter, err = p.Txn.Cursor()
-	if err != nil {
-		return err
-	}
-	if p.Start != nil {
-		err = p.iter.Seek(p.Start)
+func (p *FinalOrderPlan) Init() error {
+	p.pos = 0
+	p.total = 0
+	p.orderPos = []int{}
+	p.orderTypes = []Type{}
+	for _, o := range p.Orders {
+		idx, err := p.findOrderIdx(o)
 		if err != nil {
 			return err
 		}
+		p.orderPos = append(p.orderPos, idx)
+		p.orderTypes = append(p.orderTypes, o.Field.ReturnType())
+	}
+	p.sorted = &orderColumnsRowHeap{}
+	heap.Init(p.sorted)
+	p.ChildPlan.Init()
+	return nil
+}
+
+func (p *FinalOrderPlan) FieldNameList() []string {
+	return p.FieldNames
+}
+
+func (p *FinalOrderPlan) String() string {
+	fields := []string{}
+	for _, f := range p.Orders {
+		orderStr := " ASC"
+		if f.Order == DESC {
+			orderStr = " DESC"
+		}
+		fields = append(fields, f.Name+orderStr)
+	}
+	return fmt.Sprintf("OrderPlan{Fields = <%s>}", strings.Join(fields, ", "))
+}
+
+func (p *FinalOrderPlan) Explain() []string {
+	ret := []string{p.String()}
+	for _, plan := range p.ChildPlan.Explain() {
+		ret = append(ret, plan)
+	}
+	return ret
+}
+
+func (p *FinalOrderPlan) Next() ([]Column, error) {
+	if p.total == 0 {
+		if err := p.prepare(); err != nil {
+			return nil, err
+		}
+	}
+	if p.pos < p.total {
+		rrow := heap.Pop(p.sorted)
+		row := rrow.(*orderColumnsRow)
+		p.pos++
+		return row.cols, nil
+	}
+	return nil, nil
+}
+
+func (p *FinalOrderPlan) prepare() error {
+	for {
+		col, err := p.ChildPlan.Next()
+		if err != nil {
+			return err
+		}
+		if col == nil && err == nil {
+			break
+		}
+		row := &orderColumnsRow{
+			cols:       col,
+			orders:     p.Orders,
+			orderPos:   p.orderPos,
+			orderTypes: p.orderTypes,
+		}
+		heap.Push(p.sorted, row)
+		p.total++
 	}
 	return nil
 }
 
-func (p *RangeScanPlan) Next() ([]byte, []byte, error) {
-	for {
-		key, val, err := p.iter.Next()
-		if err != nil {
-			return nil, nil, err
-		}
-		if key == nil {
-			break
-		}
+type orderColumnsRow struct {
+	cols       []Column
+	orders     []OrderField
+	orderPos   []int
+	orderTypes []Type
+}
 
-		// Key is greater than End
-		if p.End != nil && bytes.Compare(key, p.End) > 0 {
-			break
+func (l *orderColumnsRow) Less(r *orderColumnsRow) bool {
+	for i, o := range l.orders {
+		oidx := l.orderPos[i]
+		desc := o.Order == DESC
+		var compare int
+		lval := l.cols[oidx]
+		rval := r.cols[oidx]
+		switch l.orderTypes[i] {
+		case TSTR:
+			compare = l.compareBytes(lval, rval, desc)
+		case TBOOL:
+			compare = l.compareBool(lval, rval, desc)
+		case TNUMBER:
+			compare = l.compareNumber(lval, rval, desc)
+		default:
+			return false
 		}
-
-		// Filter with the expression
-		ok, err := p.Filter.Filter(NewKVP(key, val))
-		if err != nil {
-			return nil, nil, err
-		}
-		if ok {
-			return key, val, nil
+		if compare < 0 {
+			return true
+		} else if compare > 0 {
+			return false
 		}
 	}
-	return nil, nil, nil
+	return false
 }
 
-func convertByteToString(val []byte) string {
-	if val == nil {
-		return "<nil>"
+func (l *orderColumnsRow) compareBytes(lval, rval []byte, reverse bool) int {
+	if reverse {
+		return 0 - bytes.Compare(lval, rval)
 	}
-	return string(val)
+	return bytes.Compare(lval, rval)
 }
 
-func (p *RangeScanPlan) String() string {
-	return fmt.Sprintf("RangeScanPlan{Start = '%s', End = '%s', Filter = '%s'}", convertByteToString(p.Start), convertByteToString(p.End), p.Filter.Explain())
+func (l *orderColumnsRow) compareBool(lval, rval []byte, reverse bool) int {
+	lbool := bytes.Equal(lval, []byte("true"))
+	rbool := bytes.Equal(rval, []byte("true"))
+	lint := 0
+	rint := 0
+	if lbool {
+		lint = 1
+	}
+	if rbool {
+		rint = 1
+	}
+	if lint == rint {
+		return 0
+	}
+	if reverse {
+		if lint > rint {
+			return -1
+		} else {
+			return 1
+		}
+	}
+	if lint < rint {
+		return -1
+	} else {
+		return 1
+	}
 }
 
-func (p *RangeScanPlan) Explain() []string {
-	return []string{p.String()}
+func (l *orderColumnsRow) compareNumber(lval, rval []byte, reverse bool) int {
+	var (
+		lint, rint     int64
+		lfloat, rfloat float64
+		err            error
+	)
+	if lint, err = strconv.ParseInt(string(lval), 10, 64); err == nil {
+		if rint, err = strconv.ParseInt(string(rval), 10, 64); err == nil {
+			return l.compareInt(lint, rint, reverse)
+		}
+	}
+
+	if lfloat, err = strconv.ParseFloat(string(lval), 64); err == nil {
+		if rfloat, err = strconv.ParseFloat(string(rval), 64); err == nil {
+			return l.compareFloat(lfloat, rfloat, reverse)
+		}
+	}
+	return 0
+}
+
+func (l *orderColumnsRow) compareInt(lval, rval int64, reverse bool) int {
+	if lval == rval {
+		return 0
+	}
+	if reverse {
+		if lval > rval {
+			return -1
+		} else {
+			return 1
+		}
+	}
+	if lval < rval {
+		return -1
+	} else {
+		return 1
+	}
+}
+
+func (l *orderColumnsRow) compareFloat(lval, rval float64, reverse bool) int {
+	if lval == rval {
+		return 0
+	}
+	if reverse {
+		if lval > rval {
+			return -1
+		} else {
+			return 1
+		}
+	}
+	if lval < rval {
+		return -1
+	} else {
+		return 1
+	}
+}
+
+type orderColumnsRowHeap []*orderColumnsRow
+
+func (h orderColumnsRowHeap) Len() int {
+	return len(h)
+}
+
+func (h orderColumnsRowHeap) Swap(i, j int) {
+	h[i], h[j] = h[j], h[i]
+}
+
+func (h *orderColumnsRowHeap) Push(x any) {
+	*h = append(*h, x.(*orderColumnsRow))
+}
+
+func (h *orderColumnsRowHeap) Pop() any {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
+}
+
+func (h orderColumnsRowHeap) Less(i, j int) bool {
+	l := h[i]
+	r := h[j]
+	return l.Less(r)
+}
+
+type FinalLimitPlan struct {
+	Txn        Txn
+	Start      int
+	Count      int
+	current    int
+	skips      int
+	ChildPlan  FinalPlan
+	FieldNames []string
+}
+
+func (p *FinalLimitPlan) Init() error {
+	p.current = 0
+	p.skips = 0
+	return p.ChildPlan.Init()
+}
+
+func (p *FinalLimitPlan) Next() ([]Column, error) {
+	for p.skips < p.Start {
+		cols, err := p.ChildPlan.Next()
+		if err != nil {
+			return nil, err
+		}
+		if cols == nil && err == nil {
+			return nil, nil
+		}
+		p.skips++
+	}
+	if p.current >= p.Count {
+		return nil, nil
+	}
+	cols, err := p.ChildPlan.Next()
+	if err != nil {
+		return nil, err
+	}
+	if cols == nil && err == nil {
+		return nil, nil
+	}
+
+	p.current++
+	return cols, nil
+
+}
+
+func (p *FinalLimitPlan) String() string {
+	return fmt.Sprintf("LimitPlan{Start = %d, Count = %d}", p.Start, p.Count)
+}
+
+func (p *FinalLimitPlan) Explain() []string {
+	ret := []string{p.String()}
+	for _, plan := range p.ChildPlan.Explain() {
+		ret = append(ret, plan)
+	}
+	return ret
+}
+
+func (p *FinalLimitPlan) FieldNameList() []string {
+	return p.FieldNames
 }

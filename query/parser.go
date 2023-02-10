@@ -3,6 +3,7 @@ package query
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 var (
@@ -300,6 +301,7 @@ func (p *Parser) parseSelect() (*SelectStmt, error) {
 				return nil, ErrSyntaxInvalidFieldName
 			}
 			fieldName = p.tok.Data
+			p.next()
 		}
 
 		fields = append(fields, field)
@@ -316,6 +318,11 @@ func (p *Parser) parseSelect() (*SelectStmt, error) {
 	}
 	if len(fields) == 0 && !allFields {
 		return nil, ErrSyntaxEmptyFields
+	}
+
+	if allFields {
+		fields = []Expression{&FieldExpr{KeyKW}, &FieldExpr{ValueKW}}
+		fieldNames = []string{fields[0].String(), fields[1].String()}
 	}
 
 	return &SelectStmt{
@@ -366,6 +373,96 @@ func (p *Parser) parseLimit() (*LimitStmt, error) {
 	return ret, nil
 }
 
+func (p *Parser) findFieldInSelect(selStmt *SelectStmt, fieldName string) (Expression, error) {
+	foundIdx := -1
+	for i, fname := range selStmt.FieldNames {
+		if fname == fieldName {
+			foundIdx = i
+			break
+		}
+	}
+	if foundIdx < 0 {
+		return nil, fmt.Errorf("Syntax error: cannot find field %s in select statement", fieldName)
+	}
+	fexpr := selStmt.Fields[foundIdx]
+	switch fexpr.ReturnType() {
+	case TSTR, TNUMBER, TBOOL:
+		break
+	default:
+		return nil, fmt.Errorf("Syntax error: field %s return wrong type.", fieldName)
+	}
+	return fexpr, nil
+}
+
+func (p *Parser) parseGroupBy(selStmt *SelectStmt) (*GroupByStmt, error) {
+	var (
+		err         error
+		shouldBreak = false
+		fields      = []GroupByField{}
+		ret         = &GroupByStmt{}
+	)
+	err = p.expect(&Token{Tp: GROUP, Data: "group"})
+	if err != nil {
+		return nil, err
+	}
+	err = p.expect(&Token{Tp: BY, Data: "by"})
+	if err != nil {
+		return nil, err
+	}
+	p.exprLev++
+	for p.tok != nil && !shouldBreak {
+		field, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
+		switch e := field.(type) {
+		case *NameExpr:
+			fexpr, err := p.findFieldInSelect(selStmt, e.Data)
+			if err != nil {
+				return nil, err
+			}
+			fields = append(fields, GroupByField{e.Data, fexpr})
+		case *FieldExpr:
+			fields = append(fields, GroupByField{field.String(), field})
+		case *FunctionCallExpr:
+			fexpr, err := p.findFieldInSelect(selStmt, field.String())
+			if err != nil {
+				return nil, err
+			}
+			rfname, err := e.Name.Execute(KVPair{nil, nil})
+			if err != nil {
+				return nil, err
+			}
+			fname, ok := rfname.(string)
+			if !ok {
+				return nil, fmt.Errorf("Invalid function name %v", rfname)
+			}
+			fnameKey := strings.ToLower(fname)
+			if _, have := aggrFuncMap[fnameKey]; have {
+				return nil, fmt.Errorf("Syntax error: cannot group by aggregate function `%s`", fname)
+			}
+			fields = append(fields, GroupByField{field.String(), fexpr})
+		default:
+			fexpr, err := p.findFieldInSelect(selStmt, field.String())
+			if err != nil {
+				return nil, err
+			}
+			fields = append(fields, GroupByField{field.String(), fexpr})
+		}
+		if p.tok != nil {
+			switch p.tok.Tp {
+			case SEP:
+				p.next()
+			default:
+				shouldBreak = true
+			}
+		}
+	}
+	p.exprLev--
+	ret.Fields = fields
+	return ret, nil
+}
+
 func (p *Parser) parseOrderBy(selStmt *SelectStmt) (*OrderStmt, error) {
 	var (
 		err         error
@@ -387,47 +484,27 @@ func (p *Parser) parseOrderBy(selStmt *SelectStmt) (*OrderStmt, error) {
 		if err != nil {
 			return nil, err
 		}
-		switch field.ReturnType() {
-		case TSTR, TNUMBER, TBOOL:
-			break
-		case TIDENT:
-			// Check can convert to name expression
-			nexpr, ok := field.(*NameExpr)
-			if !ok {
-				return nil, errors.New("Syntax error: invalid field name")
-			}
-			// Check has select statement
-			if selStmt == nil {
-				return nil, fmt.Errorf("Syntax error: unknown field %s in select statement", nexpr.Data)
-			}
-			fieldName := nexpr.Data
-			foundIdx := -1
-			// Found field in select statement
-			for i, fname := range selStmt.FieldNames {
-				if fname == fieldName {
-					foundIdx = i
-					break
-				}
-			}
-			// Not found return error
-			if foundIdx < 0 {
-				return nil, fmt.Errorf("Syntax error: unknown field %s in select statement", nexpr.Data)
-			}
-			// Found then check return type is valid
-			field = selStmt.Fields[foundIdx]
-			switch field.ReturnType() {
-			case TSTR, TNUMBER, TBOOL:
-				break
-			default:
-				return nil, errors.New("Syntax error: order by field is wrong type.")
-			}
+		var (
+			of        OrderField
+			fieldName string
+		)
+
+		switch e := field.(type) {
+		case *NameExpr:
+			fieldName = e.Data
 		default:
-			return nil, errors.New("Syntax error: order by field is wrong type.")
+			fieldName = field.String()
 		}
-		of := OrderField{
-			Field: field,
+		fexpr, err := p.findFieldInSelect(selStmt, fieldName)
+		if err != nil {
+			return nil, err
+		}
+		of = OrderField{
+			Name:  fieldName,
+			Field: fexpr,
 			Order: ASC,
 		}
+
 		if p.tok != nil {
 			switch p.tok.Tp {
 			case SEP:
@@ -468,10 +545,11 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 		return nil, ErrSyntaxStartWhere
 	}
 	var (
-		selectStmt *SelectStmt = nil
-		limitStmt  *LimitStmt  = nil
-		orderStmt  *OrderStmt  = nil
-		err        error
+		selectStmt  *SelectStmt  = nil
+		limitStmt   *LimitStmt   = nil
+		orderStmt   *OrderStmt   = nil
+		groupByStmt *GroupByStmt = nil
+		err         error
 	)
 
 	if p.tok.Tp == SELECT {
@@ -498,6 +576,14 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 				return nil, errors.New("Syntax error duplicate order by expression")
 			}
 			orderStmt, err = p.parseOrderBy(selectStmt)
+			if err != nil {
+				return nil, err
+			}
+		case GROUP:
+			if groupByStmt != nil {
+				return nil, errors.New("Syntax error duplicate group by expression")
+			}
+			groupByStmt, err = p.parseGroupBy(selectStmt)
 			if err != nil {
 				return nil, err
 			}
@@ -537,5 +623,6 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 	selectStmt.Where = whereStmt
 	selectStmt.Limit = limitStmt
 	selectStmt.Order = orderStmt
+	selectStmt.GroupBy = groupByStmt
 	return selectStmt, nil
 }
