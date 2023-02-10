@@ -26,7 +26,7 @@ type ScanType struct {
 type FilterOptimizer struct {
 	expr   Expression
 	filter *FilterExec
-	txn    *Txn
+	txn    Txn
 }
 
 func (st *ScanType) String() string {
@@ -58,7 +58,7 @@ func ScanTypeToString(tp byte) string {
 	return "UNKNOWN"
 }
 
-func NewFilterOptimizer(ast *WhereStmt, t *Txn, filter *FilterExec) *FilterOptimizer {
+func NewFilterOptimizer(ast *WhereStmt, t Txn, filter *FilterExec) *FilterOptimizer {
 	return &FilterOptimizer{
 		expr:   ast.Expr,
 		txn:    t,

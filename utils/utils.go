@@ -31,6 +31,16 @@ func PrintTable(data [][]string) {
 	table.Render()
 }
 
+func PrintTableNoWrap(data [][]string) {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(data[0])
+	table.SetAutoWrapText(false)
+	table.SetBorders(tablewriter.Border{Left: true, Top: true, Right: true, Bottom: true})
+	table.SetCenterSeparator("|")
+	table.AppendBulk(data[1:])
+	table.Render()
+}
+
 func OutputWithElapse(f func() error) error {
 	tt := time.Now()
 	err := f()

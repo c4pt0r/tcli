@@ -29,12 +29,12 @@ var (
 type Column []byte
 
 type FullScanPlan struct {
-	Txn    *Txn
+	Txn    Txn
 	Filter *FilterExec
-	iter   *Cursor
+	iter   Cursor
 }
 
-func NewFullScanPlan(t *Txn, f *FilterExec) Plan {
+func NewFullScanPlan(t Txn, f *FilterExec) Plan {
 	return &FullScanPlan{
 		Txn:    t,
 		Filter: f,
@@ -78,10 +78,10 @@ func (p *FullScanPlan) Next() ([]byte, []byte, error) {
 }
 
 type EmptyResultPlan struct {
-	Txn *Txn
+	Txn Txn
 }
 
-func NewEmptyResultPlan(t *Txn, f *FilterExec) Plan {
+func NewEmptyResultPlan(t Txn, f *FilterExec) Plan {
 	return &EmptyResultPlan{
 		Txn: t,
 	}
@@ -104,13 +104,13 @@ func (p *EmptyResultPlan) Explain() []string {
 }
 
 type PrefixScanPlan struct {
-	Txn    *Txn
+	Txn    Txn
 	Filter *FilterExec
 	Prefix string
-	iter   *Cursor
+	iter   Cursor
 }
 
-func NewPrefixScanPlan(t *Txn, f *FilterExec, p string) Plan {
+func NewPrefixScanPlan(t Txn, f *FilterExec, p string) Plan {
 	return &PrefixScanPlan{
 		Txn:    t,
 		Filter: f,
@@ -163,14 +163,14 @@ func (p *PrefixScanPlan) Explain() []string {
 }
 
 type MultiGetPlan struct {
-	Txn     *Txn
+	Txn     Txn
 	Filter  *FilterExec
 	Keys    []string
 	numKeys int
 	idx     int
 }
 
-func NewMultiGetPlan(t *Txn, f *FilterExec, keys []string) Plan {
+func NewMultiGetPlan(t Txn, f *FilterExec, keys []string) Plan {
 	// We should sort keys to ensure order by erase works correctly
 	sort.Strings(keys)
 	return &MultiGetPlan{
@@ -222,7 +222,7 @@ func (p *MultiGetPlan) Explain() []string {
 }
 
 type LimitPlan struct {
-	Txn       *Txn
+	Txn       Txn
 	Start     int
 	Count     int
 	current   int
@@ -276,7 +276,7 @@ func (p *LimitPlan) Explain() []string {
 }
 
 type ProjectionPlan struct {
-	Txn       *Txn
+	Txn       Txn
 	ChildPlan Plan
 	AllFields bool
 	Fields    []Expression
@@ -502,7 +502,7 @@ func (h orderRowHeap) Less(i, j int) bool {
 }
 
 type OrderPlan struct {
-	Txn       *Txn
+	Txn       Txn
 	Orders    []OrderField
 	ChildPlan Plan
 	pos       int
@@ -577,14 +577,14 @@ func (p *OrderPlan) Explain() []string {
 }
 
 type RangeScanPlan struct {
-	Txn    *Txn
+	Txn    Txn
 	Filter *FilterExec
 	Start  []byte
 	End    []byte
-	iter   *Cursor
+	iter   Cursor
 }
 
-func NewRangeScanPlan(t *Txn, f *FilterExec, start []byte, end []byte) Plan {
+func NewRangeScanPlan(t Txn, f *FilterExec, start []byte, end []byte) Plan {
 	return &RangeScanPlan{
 		Txn:    t,
 		Filter: f,

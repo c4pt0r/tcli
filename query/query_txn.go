@@ -10,17 +10,22 @@ import (
 	"github.com/magiconair/properties"
 )
 
-type Txn struct {
+var (
+	_ Txn    = (*queryTxn)(nil)
+	_ Cursor = (*queryCursor)(nil)
+)
+
+type queryTxn struct {
 	client client.Client
 }
 
-func NewQueryTxn(client client.Client) *Txn {
-	return &Txn{
+func NewQueryTxn(client client.Client) Txn {
+	return &queryTxn{
 		client: client,
 	}
 }
 
-func (t *Txn) Get(key []byte) ([]byte, error) {
+func (t *queryTxn) Get(key []byte) ([]byte, error) {
 	kv, err := t.client.Get(context.TODO(), client.Key(key))
 	if err != nil {
 		return nil, err
@@ -28,8 +33,8 @@ func (t *Txn) Get(key []byte) ([]byte, error) {
 	return kv.V, nil
 }
 
-func (t *Txn) Cursor() (*Cursor, error) {
-	return &Cursor{
+func (t *queryTxn) Cursor() (Cursor, error) {
+	return &queryCursor{
 		txn:     t,
 		batch:   nil,
 		prefix:  []byte{},
@@ -37,8 +42,8 @@ func (t *Txn) Cursor() (*Cursor, error) {
 	}, nil
 }
 
-type Cursor struct {
-	txn         *Txn
+type queryCursor struct {
+	txn         *queryTxn
 	batch       client.KVS
 	batchSize   int
 	prefix      []byte
@@ -46,7 +51,7 @@ type Cursor struct {
 	prevLastKey []byte
 }
 
-func (c *Cursor) loadBatch() error {
+func (c *queryCursor) loadBatch() error {
 	scanOpt := properties.NewProperties()
 	scanOpt.Set(tcli.ScanOptLimit, "10")
 	scanOpt.Set(tcli.ScanOptKeyOnly, "false")
@@ -61,6 +66,7 @@ func (c *Cursor) loadBatch() error {
 	c.batchSize = n
 	c.iterPos = 0
 	if len(kvs) > 0 {
+		// Skip first key
 		if c.prevLastKey != nil && bytes.Compare(kvs[0].K, c.prevLastKey) == 0 {
 			c.batch = c.batch[1:]
 			c.batchSize--
@@ -71,7 +77,7 @@ func (c *Cursor) loadBatch() error {
 	return nil
 }
 
-func (c *Cursor) Next() (key []byte, val []byte, err error) {
+func (c *queryCursor) Next() (key []byte, val []byte, err error) {
 	if c.batch == nil || c.iterPos >= c.batchSize {
 		err = c.loadBatch()
 		if err != nil {
@@ -88,7 +94,7 @@ func (c *Cursor) Next() (key []byte, val []byte, err error) {
 	return key, val, nil
 }
 
-func (c *Cursor) Seek(key []byte) error {
+func (c *queryCursor) Seek(key []byte) error {
 	c.prefix = key
 	c.batch = nil
 	c.batchSize = 0

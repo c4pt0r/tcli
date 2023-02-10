@@ -62,7 +62,7 @@ func (c ExplainCmd) Handler() func(ctx context.Context) {
 				}
 				ret = append(ret, []string{planStr})
 			}
-			utils.PrintTable(ret)
+			utils.PrintTableNoWrap(ret)
 			return nil
 		})
 	}

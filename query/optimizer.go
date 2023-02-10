@@ -25,7 +25,7 @@ func (o *Optimizer) init() error {
 	return nil
 }
 
-func (o *Optimizer) BuildPlan(t *Txn) (*ProjectionPlan, error) {
+func (o *Optimizer) BuildPlan(t Txn) (*ProjectionPlan, error) {
 	err := o.init()
 	if err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ func (o *Optimizer) BuildPlan(t *Txn) (*ProjectionPlan, error) {
 	}, nil
 }
 
-func (o *Optimizer) buildLimitPlan(t *Txn, fp Plan) Plan {
+func (o *Optimizer) buildLimitPlan(t Txn, fp Plan) Plan {
 	return &LimitPlan{
 		Txn:       t,
 		Start:     o.stmt.Limit.Start,
@@ -80,7 +80,7 @@ func (o *Optimizer) buildLimitPlan(t *Txn, fp Plan) Plan {
 	}
 }
 
-func (o *Optimizer) buildOrderPlan(t *Txn, fp Plan) Plan {
+func (o *Optimizer) buildOrderPlan(t Txn, fp Plan) Plan {
 	if len(o.stmt.Order.Orders) == 1 {
 		order := o.stmt.Order.Orders[0]
 		switch expr := order.Field.(type) {
@@ -98,7 +98,7 @@ func (o *Optimizer) buildOrderPlan(t *Txn, fp Plan) Plan {
 	}
 }
 
-func (o *Optimizer) buildScanPlan(t *Txn) Plan {
+func (o *Optimizer) buildScanPlan(t Txn) Plan {
 	fopt := NewFilterOptimizer(o.filter.Ast, t, o.filter)
 	return fopt.Optimize()
 }
