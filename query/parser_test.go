@@ -215,7 +215,7 @@ func TestParser19(t *testing.T) {
 }
 
 func TestParser20(t *testing.T) {
-	query := "select key, int(value) where key ^= 'key' order by key, value desc limit 20, 10"
+	query := "select key, int(value), value where key ^= 'key' order by key, value desc limit 20, 10"
 	p := NewParser(query)
 	expr, err := p.Parse()
 	if err != nil {
