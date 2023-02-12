@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"strings"
 )
 
 var (
@@ -15,25 +14,6 @@ var (
 	ErrNoCompareExists          = errors.New("No compare expression exists")
 	ErrSyntaxUnknownOperator    = errors.New("Syntax Error: unknown operator")
 )
-
-type KVPair struct {
-	Key   []byte
-	Value []byte
-}
-
-func NewKVP(key []byte, val []byte) KVPair {
-	return KVPair{
-		Key:   key,
-		Value: val,
-	}
-}
-
-func NewKVPStr(key string, val string) KVPair {
-	return KVPair{
-		Key:   []byte(key),
-		Value: []byte(val),
-	}
-}
 
 type FilterExec struct {
 	Ast *WhereStmt
@@ -309,27 +289,17 @@ func (e *NotExpr) Execute(kv KVPair) (any, error) {
 }
 
 func (e *FunctionCallExpr) Execute(kv KVPair) (any, error) {
-	efname, err := e.Name.Execute(kv)
+	funcObj, err := GetScalarFunction(e)
 	if err != nil {
 		return nil, err
 	}
-	fname, ok := efname.(string)
-	if !ok {
-		return nil, errors.New("Invalid function name")
-	}
-	fnameKey := strings.ToLower(fname)
-	if funcObj, have := funcMap[fnameKey]; have {
-		return e.executeFunc(kv, funcObj)
-	}
-	return nil, fmt.Errorf("Cannot find function %s", fname)
+	return e.executeFunc(kv, funcObj)
 }
 
 func (e *FunctionCallExpr) executeFunc(kv KVPair, funcObj *Function) (any, error) {
 	// Check arguments
-	if !funcObj.VarArgs {
-		if len(e.Args) != funcObj.NumArgs {
-			return nil, fmt.Errorf("Function %s require %d arguments but got %d", funcObj.Name, funcObj.NumArgs, len(e.Args))
-		}
+	if !funcObj.VarArgs && len(e.Args) != funcObj.NumArgs {
+		return nil, fmt.Errorf("Function %s require %d arguments but got %d", funcObj.Name, funcObj.NumArgs, len(e.Args))
 	}
 	return funcObj.Body(kv, e.Args)
 }

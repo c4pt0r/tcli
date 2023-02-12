@@ -38,21 +38,22 @@ type AggregatePlan struct {
 	current       int
 }
 
-func (a *AggregatePlan) getAggrFunction(name Expression) (AggrFunction, error) {
-	rfname, err := name.Execute(NewKVP(nil, nil))
+func (a *AggregatePlan) getAggrFunction(expr Expression) (AggrFunction, bool, error) {
+	fnameKey, err := GetFuncNameFromExpr(expr)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	fname, ok := rfname.(string)
-	if !ok {
-		return nil, fmt.Errorf("Cannot find aggregate function %v", rfname)
-	}
-	fnameKey := strings.ToLower(fname)
-	functor, have := aggrFuncMap[fnameKey]
+	functor, have := GetAggrFunctionByName(fnameKey)
 	if !have {
-		return nil, fmt.Errorf("Cannot find aggregate function %s", fname)
+		// Not found
+		return nil, false, nil
 	}
-	return functor.Body(), nil
+	// Check args
+	fcexpr := expr.(*FunctionCallExpr)
+	if !functor.VarArgs && functor.NumArgs != len(fcexpr.Args) {
+		return nil, false, fmt.Errorf("Function %s require %d arguments but got %d", functor.Name, functor.NumArgs, len(fcexpr.Args))
+	}
+	return functor.Body(), true, nil
 }
 
 func (a *AggregatePlan) Init() error {
@@ -64,15 +65,17 @@ func (a *AggregatePlan) Init() error {
 			aggrFunc AggrFunction = nil
 			err      error        = nil
 			name     string       = a.FieldNames[i]
+			found    bool         = false
 			isKey    bool         = true
 		)
 		switch e := f.(type) {
 		case *FunctionCallExpr:
 			isKey = false
-			aggrFunc, err = a.getAggrFunction(e.Name)
+			aggrFunc, found, err = a.getAggrFunction(e)
 			if err != nil {
-				isKey = true
+				return err
 			}
+			isKey = !found
 		default:
 			isKey = true
 			a.aggrKeyFields = append(a.aggrKeyFields, f)

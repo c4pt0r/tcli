@@ -1,49 +1,6 @@
 package query
 
 var (
-	aggrFuncMap = map[string]*AggrFunc{
-		"count": &AggrFunc{"count", 1, false, TNUMBER, newAggrCountFunc},
-		"sum":   &AggrFunc{"sum", 1, false, TNUMBER, newAggrSumFunc},
-		"avg":   &AggrFunc{"avg", 1, false, TNUMBER, newAggrAvgFunc},
-	}
-)
-
-type AggrFunc struct {
-	Name       string
-	NumArgs    int
-	VarArgs    bool
-	ReturnType Type
-	Body       AggrFunctor
-}
-
-type AggrFunctor func() AggrFunction
-
-type AggrFunction interface {
-	Update(kv KVPair, args []Expression) error
-	Complete() (any, error)
-	Clone() AggrFunction
-}
-
-func IsAggrFuncExpr(expr Expression) bool {
-	fc, ok := expr.(*FunctionCallExpr)
-	if !ok {
-		return false
-	}
-	rfname, err := fc.Name.Execute(NewKVP(nil, nil))
-	if err != nil {
-		return false
-	}
-	fname, ok := rfname.(string)
-	if !ok {
-		return false
-	}
-	if _, have := aggrFuncMap[fname]; have {
-		return true
-	}
-	return false
-}
-
-var (
 	_ AggrFunction = (*aggrCountFunc)(nil)
 	_ AggrFunction = (*aggrSumFunc)(nil)
 )

@@ -3,7 +3,6 @@ package query
 import (
 	"errors"
 	"fmt"
-	"strings"
 )
 
 var (
@@ -429,16 +428,11 @@ func (p *Parser) parseGroupBy(selStmt *SelectStmt) (*GroupByStmt, error) {
 			if err != nil {
 				return nil, err
 			}
-			rfname, err := e.Name.Execute(KVPair{nil, nil})
+			fname, err := GetFuncNameFromExpr(e)
 			if err != nil {
 				return nil, err
 			}
-			fname, ok := rfname.(string)
-			if !ok {
-				return nil, fmt.Errorf("Invalid function name %v", rfname)
-			}
-			fnameKey := strings.ToLower(fname)
-			if _, have := aggrFuncMap[fnameKey]; have {
+			if _, have := GetAggrFunctionByName(fname); have {
 				return nil, fmt.Errorf("Syntax error: cannot group by aggregate function `%s`", fname)
 			}
 			fields = append(fields, GroupByField{field.String(), fexpr})

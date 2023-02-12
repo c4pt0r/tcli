@@ -135,44 +135,6 @@ type Expression interface {
 	ReturnType() Type
 }
 
-type SelectStmt struct {
-	AllFields  bool
-	FieldNames []string
-	Fields     []Expression
-	Where      *WhereStmt
-	Order      *OrderStmt
-	Limit      *LimitStmt
-	GroupBy    *GroupByStmt
-}
-
-type WhereStmt struct {
-	Expr Expression
-}
-
-type OrderField struct {
-	Name  string
-	Field Expression
-	Order TokenType
-}
-
-type OrderStmt struct {
-	Orders []OrderField
-}
-
-type GroupByField struct {
-	Name string
-	Expr Expression
-}
-
-type GroupByStmt struct {
-	Fields []GroupByField
-}
-
-type LimitStmt struct {
-	Start int
-	Count int
-}
-
 type BinaryOpExpr struct {
 	Op    Operator
 	Left  Expression
@@ -244,19 +206,15 @@ func (e *FunctionCallExpr) String() string {
 }
 
 func (e *FunctionCallExpr) ReturnType() Type {
-	rfname, err := e.Name.Execute(KVPair{nil, nil})
+	fname, err := GetFuncNameFromExpr(e)
 	if err != nil {
 		return TUNKNOWN
 	}
-	fname, ok := rfname.(string)
-	if !ok {
-		return TUNKNOWN
-	}
-	fnameKey := strings.ToLower(fname)
-	if funcObj, have := funcMap[fnameKey]; have {
+
+	if funcObj, have := GetScalarFunctionByName(fname); have {
 		return funcObj.ReturnType
 	}
-	if funcObj, have := aggrFuncMap[fnameKey]; have {
+	if funcObj, have := GetAggrFunctionByName(fname); have {
 		return funcObj.ReturnType
 	}
 	return TUNKNOWN
