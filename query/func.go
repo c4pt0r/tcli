@@ -23,6 +23,8 @@ var (
 		"count": &AggrFunc{"count", 1, false, TNUMBER, newAggrCountFunc},
 		"sum":   &AggrFunc{"sum", 1, false, TNUMBER, newAggrSumFunc},
 		"avg":   &AggrFunc{"avg", 1, false, TNUMBER, newAggrAvgFunc},
+		"min":   &AggrFunc{"min", 1, false, TNUMBER, newAggrMinFunc},
+		"max":   &AggrFunc{"max", 1, false, TNUMBER, newAggrMaxFunc},
 	}
 )
 
@@ -151,12 +153,18 @@ func toInt(value any, defVal int64) int64 {
 		if ret, err := strconv.ParseInt(val, 10, 64); err == nil {
 			return ret
 		} else {
+			if ret, err := strconv.ParseFloat(val, 64); err == nil {
+				return int64(ret)
+			}
 			return defVal
 		}
 	case []byte:
 		if ret, err := strconv.ParseInt(string(val), 10, 64); err == nil {
 			return ret
 		} else {
+			if ret, err := strconv.ParseFloat(string(val), 64); err == nil {
+				return int64(ret)
+			}
 			return defVal
 		}
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
