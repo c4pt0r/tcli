@@ -3,6 +3,7 @@ package query
 type SelectStmt struct {
 	AllFields  bool
 	FieldNames []string
+	FieldTypes []Type
 	Fields     []Expression
 	Where      *WhereStmt
 	Order      *OrderStmt

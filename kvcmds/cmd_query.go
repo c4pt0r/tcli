@@ -43,6 +43,30 @@ func getQueryString(ic *ishell.Context) string {
 	return strings.Join(ret, " ")
 }
 
+func convertColumnToString(c query.Column) string {
+	switch v := c.(type) {
+	case int, int8, int16, int32, int64,
+		uint, uint8, uint16, uint32, uint64:
+		return fmt.Sprintf("%d", v)
+	case float32, float64:
+		return fmt.Sprintf("%f", v)
+	case []byte:
+		return string(v)
+	case string:
+		return v
+	case bool:
+		if v {
+			return "true"
+		}
+		return "false"
+	default:
+		if v == nil {
+			return "nil"
+		}
+		return ""
+	}
+}
+
 func (c QueryCmd) Handler() func(ctx context.Context) {
 	return func(ctx context.Context) {
 		utils.OutputWithElapse(func() error {
@@ -72,7 +96,7 @@ func (c QueryCmd) Handler() func(ctx context.Context) {
 
 				fields := make([]string, len(cols))
 				for i := 0; i < len(cols); i++ {
-					fields[i] = string(cols[i])
+					fields[i] = convertColumnToString(cols[i])
 				}
 				ret = append(ret, fields)
 			}

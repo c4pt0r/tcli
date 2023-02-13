@@ -269,6 +269,7 @@ func (p *Parser) parseSelect() (*SelectStmt, error) {
 	var (
 		fields     = []Expression{}
 		fieldNames = []string{}
+		fieldTypes = []Type{}
 		allFields  = false
 		err        error
 	)
@@ -305,6 +306,7 @@ func (p *Parser) parseSelect() (*SelectStmt, error) {
 
 		fields = append(fields, field)
 		fieldNames = append(fieldNames, fieldName)
+		fieldTypes = append(fieldTypes, field.ReturnType())
 		if p.tok != nil && p.tok.Tp == WHERE {
 			break
 		}
@@ -327,6 +329,7 @@ func (p *Parser) parseSelect() (*SelectStmt, error) {
 	return &SelectStmt{
 		Fields:     fields,
 		FieldNames: fieldNames,
+		FieldTypes: fieldTypes,
 		AllFields:  allFields,
 	}, nil
 }

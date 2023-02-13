@@ -46,6 +46,7 @@ func (o *Optimizer) buildFinalPlan(t Txn, fp Plan) (FinalPlan, error) {
 			ChildPlan:  fp,
 			AllFields:  o.stmt.AllFields,
 			FieldNames: o.stmt.FieldNames,
+			FieldTypes: o.stmt.FieldTypes,
 			Fields:     o.stmt.Fields,
 		}
 
@@ -89,6 +90,7 @@ func (o *Optimizer) buildFinalPlan(t Txn, fp Plan) (FinalPlan, error) {
 		ChildPlan:     fp,
 		AggrAll:       aggrAll,
 		FieldNames:    o.stmt.FieldNames,
+		FieldTypes:    o.stmt.FieldTypes,
 		Fields:        o.stmt.Fields,
 		GroupByFields: groupByFields,
 		Limit:         limit,
@@ -145,7 +147,8 @@ func (o *Optimizer) buildFinalLimitPlan(t Txn, ffp FinalPlan) FinalPlan {
 		Txn:        t,
 		Start:      o.stmt.Limit.Start,
 		Count:      o.stmt.Limit.Count,
-		FieldNames: o.stmt.FieldNames,
+		FieldNames: ffp.FieldNameList(),
+		FieldTypes: ffp.FieldTypeList(),
 		ChildPlan:  ffp,
 	}
 }
@@ -164,7 +167,8 @@ func (o *Optimizer) buildFinalOrderPlan(t Txn, ffp FinalPlan, hasAggr bool) Fina
 	return &FinalOrderPlan{
 		Txn:        t,
 		Orders:     o.stmt.Order.Orders,
-		FieldNames: o.stmt.FieldNames,
+		FieldNames: ffp.FieldNameList(),
+		FieldTypes: ffp.FieldTypeList(),
 		ChildPlan:  ffp,
 	}
 }

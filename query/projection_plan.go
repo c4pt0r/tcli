@@ -11,6 +11,7 @@ type ProjectionPlan struct {
 	ChildPlan  Plan
 	AllFields  bool
 	FieldNames []string
+	FieldTypes []Type
 	Fields     []Expression
 }
 
@@ -23,6 +24,13 @@ func (p *ProjectionPlan) FieldNameList() []string {
 		return []string{"Key", "Value"}
 	}
 	return p.FieldNames
+}
+
+func (p *ProjectionPlan) FieldTypeList() []Type {
+	if p.AllFields {
+		return []Type{TSTR, TSTR}
+	}
+	return p.FieldTypes
 }
 
 func (p *ProjectionPlan) Next() ([]Column, error) {
@@ -49,20 +57,11 @@ func (p *ProjectionPlan) processProjection(key []byte, value []byte) ([]Column, 
 			return nil, err
 		}
 		switch value := result.(type) {
-		case bool:
-			if value {
-				ret[i] = []byte("true")
-			} else {
-				ret[i] = []byte("false")
-			}
-		case []byte:
+		case bool, []byte, string,
+			int, int8, int16, int32, int64,
+			uint, uint8, uint16, uint32, uint64,
+			float32, float64:
 			ret[i] = value
-		case string:
-			ret[i] = []byte(value)
-		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-			ret[i] = []byte(fmt.Sprintf("%d", value))
-		case float32, float64:
-			ret[i] = []byte(fmt.Sprintf("%f", value))
 		default:
 			if value == nil {
 				ret[i] = nil

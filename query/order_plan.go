@@ -12,6 +12,7 @@ type FinalOrderPlan struct {
 	Txn        Txn
 	Orders     []OrderField
 	FieldNames []string
+	FieldTypes []Type
 	ChildPlan  FinalPlan
 	pos        int
 	total      int
@@ -41,7 +42,7 @@ func (p *FinalOrderPlan) Init() error {
 			return err
 		}
 		p.orderPos = append(p.orderPos, idx)
-		p.orderTypes = append(p.orderTypes, o.Field.ReturnType())
+		p.orderTypes = append(p.orderTypes, p.FieldTypes[idx])
 	}
 	p.sorted = &orderColumnsRowHeap{}
 	heap.Init(p.sorted)
@@ -50,6 +51,10 @@ func (p *FinalOrderPlan) Init() error {
 
 func (p *FinalOrderPlan) FieldNameList() []string {
 	return p.FieldNames
+}
+
+func (p *FinalOrderPlan) FieldTypeList() []Type {
+	return p.FieldTypes
 }
 
 func (p *FinalOrderPlan) String() string {
@@ -119,19 +124,9 @@ func (l *orderColumnsRow) Less(r *orderColumnsRow) bool {
 	for i, o := range l.orders {
 		oidx := l.orderPos[i]
 		desc := o.Order == DESC
-		var compare int
 		lval := l.cols[oidx]
 		rval := r.cols[oidx]
-		switch l.orderTypes[i] {
-		case TSTR:
-			compare = l.compareBytes(lval, rval, desc)
-		case TBOOL:
-			compare = l.compareBool(lval, rval, desc)
-		case TNUMBER:
-			compare = l.compareNumber(lval, rval, desc)
-		default:
-			return false
-		}
+		compare := l.compare(l.orderTypes[i], lval, rval, desc)
 		if compare < 0 {
 			return true
 		} else if compare > 0 {
@@ -141,16 +136,58 @@ func (l *orderColumnsRow) Less(r *orderColumnsRow) bool {
 	return false
 }
 
-func (l *orderColumnsRow) compareBytes(lval, rval []byte, reverse bool) int {
-	if reverse {
-		return 0 - bytes.Compare(lval, rval)
+func (l *orderColumnsRow) compare(tp Type, lval, rval Column, reverse bool) int {
+	switch tp {
+	case TSTR:
+		return l.compareBytes(lval, rval, reverse)
+	case TNUMBER:
+		return l.compareNumber(lval, rval, reverse)
+	case TBOOL:
+		return l.compareBool(lval, rval, reverse)
+	default:
+		return 0
 	}
-	return bytes.Compare(lval, rval)
 }
 
-func (l *orderColumnsRow) compareBool(lval, rval []byte, reverse bool) int {
-	lbool := bytes.Equal(lval, []byte("true"))
-	rbool := bytes.Equal(rval, []byte("true"))
+func (l *orderColumnsRow) compareBytes(lval, rval Column, reverse bool) int {
+	var (
+		lbval []byte
+		rbval []byte
+	)
+	switch lval.(type) {
+	case []byte:
+		lbval = lval.([]byte)
+		rbval = rval.([]byte)
+	case string:
+		lbval = []byte(lval.(string))
+		rbval = []byte(rval.(string))
+	default:
+		return 0
+	}
+	if reverse {
+		return 0 - bytes.Compare(lbval, rbval)
+	}
+	return bytes.Compare(lbval, rbval)
+}
+
+func (l *orderColumnsRow) compareBool(lval, rval Column, reverse bool) int {
+	var (
+		lbool bool
+		rbool bool
+	)
+	switch lval.(type) {
+	case bool:
+		lbool = lval.(bool)
+		rbool = rval.(bool)
+	case string:
+		lbool = lval.(string) == "true"
+		rbool = rval.(string) == "true"
+	case []byte:
+		lbool = bytes.Equal(lval.([]byte), []byte("true"))
+		rbool = bytes.Equal(rval.([]byte), []byte("true"))
+	default:
+		return 0
+	}
 	lint := 0
 	rint := 0
 	if lbool {
@@ -176,24 +213,76 @@ func (l *orderColumnsRow) compareBool(lval, rval []byte, reverse bool) int {
 	}
 }
 
-func (l *orderColumnsRow) compareNumber(lval, rval []byte, reverse bool) int {
+func (l *orderColumnsRow) compareNumber(lval, rval Column, reverse bool) int {
 	var (
 		lint, rint     int64
 		lfloat, rfloat float64
 		err            error
+		isFloat        bool = false
 	)
-	if lint, err = strconv.ParseInt(string(lval), 10, 64); err == nil {
-		if rint, err = strconv.ParseInt(string(rval), 10, 64); err == nil {
-			return l.compareInt(lint, rint, reverse)
+	switch lval.(type) {
+	case int:
+		lint = int64(lval.(int))
+		rint = int64(rval.(int))
+	case int16:
+		lint = int64(lval.(int16))
+		rint = int64(rval.(int16))
+	case int32:
+		lint = int64(lval.(int32))
+		rint = int64(rval.(int32))
+	case int64:
+		lint = lval.(int64)
+		rint = rval.(int64)
+	case uint:
+		lint = int64(lval.(uint))
+		rint = int64(rval.(uint))
+	case uint16:
+		lint = int64(lval.(uint16))
+		rint = int64(rval.(uint16))
+	case uint32:
+		lint = int64(lval.(uint32))
+		rint = int64(rval.(uint32))
+	case uint64:
+		lint = int64(lval.(uint64))
+		rint = int64(rval.(uint64))
+	case float32:
+		lfloat = float64(lval.(float32))
+		rfloat = float64(rval.(float32))
+		isFloat = true
+	case float64:
+		lfloat = lval.(float64)
+		rfloat = rval.(float64)
+		isFloat = true
+	case []byte:
+		if lint, err = strconv.ParseInt(string(lval.([]byte)), 10, 64); err == nil {
+			if rint, err = strconv.ParseInt(string(rval.([]byte)), 10, 64); err == nil {
+				return l.compareInt(lint, rint, reverse)
+			}
 		}
+		if lfloat, err = strconv.ParseFloat(string(lval.([]byte)), 64); err == nil {
+			if rfloat, err = strconv.ParseFloat(string(rval.([]byte)), 64); err == nil {
+				return l.compareFloat(lfloat, rfloat, reverse)
+			}
+		}
+		return 0
+	case string:
+		if lint, err = strconv.ParseInt(lval.(string), 10, 64); err == nil {
+			if rint, err = strconv.ParseInt(rval.(string), 10, 64); err == nil {
+				return l.compareInt(lint, rint, reverse)
+			}
+		}
+		if lfloat, err = strconv.ParseFloat(lval.(string), 64); err == nil {
+			if rfloat, err = strconv.ParseFloat(rval.(string), 64); err == nil {
+				return l.compareFloat(lfloat, rfloat, reverse)
+			}
+		}
+		return 0
 	}
 
-	if lfloat, err = strconv.ParseFloat(string(lval), 64); err == nil {
-		if rfloat, err = strconv.ParseFloat(string(rval), 64); err == nil {
-			return l.compareFloat(lfloat, rfloat, reverse)
-		}
+	if isFloat {
+		return l.compareFloat(lfloat, rfloat, reverse)
 	}
-	return 0
+	return l.compareInt(lint, rint, reverse)
 }
 
 func (l *orderColumnsRow) compareInt(lval, rval int64, reverse bool) int {

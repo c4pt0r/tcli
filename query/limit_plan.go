@@ -10,6 +10,7 @@ type FinalLimitPlan struct {
 	skips      int
 	ChildPlan  FinalPlan
 	FieldNames []string
+	FieldTypes []Type
 }
 
 func (p *FinalLimitPlan) Init() error {
@@ -59,4 +60,8 @@ func (p *FinalLimitPlan) Explain() []string {
 
 func (p *FinalLimitPlan) FieldNameList() []string {
 	return p.FieldNames
+}
+
+func (p *FinalLimitPlan) FieldTypeList() []Type {
+	return p.FieldTypes
 }

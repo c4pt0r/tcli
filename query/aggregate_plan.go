@@ -16,13 +16,14 @@ type AggrPlanField struct {
 	IsKey bool
 	Expr  Expression
 	Func  AggrFunction
-	Value []byte
+	Value Column
 }
 
 type AggregatePlan struct {
 	Txn           Txn
 	ChildPlan     Plan
 	FieldNames    []string
+	FieldTypes    []Type
 	Fields        []Expression
 	GroupByFields []GroupByField
 	AggrAll       bool
@@ -97,6 +98,10 @@ func (a *AggregatePlan) Init() error {
 
 func (a *AggregatePlan) FieldNameList() []string {
 	return a.FieldNames
+}
+
+func (a *AggregatePlan) FieldTypeList() []Type {
+	return a.FieldTypes
 }
 
 func (a *AggregatePlan) String() string {
@@ -195,11 +200,7 @@ func (a *AggregatePlan) prepare() error {
 				if err != nil {
 					return err
 				}
-				bval, err := a.convertToBytes(val)
-				if err != nil {
-					return err
-				}
-				row[i] = bval
+				row[i] = val
 			}
 		}
 		results = append(results, row)

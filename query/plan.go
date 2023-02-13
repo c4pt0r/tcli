@@ -6,6 +6,7 @@ type FinalPlan interface {
 	Init() error
 	Next() ([]Column, error)
 	FieldNameList() []string
+	FieldTypeList() []Type
 }
 
 type Plan interface {
@@ -28,7 +29,7 @@ var (
 	_ FinalPlan = (*FinalLimitPlan)(nil)
 )
 
-type Column []byte
+type Column any
 
 type EmptyResultPlan struct {
 	Txn Txn
