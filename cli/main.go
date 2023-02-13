@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/pprof"
 	"strings"
 
 	"github.com/c4pt0r/tcli"
@@ -25,6 +26,7 @@ var (
 	clientLogLevel = flag.String("log-level", "info", "TiKV client log level")
 	clientmode     = flag.String("mode", "txn", "TiKV API mode, accepted values: [raw | txn]")
 	resultFmt      = flag.String("output-format", "table", "output format, accepted values: [table | json]")
+	profileFile    = flag.String("p", "", "profile file")
 )
 var (
 	logo string = ""
@@ -114,6 +116,18 @@ func main() {
 	utils.SysVarSet(utils.SysVarPrintFormatKey, *resultFmt)
 
 	showWelcomeMessage()
+
+	if *profileFile != "" {
+		f, err := os.Create(*profileFile)
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		defer f.Close() // error handling omitted for example
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		defer pprof.StopCPUProfile()
+	}
 
 	// set shell prompts
 	shell := ishell.New()

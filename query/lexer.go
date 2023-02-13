@@ -114,6 +114,8 @@ func (l *Lexer) Split() []*Token {
 		ret          []*Token
 		strStart     bool = false
 		strStartChar byte = 0
+		tokStart     int  = 0
+		tokLen       int  = 0
 		tokStartPos  int
 	)
 	for i := 0; i < l.Length; i++ {
@@ -126,57 +128,64 @@ func (l *Lexer) Split() []*Token {
 		switch char {
 		case ' ':
 			if strStart {
-				curr += string(char)
+				tokLen++
 				break
 			}
+			curr = l.Query[tokStart : tokStart+tokLen]
 			if token := buildToken(curr, tokStartPos); token != nil {
 				ret = append(ret, token)
 			}
-			curr = ""
+			tokLen = 0
 			tokStartPos = i + 1
+			tokStart = i + 1
 		case '"', '\'':
 			if !strStart {
 				strStart = true
 				strStartChar = char
 				tokStartPos = i
+				tokStart = i + 1
 			} else if strStartChar == char {
 				strStart = false
+				curr = l.Query[tokStart : tokStart+tokLen]
 				token := &Token{
 					Tp:   STRING,
 					Data: curr,
 					Pos:  tokStartPos,
 				}
 				ret = append(ret, token)
-				curr = ""
+				tokLen = 0
 			} else {
-				curr += string(char)
+				tokLen++
 			}
 		case '`':
 			if !strStart {
 				strStart = true
 				strStartChar = char
 				tokStartPos = i
+				tokStart = i + 1
 			} else if strStartChar == char {
 				strStart = false
+				curr = l.Query[tokStart : tokStart+tokLen]
 				token := &Token{
 					Tp:   NAME,
 					Data: curr,
 					Pos:  tokStartPos,
 				}
 				ret = append(ret, token)
-				curr = ""
+				tokLen = 0
 			} else {
-				curr += string(char)
+				tokLen++
 			}
 		case '~', '^', '=', '!', '*', '+', '-', '/', '>', '<':
 			if strStart {
-				curr += string(char)
+				tokLen++
 				break
 			}
+			curr = l.Query[tokStart : tokStart+tokLen]
 			if token := buildToken(curr, tokStartPos); token != nil {
 				ret = append(ret, token)
 			}
-			curr = ""
+			tokLen = 0
 			var token *Token = nil
 
 			if next != '=' {
@@ -198,6 +207,7 @@ func (l *Lexer) Split() []*Token {
 			if token != nil {
 				ret = append(ret, token)
 				tokStartPos = i + 1
+				tokStart = i + 1
 				break
 			}
 
@@ -245,11 +255,13 @@ func (l *Lexer) Split() []*Token {
 				}
 			}
 			tokStartPos = i + 1
+			tokStart = i + 1
 		case '&', '|', '(', ')':
 			if strStart {
-				curr += string(char)
+				tokLen++
 				break
 			}
+			curr = l.Query[tokStart : tokStart+tokLen]
 			token := buildToken(curr, tokStartPos)
 			if token != nil {
 				ret = append(ret, token)
@@ -274,13 +286,15 @@ func (l *Lexer) Split() []*Token {
 				}
 			}
 			ret = append(ret, token)
-			curr = ""
+			tokLen = 0
 			tokStartPos = i + 1
+			tokStart = i + 1
 		case ',':
 			if strStart {
-				curr += string(char)
+				tokLen++
 				break
 			}
+			curr = l.Query[tokStart : tokStart+tokLen]
 			token := buildToken(curr, tokStartPos)
 			if token != nil {
 				ret = append(ret, token)
@@ -291,14 +305,16 @@ func (l *Lexer) Split() []*Token {
 				Pos:  i,
 			}
 			ret = append(ret, token)
-			curr = ""
+			tokLen = 0
 			tokStartPos = i + 1
+			tokStart = i + 1
 		default:
-			curr += string(char)
+			tokLen++
 		}
 		prev = char
 	}
-	if len(curr) > 0 {
+	if tokLen > 0 {
+		curr = l.Query[tokStart : tokStart+tokLen]
 		if token := buildToken(curr, tokStartPos); token != nil {
 			ret = append(ret, token)
 		}
