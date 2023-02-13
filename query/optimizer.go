@@ -51,7 +51,7 @@ func (o *Optimizer) buildFinalPlan(t Txn, fp Plan) (FinalPlan, error) {
 
 		// Build order
 		if o.stmt.Order != nil {
-			ffp = o.buildFinalOrderPlan(t, ffp)
+			ffp = o.buildFinalOrderPlan(t, ffp, false)
 		}
 
 		// Build limit
@@ -96,7 +96,7 @@ func (o *Optimizer) buildFinalPlan(t Txn, fp Plan) (FinalPlan, error) {
 	}
 
 	if o.stmt.Order != nil {
-		ffp = o.buildFinalOrderPlan(t, ffp)
+		ffp = o.buildFinalOrderPlan(t, ffp, true)
 	}
 
 	if o.stmt.Limit != nil && !doNotBuildLimit {
@@ -140,15 +140,6 @@ func (o *Optimizer) BuildPlan(t Txn) (FinalPlan, error) {
 	return ret, nil
 }
 
-func (o *Optimizer) buildLimitPlan(t Txn, fp Plan) Plan {
-	return &LimitPlan{
-		Txn:       t,
-		Start:     o.stmt.Limit.Start,
-		Count:     o.stmt.Limit.Count,
-		ChildPlan: fp,
-	}
-}
-
 func (o *Optimizer) buildFinalLimitPlan(t Txn, ffp FinalPlan) FinalPlan {
 	return &FinalLimitPlan{
 		Txn:        t,
@@ -159,25 +150,17 @@ func (o *Optimizer) buildFinalLimitPlan(t Txn, ffp FinalPlan) FinalPlan {
 	}
 }
 
-func (o *Optimizer) buildOrderPlan(t Txn, fp Plan) Plan {
-	if len(o.stmt.Order.Orders) == 1 {
+func (o *Optimizer) buildFinalOrderPlan(t Txn, ffp FinalPlan, hasAggr bool) FinalPlan {
+	if !hasAggr && len(o.stmt.Order.Orders) == 1 {
 		order := o.stmt.Order.Orders[0]
 		switch expr := order.Field.(type) {
 		case *FieldExpr:
 			// If order by key asc just ignore it
 			if expr.Field == KeyKW && order.Order == ASC {
-				return fp
+				return ffp
 			}
 		}
 	}
-	return &OrderPlan{
-		Txn:       t,
-		Orders:    o.stmt.Order.Orders,
-		ChildPlan: fp,
-	}
-}
-
-func (o *Optimizer) buildFinalOrderPlan(t Txn, ffp FinalPlan) FinalPlan {
 	return &FinalOrderPlan{
 		Txn:        t,
 		Orders:     o.stmt.Order.Orders,

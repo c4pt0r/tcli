@@ -21,8 +21,6 @@ var (
 	_ Plan = (*RangeScanPlan)(nil)
 	_ Plan = (*PrefixScanPlan)(nil)
 	_ Plan = (*MultiGetPlan)(nil)
-	_ Plan = (*LimitPlan)(nil)
-	_ Plan = (*OrderPlan)(nil)
 
 	_ FinalPlan = (*ProjectionPlan)(nil)
 	_ FinalPlan = (*AggregatePlan)(nil)
