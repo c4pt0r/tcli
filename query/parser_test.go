@@ -226,3 +226,13 @@ func TestParser20(t *testing.T) {
 	fmt.Printf("%+v\n", *expr.Limit)
 	fmt.Printf("%+v\n", *expr)
 }
+
+func TestParser21(t *testing.T) {
+	query := "select * where key in ('k1', 'k2', 'k3')"
+	p := NewParser(query)
+	expr, err := p.Parse()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("%+v\n", expr.Where.Expr.String())
+}

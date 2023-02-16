@@ -140,6 +140,8 @@ func execNumberCompare(left any, right any, op string) (bool, error) {
 			return lint < rint, nil
 		case "<=":
 			return lint <= rint, nil
+		case "=":
+			return lint == rint, nil
 		}
 	}
 
@@ -161,6 +163,8 @@ func execNumberCompare(left any, right any, op string) (bool, error) {
 		return lfloat < rfloat, nil
 	case "<=":
 		return lfloat <= rfloat, nil
+	case "=":
+		return lfloat == rfloat, nil
 	}
 	return false, errors.New("Unknown operator")
 }
@@ -179,6 +183,8 @@ func execStringCompare(left any, right any, op string) (bool, error) {
 			return cmpret < 0, nil
 		case "<=":
 			return cmpret <= 0, nil
+		case "=":
+			return cmpret == 0, nil
 		default:
 			return false, errors.New("Unknown operator")
 		}

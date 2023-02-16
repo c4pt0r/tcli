@@ -69,6 +69,11 @@ func TestOptimizers(t *testing.T) {
 			PREFIX, []string{"k"},
 		},
 		optTData{
+			"select * where key ^= 'k' | (key in ('k1', 'k2'))",
+			PREFIX, []string{"k"},
+		},
+
+		optTData{
 			"select * where key ^= 'k' | (key = 'k1' | key = 'm2')",
 			FULL, nil,
 		},
@@ -174,6 +179,11 @@ func TestOptimizers(t *testing.T) {
 		optTData{
 			"select * where !(key > 'k1' & key < 'k9')",
 			FULL, nil,
+		},
+		// Just MGET
+		optTData{
+			"select * where key in ('k1', 'k2')",
+			MGET, []string{"k1", "k2"},
 		},
 	}
 

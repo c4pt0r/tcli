@@ -38,12 +38,14 @@ const (
 	Gte         Operator = 13
 	Lt          Operator = 14
 	Lte         Operator = 15
+	In          Operator = 16
 
 	TUNKNOWN Type = 0
 	TBOOL    Type = 1
 	TSTR     Type = 2
 	TNUMBER  Type = 3
 	TIDENT   Type = 4
+	TLIST    Type = 5
 )
 
 var (
@@ -68,6 +70,7 @@ var (
 		Gte:         ">=",
 		Lt:          "<",
 		Lte:         "<=",
+		In:          "in",
 	}
 
 	StringToOperator = map[string]Operator{
@@ -86,6 +89,7 @@ var (
 		">=": Gte,
 		"<":  Lt,
 		"<=": Lte,
+		"in": In,
 	}
 )
 
@@ -126,6 +130,7 @@ var (
 	_ Expression = (*NumberExpr)(nil)
 	_ Expression = (*FloatExpr)(nil)
 	_ Expression = (*BoolExpr)(nil)
+	_ Expression = (*ListExpr)(nil)
 )
 
 type Expression interface {
@@ -148,7 +153,7 @@ func (e *BinaryOpExpr) String() string {
 
 func (e *BinaryOpExpr) ReturnType() Type {
 	switch e.Op {
-	case And, Or, Not, Eq, NotEq, PrefixMatch, RegExpMatch, Gt, Gte, Lt, Lte:
+	case And, Or, Not, Eq, NotEq, PrefixMatch, RegExpMatch, Gt, Gte, Lt, Lte, In:
 		return TBOOL
 	case Add, Sub, Mul, Div:
 		return TNUMBER
@@ -291,4 +296,20 @@ func (e *BoolExpr) String() string {
 
 func (e *BoolExpr) ReturnType() Type {
 	return TBOOL
+}
+
+type ListExpr struct {
+	List []Expression
+}
+
+func (e *ListExpr) String() string {
+	ret := make([]string, len(e.List))
+	for i, item := range e.List {
+		ret[i] = item.String()
+	}
+	return fmt.Sprintf("(%s)", strings.Join(ret, ", "))
+}
+
+func (e *ListExpr) ReturnType() Type {
+	return TLIST
 }

@@ -112,6 +112,13 @@ func (e *BinaryOpExpr) Execute(kv KVPair) (any, error) {
 		default:
 			return e.execNumberCompare(kv, "<=")
 		}
+	case In:
+		switch leftTp {
+		case TSTR:
+			return e.execStringIn(kv)
+		default:
+			return e.execNumberIn(kv)
+		}
 	}
 	return nil, errors.New("Unknown operator")
 }
@@ -276,6 +283,62 @@ func (e *BinaryOpExpr) execStringCompare(kv KVPair, op string) (any, error) {
 	return execStringCompare(left, right, op)
 }
 
+func (e *BinaryOpExpr) execStringIn(kv KVPair) (any, error) {
+	left, err := e.Left.Execute(kv)
+	if err != nil {
+		return false, err
+	}
+	rlist, ok := e.Right.(*ListExpr)
+	if !ok {
+		return false, errors.New("operator in right expression is not list")
+	}
+	for _, expr := range rlist.List {
+		if expr.ReturnType() != TSTR {
+			return false, errors.New("operator in right expression type is not string")
+		}
+		lvalue, err := expr.Execute(kv)
+		if err != nil {
+			return false, err
+		}
+		cmp, err := execStringCompare(left, lvalue, "=")
+		if err != nil {
+			return false, err
+		}
+		if cmp {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (e *BinaryOpExpr) execNumberIn(kv KVPair) (any, error) {
+	left, err := e.Left.Execute(kv)
+	if err != nil {
+		return false, err
+	}
+	rlist, ok := e.Right.(*ListExpr)
+	if !ok {
+		return false, errors.New("operator in right expression is not list")
+	}
+	for _, expr := range rlist.List {
+		if expr.ReturnType() != TNUMBER {
+			return false, errors.New("operator in right expression type is not number")
+		}
+		lvalue, err := expr.Execute(kv)
+		if err != nil {
+			return false, err
+		}
+		cmp, err := execNumberCompare(left, lvalue, "=")
+		if err != nil {
+			return false, err
+		}
+		if cmp {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (e *NotExpr) Execute(kv KVPair) (any, error) {
 	rright, err := e.Right.Execute(kv)
 	if err != nil {
@@ -318,4 +381,8 @@ func (e *FloatExpr) Execute(kv KVPair) (any, error) {
 
 func (e *BoolExpr) Execute(kv KVPair) (any, error) {
 	return e.Bool, nil
+}
+
+func (e *ListExpr) Execute(kv KVPair) (any, error) {
+	return e.List, nil
 }

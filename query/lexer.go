@@ -30,6 +30,7 @@ const (
 	FALSE    TokenType = 19
 	AS       TokenType = 20
 	GROUP    TokenType = 21
+	IN       TokenType = 22
 )
 
 var (
@@ -55,6 +56,7 @@ var (
 		FALSE:    "false",
 		AS:       "AS",
 		GROUP:    "GROUP",
+		IN:       "IN",
 	}
 )
 
@@ -83,7 +85,7 @@ func (t *Token) Precedence() int {
 			return 1
 		case "&":
 			return 2
-		case "=", "!=", "^=", "~=", ">", ">=", "<", "<=":
+		case "=", "!=", "^=", "~=", ">", ">=", "<", "<=", "in":
 			return 3
 		case "+", "-":
 			return 4
@@ -384,6 +386,9 @@ func buildToken(curr string, pos int) *Token {
 		return token
 	case "group":
 		token.Tp = GROUP
+		return token
+	case "in":
+		token.Tp = OPERATOR
 		return token
 	default:
 		if isNumber(curr) {

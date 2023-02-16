@@ -114,6 +114,9 @@ func (o *FilterOptimizer) optimizeExpr(expr Expression) *ScanType {
 		case Lt, Lte:
 			// It may use RANGE or FULL
 			return o.optimizeLtLteExpr(e)
+		case In:
+			// It must use MGET
+			return o.optimizeInExpr(e)
 		default:
 			// Other operator use FULL
 			return &ScanType{FULL, nil}
@@ -122,6 +125,46 @@ func (o *FilterOptimizer) optimizeExpr(expr Expression) *ScanType {
 		// Other expression use FULL
 		return &ScanType{FULL, nil}
 	}
+}
+
+func (o *FilterOptimizer) optimizeInExpr(e *BinaryOpExpr) *ScanType {
+	var (
+		field KVKeyword = ValueKW
+		keys  [][]byte  = make([][]byte, 0, 10)
+	)
+
+	switch left := e.Left.(type) {
+	case *FieldExpr:
+		field = left.Field
+	}
+
+	canUseMget := true
+	switch right := e.Right.(type) {
+	case *ListExpr:
+		if len(right.List) > 0 {
+			for _, expr := range right.List {
+				switch item := expr.(type) {
+				case *StringExpr:
+					// Can calculate in optimize step
+					key := []byte(item.Data)
+					keys = append(keys, key)
+				default:
+					canUseMget = false
+					break
+				}
+			}
+		}
+	default:
+		canUseMget = false
+	}
+
+	// Is Key in string values, return MGET scan
+	if field == KeyKW && len(keys) > 0 && canUseMget {
+		return &ScanType{MGET, keys}
+	}
+
+	// If not just return FULL scan
+	return &ScanType{FULL, nil}
 }
 
 func (o *FilterOptimizer) optimizeGtGteExpr(e *BinaryOpExpr) *ScanType {

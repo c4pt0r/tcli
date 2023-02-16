@@ -125,7 +125,16 @@ func (p *Parser) parseBinaryExpr(x Expression, prec1 int) (Expression, error) {
 		if err != nil {
 			return nil, err
 		}
-		y, err := p.parseBinaryExpr(nil, oprec+1)
+		var (
+			y   Expression
+			err error
+		)
+		switch opTok.Data {
+		case "in":
+			y, err = p.parseList()
+		default:
+			y, err = p.parseBinaryExpr(nil, oprec+1)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -181,6 +190,32 @@ func (p *Parser) parseFuncCall(fun Expression) (Expression, error) {
 		return nil, err
 	}
 	return &FunctionCallExpr{Name: fun, Args: list}, nil
+}
+
+func (p *Parser) parseList() (Expression, error) {
+	err := p.expect(&Token{Tp: LPAREN, Data: "("})
+	if err != nil {
+		return nil, err
+	}
+	p.exprLev++
+	var list []Expression
+	for p.tok != nil && p.tok.Tp != RPAREN {
+		arg, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, arg)
+		if p.tok != nil && p.tok.Tp == RPAREN {
+			break
+		}
+		p.next()
+	}
+	p.exprLev--
+	err = p.expect(&Token{Tp: RPAREN, Data: ")"})
+	if err != nil {
+		return nil, err
+	}
+	return &ListExpr{List: list}, nil
 }
 
 func (p *Parser) parsePrimaryExpr(x Expression) (Expression, error) {

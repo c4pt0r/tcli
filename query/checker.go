@@ -13,6 +13,8 @@ func (e *BinaryOpExpr) Check() error {
 		return errors.New("Syntax Error: Invalid operator !")
 	case Add, Sub, Mul, Div:
 		return e.checkWithMath()
+	case In:
+		return e.checkWithIn()
 	default:
 		return e.checkWithCompares()
 	}
@@ -125,6 +127,21 @@ func (e *BinaryOpExpr) checkWithCompares() error {
 	return nil
 }
 
+func (e *BinaryOpExpr) checkWithIn() error {
+	ltype := e.Left.ReturnType()
+	switch r := e.Right.(type) {
+	case *ListExpr:
+		for _, expr := range r.List {
+			if expr.ReturnType() != ltype {
+				fmt.Errorf("Syntax Error: in operator right element has wrong type")
+			}
+		}
+	default:
+		return fmt.Errorf("Syntax Error: in operator right must be list expression")
+	}
+	return nil
+}
+
 func (e *FieldExpr) Check() error {
 	return nil
 }
@@ -161,5 +178,20 @@ func (e *NumberExpr) Check() error {
 }
 
 func (e *BoolExpr) Check() error {
+	return nil
+}
+
+func (e *ListExpr) Check() error {
+	if len(e.List) == 0 {
+		return fmt.Errorf("Syntax Error: Empty list")
+	}
+	if len(e.List) > 1 {
+		ftype := e.List[0].ReturnType()
+		for i, item := range e.List[1:] {
+			if item.ReturnType() != ftype {
+				return fmt.Errorf("Syntax Error: List %d item has wrong type", i)
+			}
+		}
+	}
 	return nil
 }
