@@ -32,8 +32,8 @@ type AggregatePlan struct {
 	aggrFields    []*AggrPlanField
 	aggrKeyFields []Expression
 	aggrMap       map[string][]*AggrPlanField
+	aggrRows      [][]*AggrPlanField
 	prepared      bool
-	results       [][]Column
 	pos           int
 	skips         int
 	current       int
@@ -59,6 +59,7 @@ func (a *AggregatePlan) getAggrFunction(expr Expression) (AggrFunction, bool, er
 
 func (a *AggregatePlan) Init() error {
 	a.aggrMap = make(map[string][]*AggrPlanField)
+	a.aggrRows = make([][]*AggrPlanField, 0, 10)
 	a.aggrKeyFields = make([]Expression, 0, 10)
 	a.aggrFields = make([]*AggrPlanField, 0, 10)
 	for i, f := range a.Fields {
@@ -89,7 +90,6 @@ func (a *AggregatePlan) Init() error {
 			Func:  aggrFunc,
 		})
 	}
-	a.results = nil
 	a.pos = 0
 	a.skips = 0
 	a.current = 0
@@ -175,6 +175,7 @@ func (a *AggregatePlan) prepare() error {
 				row[i] = col
 			}
 			a.aggrMap[aggrKey] = row
+			a.aggrRows = append(a.aggrRows, row)
 		}
 		for _, col := range row {
 			if !col.IsKey {
@@ -189,23 +190,6 @@ func (a *AggregatePlan) prepare() error {
 			}
 		}
 	}
-	results := [][]Column{}
-	for _, aggrRow := range a.aggrMap {
-		row := make([]Column, len(a.aggrFields))
-		for i, col := range aggrRow {
-			if col.IsKey {
-				row[i] = col.Value
-			} else {
-				val, err := col.Func.Complete()
-				if err != nil {
-					return err
-				}
-				row[i] = val
-			}
-		}
-		results = append(results, row)
-	}
-	a.results = results
 	a.prepared = true
 	return nil
 }
@@ -245,11 +229,23 @@ func (a *AggregatePlan) Next() ([]Column, error) {
 }
 
 func (a *AggregatePlan) next() ([]Column, error) {
-	if a.pos >= len(a.results) {
+	if a.pos >= len(a.aggrRows) {
 		return nil, nil
 	}
-	row := a.results[a.pos]
+	aggrRow := a.aggrRows[a.pos]
 	a.pos++
+	row := make([]Column, len(a.aggrFields))
+	for i, col := range aggrRow {
+		if col.IsKey {
+			row[i] = col.Value
+		} else {
+			val, err := col.Func.Complete()
+			if err != nil {
+				return nil, err
+			}
+			row[i] = val
+		}
+	}
 	return row, nil
 }
 
