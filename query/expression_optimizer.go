@@ -8,13 +8,16 @@ type ExpressionOptimizer struct {
 }
 
 func (o *ExpressionOptimizer) Optimize() Expression {
+	// Optimize twice will fully evaluate constant
 	newRoot := o.optimize(o.Root)
+	newRoot = o.optimize(newRoot)
 	return newRoot
 }
 
 func (o *ExpressionOptimizer) optimize(expr Expression) Expression {
 	switch e := expr.(type) {
 	case *BinaryOpExpr:
+		o.tryReorderBinaryOp(e)
 		nexpr, _ := o.tryOptimizeBinaryOpExecute(e)
 		nexpr, _ = o.tryOptimizeAndOr(nexpr)
 		return nexpr
@@ -23,6 +26,78 @@ func (o *ExpressionOptimizer) optimize(expr Expression) Expression {
 		return nexpr
 	}
 	return expr
+}
+
+func (o *ExpressionOptimizer) tryReorderBinaryOp(e *BinaryOpExpr) {
+	var (
+		leftIsValue  = false
+		rightIsValue = false
+		leftIsOp     = false
+		rightIsOp    = false
+		leftOpExpr   *BinaryOpExpr
+	)
+
+	switch left := e.Left.(type) {
+	case *BinaryOpExpr:
+		o.tryReorderBinaryOp(left)
+		leftOpExpr = left
+		leftIsOp = true
+	case *StringExpr, *NumberExpr, *FloatExpr:
+		leftIsValue = true
+	}
+
+	switch right := e.Right.(type) {
+	case *BinaryOpExpr:
+		o.tryReorderBinaryOp(right)
+		rightIsOp = true
+	case *StringExpr, *NumberExpr, *FloatExpr:
+		rightIsValue = true
+	}
+
+	if e.Op != Add && e.Op != Mul {
+		return
+	}
+
+	if !leftIsValue && leftIsOp && rightIsValue && !rightIsOp {
+		fmt.Println("DEBUG:", e)
+		if leftOpExpr.Op == e.Op {
+			switch rexpr := leftOpExpr.Right.(type) {
+			case *StringExpr, *NumberExpr, *FloatExpr:
+				// (ANY op VALUE) op VALUE
+				e.Left = leftOpExpr.Left
+				e.Right = &BinaryOpExpr{Op: e.Op, Left: leftOpExpr.Right, Right: e.Right}
+			case *BinaryOpExpr:
+				if isBinaryOpExprAllValue(rexpr, e.Op) {
+					e.Left = leftOpExpr.Left
+					e.Right = &BinaryOpExpr{Op: e.Op, Left: leftOpExpr.Right, Right: e.Right}
+				}
+			}
+		}
+		fmt.Println("DEBUG:", e)
+	}
+	return
+}
+
+func isBinaryOpExprAllValue(expr *BinaryOpExpr, op Operator) bool {
+	if expr.Op != op {
+		return false
+	}
+	lIsValue := false
+	rIsValue := false
+	switch le := expr.Left.(type) {
+	case *StringExpr, *NumberExpr, *FloatExpr:
+		lIsValue = true
+	case *BinaryOpExpr:
+		lIsValue = isBinaryOpExprAllValue(le, op)
+	}
+
+	switch re := expr.Right.(type) {
+	case *StringExpr, *NumberExpr, *FloatExpr:
+		rIsValue = true
+	case *BinaryOpExpr:
+		rIsValue = isBinaryOpExprAllValue(re, op)
+	}
+	return lIsValue && rIsValue
 }
 
 func (o *ExpressionOptimizer) tryOptimizeBinaryOpExecute(e *BinaryOpExpr) (Expression, bool) {
