@@ -90,6 +90,7 @@ func TestParser8(t *testing.T) {
 
 func TestParser9(t *testing.T) {
 	funcMap["func_name"] = &Function{"func_name", 2, false, TSTR, nil}
+	funcMap["func_name2"] = &Function{"func_name2", 1, false, TBOOL, nil}
 	query := "where (func_name(key, 'test') ^= 'name') & (func_name2(value) | value ^= 't')"
 	p := NewParser(query)
 	expr, err := p.Parse()
@@ -229,6 +230,37 @@ func TestParser20(t *testing.T) {
 
 func TestParser21(t *testing.T) {
 	query := "select * where key in ('k1', 'k2', 'k3')"
+	p := NewParser(query)
+	expr, err := p.Parse()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("%+v\n", expr.Where.Expr.String())
+}
+
+func TestParser22(t *testing.T) {
+	query := "select * where key between 'k1' and 'k3'"
+	p := NewParser(query)
+	expr, err := p.Parse()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("%+v\n", expr.Where.Expr.String())
+}
+
+func TestParser23(t *testing.T) {
+	query := "select * where key between 'k1' and 'k3' & int(value) between 1 and 10"
+	p := NewParser(query)
+	expr, err := p.Parse()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("%+v\n", expr.Where.Expr.String())
+
+}
+
+func TestParser24(t *testing.T) {
+	query := "select * where (key between 'k1' and 'k3') & int(value) between 1 and 10"
 	p := NewParser(query)
 	expr, err := p.Parse()
 	if err != nil {

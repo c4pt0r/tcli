@@ -185,6 +185,11 @@ func TestOptimizers(t *testing.T) {
 			"select * where key in ('k1', 'k2')",
 			MGET, []string{"k1", "k2"},
 		},
+		// Just RANGE use between and
+		optTData{
+			"select * where key between 'k1' and 'k2'",
+			RANGE, []string{"k1", "k2"},
+		},
 	}
 
 	for i, item := range tdata {

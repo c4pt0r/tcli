@@ -31,6 +31,8 @@ const (
 	AS       TokenType = 20
 	GROUP    TokenType = 21
 	IN       TokenType = 22
+	BETWEEN  TokenType = 23
+	AND      TokenType = 24
 )
 
 var (
@@ -57,6 +59,8 @@ var (
 		AS:       "AS",
 		GROUP:    "GROUP",
 		IN:       "IN",
+		BETWEEN:  "BETWEEN",
+		AND:      "AND",
 	}
 )
 
@@ -85,7 +89,7 @@ func (t *Token) Precedence() int {
 			return 1
 		case "&":
 			return 2
-		case "=", "!=", "^=", "~=", ">", ">=", "<", "<=", "in":
+		case "=", "!=", "^=", "~=", ">", ">=", "<", "<=", "in", "between":
 			return 3
 		case "+", "-":
 			return 4
@@ -388,6 +392,9 @@ func buildToken(curr string, pos int) *Token {
 		token.Tp = GROUP
 		return token
 	case "in":
+		token.Tp = OPERATOR
+		return token
+	case "between":
 		token.Tp = OPERATOR
 		return token
 	default:

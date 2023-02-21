@@ -132,6 +132,8 @@ func (p *Parser) parseBinaryExpr(x Expression, prec1 int) (Expression, error) {
 		switch opTok.Data {
 		case "in":
 			y, err = p.parseList()
+		case "between":
+			y, err = p.parseBetween(oprec + 1)
 		default:
 			y, err = p.parseBinaryExpr(nil, oprec+1)
 		}
@@ -215,6 +217,23 @@ func (p *Parser) parseList() (Expression, error) {
 	if err != nil {
 		return nil, err
 	}
+	return &ListExpr{List: list}, nil
+}
+
+func (p *Parser) parseBetween(oprec int) (Expression, error) {
+	lower, err := p.parseBinaryExpr(nil, oprec)
+	if err != nil {
+		return nil, err
+	}
+	err = p.expect(&Token{Tp: NAME, Data: "and"})
+	if err != nil {
+		return nil, err
+	}
+	upper, err := p.parseBinaryExpr(nil, oprec)
+	if err != nil {
+		return nil, err
+	}
+	list := []Expression{lower, upper}
 	return &ListExpr{List: list}, nil
 }
 
@@ -361,6 +380,14 @@ func (p *Parser) parseSelect() (*SelectStmt, error) {
 		fieldNames = []string{fields[0].String(), fields[1].String()}
 	}
 
+	if len(fields) > 0 {
+		for _, f := range fields {
+			if err := f.Check(); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	return &SelectStmt{
 		Fields:     fields,
 		FieldNames: fieldNames,
@@ -491,6 +518,13 @@ func (p *Parser) parseGroupBy(selStmt *SelectStmt) (*GroupByStmt, error) {
 		}
 	}
 	p.exprLev--
+	if len(fields) > 0 {
+		for _, f := range fields {
+			if err := f.Expr.Check(); err != nil {
+				return nil, err
+			}
+		}
+	}
 	ret.Fields = fields
 	return ret, nil
 }

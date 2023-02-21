@@ -6,6 +6,12 @@ import (
 )
 
 func (e *BinaryOpExpr) Check() error {
+	if err := e.Left.Check(); err != nil {
+		return err
+	}
+	if err := e.Right.Check(); err != nil {
+		return err
+	}
 	switch e.Op {
 	case And, Or:
 		return e.checkWithAndOr()
@@ -15,6 +21,8 @@ func (e *BinaryOpExpr) Check() error {
 		return e.checkWithMath()
 	case In:
 		return e.checkWithIn()
+	case Between:
+		return e.checkWithBetween()
 	default:
 		return e.checkWithCompares()
 	}
@@ -44,11 +52,15 @@ func (e *BinaryOpExpr) checkWithAndOr() error {
 
 func (e *BinaryOpExpr) checkWithMath() error {
 	op := OperatorToString[e.Op]
+	lstring := false
+	rstring := false
 	switch exp := e.Left.(type) {
 	case *BinaryOpExpr, *FunctionCallExpr, *NumberExpr, *FloatExpr:
 		if e.Left.ReturnType() != TNUMBER {
 			return fmt.Errorf("Syntax Error: %s operator has wrong type of left expression %s", op, exp)
 		}
+	case *StringExpr, *FieldExpr:
+		lstring = true
 	default:
 		return fmt.Errorf("Syntax Error: %s operator with invalid left expression %s", op, exp)
 	}
@@ -58,8 +70,19 @@ func (e *BinaryOpExpr) checkWithMath() error {
 		if e.Right.ReturnType() != TNUMBER {
 			return fmt.Errorf("Syntax Error: %s operator has wrong type of right expression %s", op, exp)
 		}
+	case *StringExpr, *FieldExpr:
+		rstring = true
 	default:
 		return fmt.Errorf("Syntax Error: %s operator with invalid right expression %s", op, exp)
+	}
+	if op == "+" && lstring && rstring {
+	} else {
+		if lstring {
+			return fmt.Errorf("Syntax Error: %s operator with invalid left expression %s", op, e.Left)
+		}
+		if rstring {
+			return fmt.Errorf("Syntax Error: %s operator with invalid right expression %s", op, e.Right)
+		}
 	}
 	return nil
 }
@@ -82,7 +105,7 @@ func (e *BinaryOpExpr) checkWithCompares() error {
 		}
 	case *FunctionCallExpr:
 		numCallExpr++
-	case *StringExpr, *BoolExpr, *NumberExpr, *FloatExpr:
+	case *StringExpr, *BoolExpr, *NumberExpr, *FloatExpr, *BinaryOpExpr:
 	default:
 		return fmt.Errorf("Syntax Error: %s operator with invalid left expression", op)
 	}
@@ -97,7 +120,7 @@ func (e *BinaryOpExpr) checkWithCompares() error {
 		}
 	case *FunctionCallExpr:
 		numCallExpr++
-	case *StringExpr, *BoolExpr, *NumberExpr, *FloatExpr:
+	case *StringExpr, *BoolExpr, *NumberExpr, *FloatExpr, *BinaryOpExpr:
 	default:
 		return fmt.Errorf("Syntax Error: %s operator with invalid right expression", op)
 	}
@@ -105,9 +128,11 @@ func (e *BinaryOpExpr) checkWithCompares() error {
 	if numKeyFieldExpr == 2 || numValueFieldExpr == 2 {
 		return fmt.Errorf("Syntax Error: %s operator with two same field", op)
 	}
-	if numKeyFieldExpr == 0 && numValueFieldExpr == 0 && numCallExpr == 0 {
-		return fmt.Errorf("Syntax Error: %s operator with no field nor function call", op)
-	}
+	/*
+		if numKeyFieldExpr == 0 && numValueFieldExpr == 0 && numCallExpr == 0 {
+			return fmt.Errorf("Syntax Error: %s operator with no field nor function call", op)
+		}
+	*/
 
 	ltype := e.Left.ReturnType()
 	rtype := e.Right.ReturnType()
@@ -133,11 +158,32 @@ func (e *BinaryOpExpr) checkWithIn() error {
 	case *ListExpr:
 		for _, expr := range r.List {
 			if expr.ReturnType() != ltype {
-				fmt.Errorf("Syntax Error: in operator right element has wrong type")
+				return fmt.Errorf("Syntax Error: in operator right element has wrong type")
 			}
 		}
 	default:
 		return fmt.Errorf("Syntax Error: in operator right must be list expression")
+	}
+	return nil
+}
+
+func (e *BinaryOpExpr) checkWithBetween() error {
+	ltype := e.Left.ReturnType()
+	rlist, ok := e.Right.(*ListExpr)
+	if !ok || len(rlist.List) != 2 {
+		return fmt.Errorf("Syntax Error: between operator invalid right expression")
+	}
+
+	switch ltype {
+	case TSTR, TNUMBER:
+	default:
+		return fmt.Errorf("Syntax Error: between operator only support string and number type")
+	}
+
+	lexpr := rlist.List[0]
+	uexpr := rlist.List[1]
+	if lexpr.ReturnType() != ltype || uexpr.ReturnType() != ltype {
+		return fmt.Errorf("Syntax Error: between operator invalid right expression type")
 	}
 	return nil
 }
@@ -161,6 +207,13 @@ func (e *FunctionCallExpr) Check() error {
 	_, ok := e.Name.(*NameExpr)
 	if !ok {
 		return errors.New("Syntax Error: Invalid function name")
+	}
+	if len(e.Args) > 0 {
+		for _, a := range e.Args {
+			if err := a.Check(); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

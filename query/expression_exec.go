@@ -77,6 +77,9 @@ func (e *BinaryOpExpr) Execute(kv KVPair) (any, error) {
 	case Or:
 		return e.execOr(kv)
 	case Add:
+		if e.Left.ReturnType() == TSTR {
+			return e.execStringConcate(kv)
+		}
 		return e.execMath(kv, '+')
 	case Sub:
 		return e.execMath(kv, '-')
@@ -118,6 +121,13 @@ func (e *BinaryOpExpr) Execute(kv KVPair) (any, error) {
 			return e.execStringIn(kv)
 		default:
 			return e.execNumberIn(kv)
+		}
+	case Between:
+		switch leftTp {
+		case TSTR:
+			return e.execStringBetween(kv)
+		default:
+			return e.execNumberBetween(kv)
 		}
 	}
 	return nil, errors.New("Unknown operator")
@@ -337,6 +347,116 @@ func (e *BinaryOpExpr) execNumberIn(kv KVPair) (any, error) {
 		}
 	}
 	return false, nil
+}
+
+func (e *BinaryOpExpr) execStringBetween(kv KVPair) (any, error) {
+	left, err := e.Left.Execute(kv)
+	if err != nil {
+		return false, err
+	}
+	rlist, ok := e.Right.(*ListExpr)
+	if !ok || len(rlist.List) != 2 {
+		return false, errors.New("operator between right expression is invalid")
+	}
+	lexpr := rlist.List[0]
+	uexpr := rlist.List[1]
+	if lexpr.ReturnType() != TSTR {
+		return false, errors.New("operator between lower boundary expression type is not string")
+	}
+	if uexpr.ReturnType() != TSTR {
+		return false, errors.New("operator between upper boundary expression type is not string")
+	}
+	lval, err := lexpr.Execute(kv)
+	if err != nil {
+		return false, err
+	}
+	uval, err := uexpr.Execute(kv)
+	if err != nil {
+		return false, err
+	}
+	cmp, err := execStringCompare(lval, uval, "<")
+	if err != nil {
+		return false, err
+	}
+	if !cmp {
+		return false, errors.New("operator between lower boundary is greater than upper boundary.")
+	}
+	lcmp, err := execStringCompare(lval, left, "<=")
+	if err != nil {
+		return false, err
+	}
+	// left < lower, return false
+	if !lcmp {
+		return false, nil
+	}
+	ucmp, err := execStringCompare(left, uval, "<=")
+	if err != nil {
+		return false, err
+	}
+	// left < upper
+	return ucmp, nil
+}
+
+func (e *BinaryOpExpr) execNumberBetween(kv KVPair) (any, error) {
+	left, err := e.Left.Execute(kv)
+	if err != nil {
+		return false, err
+	}
+	rlist, ok := e.Right.(*ListExpr)
+	if !ok || len(rlist.List) != 2 {
+		return false, errors.New("operator between right expression is invalid")
+	}
+	lexpr := rlist.List[0]
+	uexpr := rlist.List[1]
+	if lexpr.ReturnType() != TNUMBER {
+		return false, errors.New("operator between lower boundary expression type is not string")
+	}
+	if uexpr.ReturnType() != TNUMBER {
+		return false, errors.New("operator between upper boundary expression type is not string")
+	}
+	lval, err := lexpr.Execute(kv)
+	if err != nil {
+		return false, err
+	}
+	uval, err := uexpr.Execute(kv)
+	if err != nil {
+		return false, err
+	}
+	cmp, err := execNumberCompare(lval, uval, "<")
+	if err != nil {
+		return false, err
+	}
+	if !cmp {
+		return false, errors.New("operator between lower boundary is greater than upper boundary.")
+	}
+	lcmp, err := execNumberCompare(lval, left, "<=")
+	if err != nil {
+		return false, err
+	}
+	// left < lower, return false
+	if !lcmp {
+		return false, nil
+	}
+	ucmp, err := execNumberCompare(left, uval, "<=")
+	if err != nil {
+		return false, err
+	}
+	// left < upper
+	return ucmp, nil
+}
+
+func (e *BinaryOpExpr) execStringConcate(kv KVPair) (any, error) {
+	lval, err := e.Left.Execute(kv)
+	if err != nil {
+		return "", err
+	}
+	rval, err := e.Right.Execute(kv)
+	if err != nil {
+		return "", err
+	}
+	lstr := toString(lval)
+	rstr := toString(rval)
+	return lstr + rstr, nil
 }
 
 func (e *NotExpr) Execute(kv KVPair) (any, error) {

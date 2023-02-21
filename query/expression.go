@@ -39,6 +39,7 @@ const (
 	Lt          Operator = 14
 	Lte         Operator = 15
 	In          Operator = 16
+	Between     Operator = 17
 
 	TUNKNOWN Type = 0
 	TBOOL    Type = 1
@@ -71,25 +72,27 @@ var (
 		Lt:          "<",
 		Lte:         "<=",
 		In:          "in",
+		Between:     "between",
 	}
 
 	StringToOperator = map[string]Operator{
-		"=":  Eq,
-		"&":  And,
-		"|":  Or,
-		"!":  Not,
-		"^=": PrefixMatch,
-		"~=": RegExpMatch,
-		"!=": NotEq,
-		"+":  Add,
-		"-":  Sub,
-		"*":  Mul,
-		"/":  Div,
-		">":  Gt,
-		">=": Gte,
-		"<":  Lt,
-		"<=": Lte,
-		"in": In,
+		"=":       Eq,
+		"&":       And,
+		"|":       Or,
+		"!":       Not,
+		"^=":      PrefixMatch,
+		"~=":      RegExpMatch,
+		"!=":      NotEq,
+		"+":       Add,
+		"-":       Sub,
+		"*":       Mul,
+		"/":       Div,
+		">":       Gt,
+		">=":      Gte,
+		"<":       Lt,
+		"<=":      Lte,
+		"in":      In,
+		"between": Between,
 	}
 )
 
@@ -148,14 +151,28 @@ type BinaryOpExpr struct {
 
 func (e *BinaryOpExpr) String() string {
 	op := OperatorToString[e.Op]
-	return fmt.Sprintf("(%s %s %s)", e.Left.String(), op, e.Right.String())
+	switch op {
+	case "between":
+		list, ok := e.Right.(*ListExpr)
+		if !ok || len(list.List) != 2 {
+			return fmt.Sprintf("(%s %s %s)", e.Left.String(), op, e.Right.String())
+		}
+		return fmt.Sprintf("(%s BETWEEN %s AND %s)", e.Left.String(), list.List[0].String(), list.List[1].String())
+	default:
+		return fmt.Sprintf("(%s %s %s)", e.Left.String(), op, e.Right.String())
+	}
 }
 
 func (e *BinaryOpExpr) ReturnType() Type {
 	switch e.Op {
-	case And, Or, Not, Eq, NotEq, PrefixMatch, RegExpMatch, Gt, Gte, Lt, Lte, In:
+	case And, Or, Not, Eq, NotEq, PrefixMatch, RegExpMatch, Gt, Gte, Lt, Lte, In, Between:
 		return TBOOL
-	case Add, Sub, Mul, Div:
+	case Sub, Mul, Div:
+		return TNUMBER
+	case Add:
+		if e.Left.ReturnType() == TSTR {
+			return TSTR
+		}
 		return TNUMBER
 	}
 	return TUNKNOWN
