@@ -11,13 +11,13 @@ var (
 )
 
 type AggrPlanField struct {
-	ID       int
-	Name     string
-	IsKey    bool
-	Expr     Expression
-	FuncExpr *FunctionCallExpr
-	Func     AggrFunction
-	Value    Column
+	ID        int
+	Name      string
+	IsKey     bool
+	Expr      Expression
+	FuncExprs []*FunctionCallExpr
+	Funcs     []AggrFunction
+	Value     Column
 }
 
 type AggregatePlan struct {
@@ -40,41 +40,49 @@ type AggregatePlan struct {
 	current       int
 }
 
-func (a *AggregatePlan) getAggrFuncName(expr Expression) (*FunctionCallExpr, string, error) {
+func (a *AggregatePlan) listAggrFuncs(expr Expression) ([]*FunctionCallExpr, []string) {
+	var (
+		retExprs []*FunctionCallExpr
+		retNames []string
+	)
+
 	switch e := expr.(type) {
 	case *BinaryOpExpr:
-		if le, fn, err := a.getAggrFuncName(e.Left); err == nil {
-			return le, fn, nil
+		if fcexpr, names := a.listAggrFuncs(e.Left); len(fcexpr) > 0 {
+			retExprs = append(retExprs, fcexpr...)
+			retNames = append(retNames, names...)
 		}
-		if re, fn, err := a.getAggrFuncName(e.Right); err == nil {
-			return re, fn, nil
+		if fcexpr, names := a.listAggrFuncs(e.Right); len(fcexpr) > 0 {
+			retExprs = append(retExprs, fcexpr...)
+			retNames = append(retNames, names...)
 		}
 	case *FunctionCallExpr:
 		fname, err := GetFuncNameFromExpr(expr)
-		if err != nil {
-			return nil, "", err
+		if err == nil && IsAggrFunc(fname) {
+			retExprs = append(retExprs, e)
+			retNames = append(retNames, fname)
 		}
-		return e, fname, nil
 	}
-	return nil, "", errors.New("Not function expression")
+	return retExprs, retNames
 }
 
-func (a *AggregatePlan) getAggrFunction(expr Expression) (*FunctionCallExpr, AggrFunction, bool, error) {
-	fcexpr, fnameKey, err := a.getAggrFuncName(expr)
-	if err != nil {
-		return nil, nil, false, err
-	}
-	functor, have := GetAggrFunctionByName(fnameKey)
-	if !have {
-		// Not found
+func (a *AggregatePlan) listAggrFunctions(expr Expression) ([]*FunctionCallExpr, []AggrFunction, bool, error) {
+	fcexprs, fnames := a.listAggrFuncs(expr)
+	if len(fnames) == 0 {
 		return nil, nil, false, nil
 	}
-	// Check args
-	if !functor.VarArgs && functor.NumArgs != len(fcexpr.Args) {
-		return nil, nil, false, fmt.Errorf("Function %s require %d arguments but got %d", functor.Name, functor.NumArgs, len(fcexpr.Args))
+	var functors []AggrFunction
+	for i, fname := range fnames {
+		functor, have := GetAggrFunctionByName(fname)
+		if !have {
+			return nil, nil, false, fmt.Errorf("Cannot find aggregate function: %s", fname)
+		}
+		if !functor.VarArgs && functor.NumArgs != len(fcexprs[i].Args) {
+			return nil, nil, false, fmt.Errorf("Function %s require %d arguments but got %d", functor.Name, functor.NumArgs, len(fcexprs[i].Args))
+		}
+		functors = append(functors, functor.Body())
 	}
-	fmt.Println(fcexpr)
-	return fcexpr, functor.Body(), true, nil
+	return fcexprs, functors, true, nil
 }
 
 func (a *AggregatePlan) Init() error {
@@ -84,35 +92,32 @@ func (a *AggregatePlan) Init() error {
 	a.aggrFields = make([]*AggrPlanField, 0, 10)
 	for i, f := range a.Fields {
 		var (
-			aggrFunc AggrFunction = nil
-			err      error        = nil
-			name     string       = a.FieldNames[i]
-			found    bool         = false
-			isKey    bool         = true
-			fexpr    *FunctionCallExpr
+			aggrFuncs []AggrFunction = nil
+			err       error          = nil
+			name      string         = a.FieldNames[i]
+			found     bool           = false
+			isKey     bool           = true
+			fexprs    []*FunctionCallExpr
 		)
 		switch e := f.(type) {
-		case *FunctionCallExpr:
+		case *FunctionCallExpr, *BinaryOpExpr:
 			isKey = false
-			fexpr, aggrFunc, found, err = a.getAggrFunction(e)
+			fexprs, aggrFuncs, found, err = a.listAggrFunctions(e)
 			if err != nil {
 				return err
 			}
-			isKey = !found
-		case *BinaryOpExpr:
-			fexpr, aggrFunc, found, err = a.getAggrFunction(e)
 			isKey = !found
 		default:
 			isKey = true
 			a.aggrKeyFields = append(a.aggrKeyFields, f)
 		}
 		a.aggrFields = append(a.aggrFields, &AggrPlanField{
-			ID:       i,
-			Name:     name,
-			IsKey:    isKey,
-			Expr:     f,
-			Func:     aggrFunc,
-			FuncExpr: fexpr,
+			ID:        i,
+			Name:      name,
+			IsKey:     isKey,
+			Expr:      f,
+			Funcs:     aggrFuncs,
+			FuncExprs: fexprs,
 		})
 	}
 	a.pos = 0
@@ -181,15 +186,17 @@ func (a *AggregatePlan) prepare() error {
 			row = make([]*AggrPlanField, len(a.aggrFields))
 			for i, r := range a.aggrFields {
 				col := &AggrPlanField{
-					ID:       r.ID,
-					Name:     r.Name,
-					IsKey:    r.IsKey,
-					Expr:     r.Expr,
-					FuncExpr: r.FuncExpr,
-					Func:     nil,
+					ID:        r.ID,
+					Name:      r.Name,
+					IsKey:     r.IsKey,
+					Expr:      r.Expr,
+					FuncExprs: r.FuncExprs,
+					Funcs:     nil,
 				}
-				if r.Func != nil {
-					col.Func = r.Func.Clone()
+				if len(r.Funcs) > 0 {
+					for _, f := range r.Funcs {
+						col.Funcs = append(col.Funcs, f.Clone())
+					}
 				}
 				if col.IsKey {
 					exprResult, err := a.execExpr(kvp, col.Expr)
@@ -205,13 +212,15 @@ func (a *AggregatePlan) prepare() error {
 		}
 		for _, col := range row {
 			if !col.IsKey {
-				fcexpr := col.FuncExpr
-				if fcexpr == nil {
+				fcexprs := col.FuncExprs
+				if len(fcexprs) == 0 {
 					return errors.New("Cannot cast expression to function call expression")
 				}
-				err = col.Func.Update(kvp, fcexpr.Args)
-				if err != nil {
-					return err
+				for i, fcexpr := range fcexprs {
+					err = col.Funcs[i].Update(kvp, fcexpr.Args)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -255,6 +264,7 @@ func (a *AggregatePlan) Next() ([]Column, error) {
 }
 
 func (a *AggregatePlan) next() ([]Column, error) {
+	var err error
 	if a.pos >= len(a.aggrRows) {
 		return nil, nil
 	}
@@ -265,11 +275,15 @@ func (a *AggregatePlan) next() ([]Column, error) {
 		if col.IsKey {
 			row[i] = col.Value
 		} else {
-			val, err := col.Func.Complete()
-			if err != nil {
-				return nil, err
+			results := []any{}
+			for _, f := range col.Funcs {
+				val, err := f.Complete()
+				if err != nil {
+					return nil, err
+				}
+				results = append(results, val)
 			}
-			row[i], err = a.executeAggrExpr(col, val)
+			row[i], err = a.executeAggrExpr(col, results)
 			if err != nil {
 				return nil, err
 			}
@@ -278,9 +292,28 @@ func (a *AggregatePlan) next() ([]Column, error) {
 	return row, nil
 }
 
-func (a *AggregatePlan) executeAggrExpr(col *AggrPlanField, val any) (any, error) {
+func (a *AggregatePlan) executeAggrExpr(col *AggrPlanField, results []any) (any, error) {
 	var (
-		funcExpr  = col.FuncExpr
+		nexpr Expression = nil
+		err   error
+	)
+
+	for i, val := range results {
+		nexpr, err = a.replaceOneResult(i, col, val)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if nexpr == nil {
+		return nil, errors.New("Cannot calculate aggregate function expression")
+	}
+	return nexpr.Execute(NewKVP(nil, nil))
+}
+
+func (a *AggregatePlan) replaceOneResult(idx int, col *AggrPlanField, val any) (Expression, error) {
+	var (
+		funcExpr  = col.FuncExprs[idx]
 		fieldExpr = col.Expr
 		retExpr   Expression
 	)
@@ -296,14 +329,13 @@ func (a *AggregatePlan) executeAggrExpr(col *AggrPlanField, val any) (any, error
 	default:
 		return nil, errors.New("Aggregate function return wrong type")
 	}
-	nexpr := a.rewriteAggrFunc(fieldExpr, funcExpr, retExpr)
-	return nexpr.Execute(NewKVP(nil, nil))
+	return a.rewriteAggrFunc(fieldExpr, funcExpr, retExpr), nil
 }
 
 func (a *AggregatePlan) rewriteAggrFunc(fieldExpr Expression, funcExpr *FunctionCallExpr, retExpr Expression) Expression {
 	switch e := fieldExpr.(type) {
 	case *FunctionCallExpr:
-		if e.Name == funcExpr.Name {
+		if e.String() == funcExpr.String() {
 			return retExpr
 		}
 	case *BinaryOpExpr:

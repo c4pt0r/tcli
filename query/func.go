@@ -124,6 +124,11 @@ func IsAggrFuncExpr(expr Expression) bool {
 	return false
 }
 
+func IsAggrFunc(fname string) bool {
+	_, have := aggrFuncMap[fname]
+	return have
+}
+
 func toString(value any) string {
 	switch val := value.(type) {
 	case string:
