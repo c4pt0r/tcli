@@ -57,7 +57,11 @@ func (e *BinaryOpExpr) checkWithMath() error {
 	switch exp := e.Left.(type) {
 	case *BinaryOpExpr, *FunctionCallExpr, *NumberExpr, *FloatExpr:
 		if e.Left.ReturnType() != TNUMBER {
-			return fmt.Errorf("Syntax Error: %s operator has wrong type of left expression %s", op, exp)
+			if e.Left.ReturnType() == TSTR {
+				lstring = true
+			} else {
+				return fmt.Errorf("Syntax Error: %s operator has wrong type of left expression %s", op, exp)
+			}
 		}
 	case *StringExpr, *FieldExpr:
 		lstring = true
@@ -68,7 +72,11 @@ func (e *BinaryOpExpr) checkWithMath() error {
 	switch exp := e.Right.(type) {
 	case *BinaryOpExpr, *FunctionCallExpr, *NumberExpr, *FloatExpr:
 		if e.Right.ReturnType() != TNUMBER {
-			return fmt.Errorf("Syntax Error: %s operator has wrong type of right expression %s", op, exp)
+			if e.Right.ReturnType() == TSTR {
+				rstring = true
+			} else {
+				return fmt.Errorf("Syntax Error: %s operator has wrong type of right expression %s", op, exp)
+			}
 		}
 	case *StringExpr, *FieldExpr:
 		rstring = true

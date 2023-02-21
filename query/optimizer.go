@@ -2,6 +2,7 @@ package query
 
 import (
 	"errors"
+	"fmt"
 )
 
 type Optimizer struct {
@@ -23,10 +24,39 @@ func (o *Optimizer) init() error {
 		return err
 	}
 	o.stmt = stmt
+	o.optimizeExpressions()
 	o.filter = &FilterExec{
 		Ast: stmt.Where,
 	}
 	return nil
+}
+
+func (o *Optimizer) optimizeExpressions() {
+	eo := ExpressionOptimizer{
+		Root: o.stmt.Where.Expr,
+	}
+	o.stmt.Where.Expr = eo.Optimize()
+	for i, field := range o.stmt.Fields {
+		fmt.Println("Before opt", field)
+		eo.Root = field
+		o.stmt.Fields[i] = eo.Optimize()
+		fmt.Println("After opt", o.stmt.Fields[i])
+	}
+}
+
+func (o *Optimizer) findAggrFunc(expr Expression) bool {
+	switch e := expr.(type) {
+	case *BinaryOpExpr:
+		if o.findAggrFunc(e.Left) {
+			return true
+		}
+		if o.findAggrFunc(e.Right) {
+			return true
+		}
+	case *FunctionCallExpr:
+		return IsAggrFuncExpr(expr)
+	}
+	return false
 }
 
 func (o *Optimizer) buildFinalPlan(t Txn, fp Plan) (FinalPlan, error) {
@@ -34,7 +64,7 @@ func (o *Optimizer) buildFinalPlan(t Txn, fp Plan) (FinalPlan, error) {
 	aggrFields := 0
 	aggrAll := true
 	for _, field := range o.stmt.Fields {
-		if IsAggrFuncExpr(field) {
+		if o.findAggrFunc(field) {
 			hasAggr = true
 			aggrFields++
 		}

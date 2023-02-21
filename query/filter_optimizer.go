@@ -124,6 +124,12 @@ func (o *FilterOptimizer) optimizeExpr(expr Expression) *ScanType {
 			// Other operator use FULL
 			return &ScanType{FULL, nil}
 		}
+	case *BoolExpr:
+		// Boolean
+		if e.Bool {
+			return &ScanType{FULL, nil}
+		}
+		return &ScanType{EMPTY, nil}
 	default:
 		// Other expression use FULL
 		return &ScanType{FULL, nil}
