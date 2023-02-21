@@ -275,74 +275,20 @@ func (a *AggregatePlan) next() ([]Column, error) {
 		if col.IsKey {
 			row[i] = col.Value
 		} else {
-			results := []any{}
-			for _, f := range col.Funcs {
+			for i, f := range col.Funcs {
 				val, err := f.Complete()
 				if err != nil {
 					return nil, err
 				}
-				results = append(results, val)
+				col.FuncExprs[i].Result = val
 			}
-			row[i], err = a.executeAggrExpr(col, results)
+			row[i], err = col.Expr.Execute(NewKVP(nil, nil))
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 	return row, nil
-}
-
-func (a *AggregatePlan) executeAggrExpr(col *AggrPlanField, results []any) (any, error) {
-	var (
-		nexpr Expression = nil
-		err   error
-	)
-
-	for i, val := range results {
-		nexpr, err = a.replaceOneResult(i, col, val)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if nexpr == nil {
-		return nil, errors.New("Cannot calculate aggregate function expression")
-	}
-	return nexpr.Execute(NewKVP(nil, nil))
-}
-
-func (a *AggregatePlan) replaceOneResult(idx int, col *AggrPlanField, val any) (Expression, error) {
-	var (
-		funcExpr  = col.FuncExprs[idx]
-		fieldExpr = col.Expr
-		retExpr   Expression
-	)
-	switch nval := val.(type) {
-	case int64:
-		retExpr = &NumberExpr{Data: fmt.Sprintf("%v", nval), Int: nval}
-	case float64:
-		retExpr = &FloatExpr{Data: fmt.Sprintf("%v", nval), Float: nval}
-	case string:
-		retExpr = &StringExpr{Data: nval}
-	case bool:
-		retExpr = &BoolExpr{Data: fmt.Sprintf("%v", nval), Bool: nval}
-	default:
-		return nil, errors.New("Aggregate function return wrong type")
-	}
-	return a.rewriteAggrFunc(fieldExpr, funcExpr, retExpr), nil
-}
-
-func (a *AggregatePlan) rewriteAggrFunc(fieldExpr Expression, funcExpr *FunctionCallExpr, retExpr Expression) Expression {
-	switch e := fieldExpr.(type) {
-	case *FunctionCallExpr:
-		if e.String() == funcExpr.String() {
-			return retExpr
-		}
-	case *BinaryOpExpr:
-		e.Left = a.rewriteAggrFunc(e.Left, funcExpr, retExpr)
-		e.Right = a.rewriteAggrFunc(e.Right, funcExpr, retExpr)
-	}
-	return fieldExpr
 }
 
 func (a *AggregatePlan) getAggrKey(key []byte, val []byte) (string, error) {

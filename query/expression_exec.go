@@ -472,6 +472,9 @@ func (e *NotExpr) Execute(kv KVPair) (any, error) {
 }
 
 func (e *FunctionCallExpr) Execute(kv KVPair) (any, error) {
+	if e.Result != nil {
+		return e.Result, nil
+	}
 	funcObj, err := GetScalarFunction(e)
 	if err != nil {
 		return nil, err

@@ -215,8 +215,9 @@ func (e *NotExpr) ReturnType() Type {
 }
 
 type FunctionCallExpr struct {
-	Name Expression
-	Args []Expression
+	Name   Expression
+	Args   []Expression
+	Result any
 }
 
 func (e *FunctionCallExpr) String() string {
