@@ -2,7 +2,6 @@ package query
 
 import (
 	"errors"
-	"fmt"
 )
 
 type Optimizer struct {
@@ -37,10 +36,10 @@ func (o *Optimizer) optimizeExpressions() {
 	}
 	o.stmt.Where.Expr = eo.Optimize()
 	for i, field := range o.stmt.Fields {
-		fmt.Println("Before opt", field)
+		// fmt.Println("Before opt", field)
 		eo.Root = field
 		o.stmt.Fields[i] = eo.Optimize()
-		fmt.Println("After opt", o.stmt.Fields[i])
+		// fmt.Println("After opt", o.stmt.Fields[i])
 	}
 }
 
