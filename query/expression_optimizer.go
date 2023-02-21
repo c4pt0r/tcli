@@ -59,7 +59,7 @@ func (o *ExpressionOptimizer) tryReorderBinaryOp(e *BinaryOpExpr) {
 	}
 
 	if !leftIsValue && leftIsOp && rightIsValue && !rightIsOp {
-		fmt.Println("DEBUG:", e)
+		// fmt.Println("DEBUG:", e)
 		if leftOpExpr.Op == e.Op {
 			switch rexpr := leftOpExpr.Right.(type) {
 			case *StringExpr, *NumberExpr, *FloatExpr:
@@ -73,7 +73,7 @@ func (o *ExpressionOptimizer) tryReorderBinaryOp(e *BinaryOpExpr) {
 				}
 			}
 		}
-		fmt.Println("DEBUG:", e)
+		// fmt.Println("DEBUG:", e)
 	}
 	return
 }
