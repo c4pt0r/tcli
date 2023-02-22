@@ -183,50 +183,211 @@ func (a *AggregatePlan) prepare() error {
 		kvp := NewKVP(k, v)
 		row, have := a.aggrMap[aggrKey]
 		if !have {
-			row = make([]*AggrPlanField, len(a.aggrFields))
-			for i, r := range a.aggrFields {
-				col := &AggrPlanField{
-					ID:        r.ID,
-					Name:      r.Name,
-					IsKey:     r.IsKey,
-					Expr:      r.Expr,
-					FuncExprs: r.FuncExprs,
-					Funcs:     nil,
-				}
-				if len(r.Funcs) > 0 {
-					for _, f := range r.Funcs {
-						col.Funcs = append(col.Funcs, f.Clone())
-					}
-				}
-				if col.IsKey {
-					exprResult, err := a.execExpr(kvp, col.Expr)
-					if err != nil {
-						return err
-					}
-					col.Value = exprResult
-				}
-				row[i] = col
+			row, err = a.createAggrRow(kvp)
+			if err != nil {
+				return err
 			}
 			a.aggrMap[aggrKey] = row
 			a.aggrRows = append(a.aggrRows, row)
 		}
-		for _, col := range row {
-			if !col.IsKey {
-				fcexprs := col.FuncExprs
-				if len(fcexprs) == 0 {
-					return errors.New("Cannot cast expression to function call expression")
+		err = a.updateRowAggrFunc(row, kvp)
+	}
+	a.prepared = true
+	return nil
+}
+
+func (a *AggregatePlan) prepareBatch() error {
+	for {
+		kvps, err := a.ChildPlan.Batch()
+		if err != nil {
+			return err
+		}
+		if len(kvps) == 0 {
+			break
+		}
+		for _, kvp := range kvps {
+			aggrKey, err := a.getAggrKey(kvp.Key, kvp.Value)
+			if err != nil {
+				return err
+			}
+			row, have := a.aggrMap[aggrKey]
+			if !have {
+				row, err = a.createAggrRow(kvp)
+				if err != nil {
+					return err
 				}
-				for i, fcexpr := range fcexprs {
-					err = col.Funcs[i].Update(kvp, fcexpr.Args)
-					if err != nil {
-						return err
-					}
-				}
+				a.aggrMap[aggrKey] = row
+				a.aggrRows = append(a.aggrRows, row)
+			}
+			err = a.updateRowAggrFunc(row, kvp)
+			if err != nil {
+				return err
 			}
 		}
 	}
 	a.prepared = true
 	return nil
+}
+
+func (a *AggregatePlan) updateRowAggrFunc(row []*AggrPlanField, kvp KVPair) error {
+	for _, col := range row {
+		if col.IsKey {
+			continue
+		}
+		fcexprs := col.FuncExprs
+		if len(fcexprs) == 0 {
+			return errors.New("Cannot cast expression to function call expression")
+		}
+		for i, fcexpr := range fcexprs {
+			err := col.Funcs[i].Update(kvp, fcexpr.Args)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (a *AggregatePlan) createAggrRow(kvp KVPair) ([]*AggrPlanField, error) {
+	row := make([]*AggrPlanField, len(a.aggrFields))
+	for i, r := range a.aggrFields {
+		col := &AggrPlanField{
+			ID:        r.ID,
+			Name:      r.Name,
+			IsKey:     r.IsKey,
+			Expr:      r.Expr,
+			FuncExprs: r.FuncExprs,
+			Funcs:     nil,
+		}
+		if len(r.Funcs) > 0 {
+			for _, f := range r.Funcs {
+				col.Funcs = append(col.Funcs, f.Clone())
+			}
+		}
+		if col.IsKey {
+			exprResult, err := a.execExpr(kvp, col.Expr)
+			if err != nil {
+				return nil, err
+			}
+			col.Value = exprResult
+		}
+		row[i] = col
+	}
+	return row, nil
+}
+
+func (a *AggregatePlan) Batch() ([][]Column, error) {
+	if !a.prepared {
+		err := a.prepareBatch()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if a.Limit < 0 {
+		return a.batch()
+	}
+	var (
+		rows   [][]Column
+		err    error
+		ret    = make([][]Column, 0, PlanBatchSize)
+		finish = false
+		count  = 0
+	)
+	for a.skips < a.Start {
+		restSkips := a.Start - a.skips
+		rows, err = a.batch()
+		if err != nil {
+			return nil, err
+		}
+		nrows := len(rows)
+		if nrows == 0 {
+			return nil, nil
+		}
+		if nrows <= restSkips {
+			a.skips += nrows
+		} else {
+			a.skips += restSkips
+			rows = rows[restSkips:]
+			// Skip finish break is OK
+			break
+		}
+	}
+	if len(rows) > 0 {
+		for _, row := range rows {
+			if a.current >= a.Limit {
+				break
+			}
+			ret = append(ret, row)
+			count++
+			a.current++
+		}
+	}
+	if a.current >= a.Limit {
+		return ret, nil
+	}
+	for !finish {
+		rows, err = a.batch()
+		if err != nil {
+			return nil, err
+		}
+		if len(rows) == 0 {
+			finish = true
+			break
+		}
+		for _, row := range rows {
+			ret = append(ret, row)
+			count++
+			a.current++
+			if a.current >= a.Limit {
+				finish = true
+				break
+			}
+		}
+		if count >= PlanBatchSize {
+			finish = true
+			break
+		}
+	}
+	return ret, nil
+}
+
+func (a *AggregatePlan) batch() ([][]Column, error) {
+	var (
+		err   error
+		ret   = make([][]Column, 0, PlanBatchSize)
+		count = 0
+	)
+	if a.pos >= len(a.aggrRows) {
+		return nil, nil
+	}
+	for count < PlanBatchSize {
+		aggrRow := a.aggrRows[a.pos]
+		a.pos++
+		row := make([]Column, len(a.aggrFields))
+		for i, col := range aggrRow {
+			if col.IsKey {
+				row[i] = col.Value
+			} else {
+				for i, f := range col.Funcs {
+					val, err := f.Complete()
+					if err != nil {
+						return nil, err
+					}
+					col.FuncExprs[i].Result = val
+				}
+				row[i], err = col.Expr.Execute(NewKVP(nil, nil))
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+		ret = append(ret, row)
+		count++
+		if a.pos >= len(a.aggrRows) {
+			break
+		}
+	}
+	return ret, nil
 }
 
 func (a *AggregatePlan) Next() ([]Column, error) {

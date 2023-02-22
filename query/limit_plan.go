@@ -46,6 +46,72 @@ func (p *FinalLimitPlan) Next() ([]Column, error) {
 
 }
 
+func (p *FinalLimitPlan) Batch() ([][]Column, error) {
+	var (
+		rows   [][]Column
+		err    error
+		finish = false
+		count  = 0
+		ret    = make([][]Column, 0, PlanBatchSize)
+	)
+	for p.skips < p.Start {
+		restSkips := p.Start - p.skips
+		rows, err = p.ChildPlan.Batch()
+		if err != nil {
+			return nil, err
+		}
+		nrows := len(rows)
+		if nrows == 0 {
+			return nil, nil
+		}
+		if nrows <= restSkips {
+			p.skips += nrows
+		} else {
+			p.skips += restSkips
+			rows = rows[restSkips:]
+			// Skip finish break is OK
+			break
+		}
+	}
+	if len(rows) > 0 {
+		for _, row := range rows {
+			if p.current >= p.Count {
+				break
+			}
+			ret = append(ret, row)
+			count++
+			p.current++
+		}
+	}
+	if p.current >= p.Count {
+		return ret, nil
+	}
+	for !finish {
+		rows, err = p.ChildPlan.Batch()
+		if err != nil {
+			return nil, err
+		}
+		if len(rows) == 0 {
+			finish = true
+			break
+		}
+		for _, row := range rows {
+			ret = append(ret, row)
+			count++
+			p.current++
+			if p.current >= p.Count {
+				finish = true
+				break
+			}
+		}
+		if count >= PlanBatchSize {
+			finish = true
+			break
+		}
+	}
+	return ret, nil
+}
+
 func (p *FinalLimitPlan) String() string {
 	return fmt.Sprintf("LimitPlan{Start = %d, Count = %d}", p.Start, p.Count)
 }

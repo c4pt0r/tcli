@@ -92,6 +92,29 @@ func (p *FinalOrderPlan) Next() ([]Column, error) {
 	return nil, nil
 }
 
+func (p *FinalOrderPlan) Batch() ([][]Column, error) {
+	if p.total == 0 {
+		if err := p.prepareBatch(); err != nil {
+			return nil, err
+		}
+	}
+	var (
+		ret   = make([][]Column, 0, PlanBatchSize)
+		count = 0
+	)
+	for p.pos < p.total {
+		rrow := heap.Pop(p.sorted)
+		row := rrow.(*orderColumnsRow)
+		ret = append(ret, row.cols)
+		p.pos++
+		count++
+		if count >= PlanBatchSize {
+			break
+		}
+	}
+	return ret, nil
+}
+
 func (p *FinalOrderPlan) prepare() error {
 	for {
 		col, err := p.ChildPlan.Next()
@@ -109,6 +132,29 @@ func (p *FinalOrderPlan) prepare() error {
 		}
 		heap.Push(p.sorted, row)
 		p.total++
+	}
+	return nil
+}
+
+func (p *FinalOrderPlan) prepareBatch() error {
+	for {
+		rows, err := p.ChildPlan.Batch()
+		if err != nil {
+			return err
+		}
+		if len(rows) == 0 {
+			break
+		}
+		for _, cols := range rows {
+			row := &orderColumnsRow{
+				cols:       cols,
+				orders:     p.Orders,
+				orderPos:   p.orderPos,
+				orderTypes: p.orderTypes,
+			}
+			heap.Push(p.sorted, row)
+			p.total++
+		}
 	}
 	return nil
 }

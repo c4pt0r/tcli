@@ -1,10 +1,15 @@
 package query
 
+var (
+	PlanBatchSize = 8
+)
+
 type FinalPlan interface {
 	String() string
 	Explain() []string
 	Init() error
 	Next() ([]Column, error)
+	Batch() ([][]Column, error)
 	FieldNameList() []string
 	FieldTypeList() []Type
 }
@@ -14,6 +19,7 @@ type Plan interface {
 	Explain() []string
 	Init() error
 	Next() (key []byte, value []byte, err error)
+	Batch() (rows []KVPair, err error)
 }
 
 var (
@@ -55,4 +61,8 @@ func (p *EmptyResultPlan) String() string {
 
 func (p *EmptyResultPlan) Explain() []string {
 	return []string{p.String()}
+}
+
+func (p *EmptyResultPlan) Batch() ([]KVPair, error) {
+	return nil, nil
 }

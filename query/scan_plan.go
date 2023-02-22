@@ -56,6 +56,45 @@ func (p *FullScanPlan) Next() ([]byte, []byte, error) {
 	return nil, nil, nil
 }
 
+func (p *FullScanPlan) Batch() ([]KVPair, error) {
+	var (
+		ret         = make([]KVPair, 0, PlanBatchSize)
+		filterBatch = make([]KVPair, 0, PlanBatchSize)
+		count       = 0
+		finish      = false
+	)
+	for !finish {
+		filterBatch = filterBatch[:0]
+		for i := 0; i < PlanBatchSize; i++ {
+			key, val, err := p.iter.Next()
+			if err != nil {
+				return nil, err
+			}
+			if key == nil {
+				finish = true
+				break
+			}
+			filterBatch = append(filterBatch, NewKVP(key, val))
+		}
+		if len(filterBatch) > 0 {
+			matchs, err := p.Filter.FilterBatch(filterBatch)
+			if err != nil {
+				return nil, err
+			}
+			for i, m := range matchs {
+				if m {
+					ret = append(ret, filterBatch[i])
+					count += 1
+				}
+			}
+			if count >= PlanBatchSize {
+				finish = true
+			}
+		}
+	}
+	return ret, nil
+}
+
 type PrefixScanPlan struct {
 	Txn    Txn
 	Filter *FilterExec
@@ -105,6 +144,51 @@ func (p *PrefixScanPlan) Next() ([]byte, []byte, error) {
 		}
 	}
 	return nil, nil, nil
+}
+
+func (p *PrefixScanPlan) Batch() ([]KVPair, error) {
+	var (
+		ret         = make([]KVPair, 0, PlanBatchSize)
+		filterBatch = make([]KVPair, 0, PlanBatchSize)
+		count       = 0
+		finish      = false
+		pb          = []byte(p.Prefix)
+	)
+	for !finish {
+		filterBatch = filterBatch[:0]
+		for i := 0; i < PlanBatchSize; i++ {
+			key, val, err := p.iter.Next()
+			if err != nil {
+				return nil, err
+			}
+			if key == nil {
+				finish = true
+				break
+			}
+			// Key not have the prefix
+			if !bytes.HasPrefix(key, pb) {
+				finish = true
+				break
+			}
+			filterBatch = append(filterBatch, NewKVP(key, val))
+		}
+		if len(filterBatch) > 0 {
+			matchs, err := p.Filter.FilterBatch(filterBatch)
+			if err != nil {
+				return nil, err
+			}
+			for i, m := range matchs {
+				if m {
+					ret = append(ret, filterBatch[i])
+					count += 1
+				}
+			}
+			if count >= PlanBatchSize {
+				finish = true
+			}
+		}
+	}
+	return ret, nil
 }
 
 func (p *PrefixScanPlan) String() string {
@@ -173,6 +257,51 @@ func (p *RangeScanPlan) Next() ([]byte, []byte, error) {
 	return nil, nil, nil
 }
 
+func (p *RangeScanPlan) Batch() ([]KVPair, error) {
+	var (
+		ret         = make([]KVPair, 0, PlanBatchSize)
+		filterBatch = make([]KVPair, 0, PlanBatchSize)
+		count       = 0
+		finish      = false
+	)
+	for !finish {
+		filterBatch = filterBatch[:0]
+		for i := 0; i < PlanBatchSize; i++ {
+			key, val, err := p.iter.Next()
+			if err != nil {
+				return nil, err
+			}
+			if key == nil {
+				finish = true
+				break
+			}
+			// Key is greater than End
+			if p.End != nil && bytes.Compare(key, p.End) > 0 {
+				finish = true
+				break
+			}
+			filterBatch = append(filterBatch, NewKVP(key, val))
+		}
+
+		if len(filterBatch) > 0 {
+			matchs, err := p.Filter.FilterBatch(filterBatch)
+			if err != nil {
+				return nil, err
+			}
+			for i, m := range matchs {
+				if m {
+					ret = append(ret, filterBatch[i])
+					count += 1
+				}
+			}
+			if count >= PlanBatchSize {
+				finish = true
+			}
+		}
+	}
+	return ret, nil
+}
+
 func convertByteToString(val []byte) string {
 	if val == nil {
 		return "<nil>"
@@ -236,6 +365,51 @@ func (p *MultiGetPlan) Next() ([]byte, []byte, error) {
 		}
 	}
 	return nil, nil, nil
+}
+
+func (p *MultiGetPlan) Batch() ([]KVPair, error) {
+	var (
+		ret         = make([]KVPair, 0, PlanBatchSize)
+		filterBatch = make([]KVPair, 0, PlanBatchSize)
+		count       = 0
+		finish      = false
+	)
+	for !finish {
+		filterBatch = filterBatch[:0]
+		for i := 0; i < PlanBatchSize; i++ {
+			if p.idx >= p.numKeys {
+				finish = true
+				break
+			}
+			key := []byte(p.Keys[p.idx])
+			p.idx++
+			val, err := p.Txn.Get(key)
+			if err != nil {
+				return nil, err
+			}
+			if val == nil {
+				// No Value
+				continue
+			}
+			filterBatch = append(filterBatch, NewKVP(key, val))
+		}
+		if len(filterBatch) > 0 {
+			matchs, err := p.Filter.FilterBatch(filterBatch)
+			if err != nil {
+				return nil, err
+			}
+			for i, m := range matchs {
+				if m {
+					ret = append(ret, filterBatch[i])
+					count += 1
+				}
+			}
+		}
+		if count >= PlanBatchSize {
+			finish = true
+		}
+	}
+	return ret, nil
 }
 
 func (p *MultiGetPlan) String() string {

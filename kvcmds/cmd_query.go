@@ -82,23 +82,10 @@ func (c QueryCmd) Handler() func(ctx context.Context) {
 			if err != nil {
 				return err
 			}
-			ret := [][]string{
-				plan.FieldNameList(),
-			}
-			for {
-				cols, err := plan.Next()
-				if err != nil {
-					return err
-				}
-				if cols == nil {
-					break
-				}
-
-				fields := make([]string, len(cols))
-				for i := 0; i < len(cols); i++ {
-					fields[i] = convertColumnToString(cols[i])
-				}
-				ret = append(ret, fields)
+			// ret, err := c.getRows(plan)
+			ret, err := c.getRowsBatch(plan)
+			if err != nil {
+				return err
 			}
 			if len(ret) > 1 {
 				utils.PrintTable(ret)
@@ -109,4 +96,49 @@ func (c QueryCmd) Handler() func(ctx context.Context) {
 			return nil
 		})
 	}
+}
+
+func (c QueryCmd) getRows(plan query.FinalPlan) ([][]string, error) {
+	ret := [][]string{
+		plan.FieldNameList(),
+	}
+	for {
+		cols, err := plan.Next()
+		if err != nil {
+			return nil, err
+		}
+		if cols == nil {
+			break
+		}
+
+		fields := make([]string, len(cols))
+		for i := 0; i < len(cols); i++ {
+			fields[i] = convertColumnToString(cols[i])
+		}
+		ret = append(ret, fields)
+	}
+	return ret, nil
+}
+
+func (c QueryCmd) getRowsBatch(plan query.FinalPlan) ([][]string, error) {
+	ret := [][]string{
+		plan.FieldNameList(),
+	}
+	for {
+		rows, err := plan.Batch()
+		if err != nil {
+			return nil, err
+		}
+		if len(rows) == 0 {
+			break
+		}
+		for _, cols := range rows {
+			fields := make([]string, len(cols))
+			for i := 0; i < len(cols); i++ {
+				fields[i] = convertColumnToString(cols[i])
+			}
+			ret = append(ret, fields)
+		}
+	}
+	return ret, nil
 }
