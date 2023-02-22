@@ -220,7 +220,7 @@ func (o *ExpressionOptimizer) tryOptimizeAndOr(expr Expression) (Expression, boo
 		}
 	}
 
-	if rightIsValue && rightIsValue {
+	if rightIsValue && leftIsValue {
 		switch e.Op {
 		case And:
 			if leftVal && rightVal {

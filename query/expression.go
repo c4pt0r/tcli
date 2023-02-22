@@ -140,6 +140,7 @@ type Expression interface {
 	Check() error
 	String() string
 	Execute(kv KVPair) (any, error)
+	ExecuteBatch(chunk []KVPair) ([]any, error)
 	ReturnType() Type
 }
 

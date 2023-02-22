@@ -9,14 +9,14 @@ import (
 
 var (
 	funcMap = map[string]*Function{
-		"lower":    &Function{"lower", 1, false, TSTR, funcToLower},
-		"upper":    &Function{"upper", 1, false, TSTR, funcToUpper},
-		"int":      &Function{"int", 1, false, TNUMBER, funcToInt},
-		"float":    &Function{"float", 1, false, TNUMBER, funcToFloat},
-		"str":      &Function{"str", 1, false, TSTR, funcToString},
-		"is_int":   &Function{"is_int", 1, false, TBOOL, funcIsInt},
-		"is_float": &Function{"is_float", 1, false, TBOOL, funcIsFloat},
-		"substr":   &Function{"substr", 3, false, TSTR, funcSubStr},
+		"lower":    &Function{"lower", 1, false, TSTR, funcToLower, funcToLowerVec},
+		"upper":    &Function{"upper", 1, false, TSTR, funcToUpper, funcToUpperVec},
+		"int":      &Function{"int", 1, false, TNUMBER, funcToInt, funcToIntVec},
+		"float":    &Function{"float", 1, false, TNUMBER, funcToFloat, funcToFloatVec},
+		"str":      &Function{"str", 1, false, TSTR, funcToString, funcToStringVec},
+		"is_int":   &Function{"is_int", 1, false, TBOOL, funcIsInt, funcIsIntVec},
+		"is_float": &Function{"is_float", 1, false, TBOOL, funcIsFloat, funcIsFloatVec},
+		"substr":   &Function{"substr", 3, false, TSTR, funcSubStr, funcSubStrVec},
 	}
 
 	aggrFuncMap = map[string]*AggrFunc{
@@ -29,6 +29,7 @@ var (
 )
 
 type FunctionBody func(kv KVPair, args []Expression) (any, error)
+type VectorFunctionBody func(chunk []KVPair, args []Expression) ([]any, error)
 
 type Function struct {
 	Name       string
@@ -36,6 +37,7 @@ type Function struct {
 	VarArgs    bool
 	ReturnType Type
 	Body       FunctionBody
+	BodyVec    VectorFunctionBody
 }
 
 type AggrFunc struct {

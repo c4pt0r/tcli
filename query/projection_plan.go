@@ -55,19 +55,35 @@ func (p *ProjectionPlan) Batch() ([][]Column, error) {
 	if len(kvps) == 0 {
 		return nil, nil
 	}
-	ret := make([][]Column, 0, PlanBatchSize)
 	if p.AllFields {
+		ret := make([][]Column, 0, len(kvps))
 		for _, kvp := range kvps {
 			ret = append(ret, []Column{kvp.Key, kvp.Value})
 		}
 		return ret, nil
 	}
-	for _, kvp := range kvps {
-		row, err := p.processProjection(kvp)
+	return p.processProjectionBatch(kvps)
+}
+
+func (p *ProjectionPlan) processProjectionBatch(chunk []KVPair) ([][]Column, error) {
+	var (
+		nFields = len(p.Fields)
+		ret     = make([][]Column, len(chunk))
+		cols    = make([][]any, nFields)
+		err     error
+	)
+	for i := 0; i < nFields; i++ {
+		cols[i], err = p.Fields[i].ExecuteBatch(chunk)
 		if err != nil {
 			return nil, err
 		}
-		ret = append(ret, row)
+	}
+	for i := 0; i < len(chunk); i++ {
+		row := make([]Column, nFields)
+		for j := 0; j < nFields; j++ {
+			row[j] = cols[j][i]
+		}
+		ret[i] = row
 	}
 	return ret, nil
 }

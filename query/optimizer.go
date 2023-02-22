@@ -68,6 +68,23 @@ func (o *Optimizer) buildFinalPlan(t Txn, fp Plan) (FinalPlan, error) {
 			aggrFields++
 		}
 	}
+	if o.stmt.GroupBy != nil && len(o.stmt.Fields) == len(o.stmt.GroupBy.Fields) {
+		allInSelect := true
+		for _, gf := range o.stmt.GroupBy.Fields {
+			gfNameInSelect := false
+			for _, fn := range o.stmt.FieldNames {
+				if fn == gf.Name {
+					gfNameInSelect = true
+					break
+				}
+			}
+			if !gfNameInSelect {
+				allInSelect = false
+				break
+			}
+		}
+		hasAggr = allInSelect
+	}
 	var ffp FinalPlan
 	if !hasAggr {
 		ffp = &ProjectionPlan{

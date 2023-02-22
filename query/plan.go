@@ -1,7 +1,7 @@
 package query
 
 var (
-	PlanBatchSize = 8
+	PlanBatchSize = 32
 )
 
 type FinalPlan interface {

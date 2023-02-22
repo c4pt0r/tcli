@@ -205,21 +205,22 @@ func (a *AggregatePlan) prepareBatch() error {
 		if len(kvps) == 0 {
 			break
 		}
-		for _, kvp := range kvps {
-			aggrKey, err := a.getAggrKey(kvp.Key, kvp.Value)
-			if err != nil {
-				return err
-			}
+		aggrKeys, err := a.batchGetAggrKeys(kvps)
+		if err != nil {
+			return err
+		}
+
+		for i, aggrKey := range aggrKeys {
 			row, have := a.aggrMap[aggrKey]
 			if !have {
-				row, err = a.createAggrRow(kvp)
+				row, err = a.createAggrRow(kvps[i])
 				if err != nil {
 					return err
 				}
 				a.aggrMap[aggrKey] = row
 				a.aggrRows = append(a.aggrRows, row)
 			}
-			err = a.updateRowAggrFunc(row, kvp)
+			err = a.updateRowAggrFunc(row, kvps[i])
 			if err != nil {
 				return err
 			}
@@ -227,6 +228,39 @@ func (a *AggregatePlan) prepareBatch() error {
 	}
 	a.prepared = true
 	return nil
+}
+
+func (a *AggregatePlan) batchGetAggrKeys(chunk []KVPair) ([]string, error) {
+	ret := make([]string, len(chunk))
+	if a.AggrAll {
+		for i := 0; i < len(chunk); i++ {
+			ret[i] = defaultAggrKey
+		}
+		return ret, nil
+	}
+	var (
+		fields = make([][]any, len(a.GroupByFields))
+		aggKey = make([]byte, 0, 10)
+		err    error
+	)
+	for i, f := range a.GroupByFields {
+		fields[i], err = f.Expr.ExecuteBatch(chunk)
+		if err != nil {
+			return nil, err
+		}
+	}
+	for i := 0; i < len(chunk); i++ {
+		aggKey = aggKey[:0]
+		for j := 0; j < len(fields); j++ {
+			bval, err := a.convertToBytes(fields[j][i])
+			if err != nil {
+				return nil, err
+			}
+			aggKey = append(aggKey, bval...)
+		}
+		ret[i] = string(aggKey)
+	}
+	return ret, nil
 }
 
 func (a *AggregatePlan) updateRowAggrFunc(row []*AggrPlanField, kvp KVPair) error {

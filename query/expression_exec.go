@@ -24,14 +24,37 @@ func (e *FilterExec) Explain() string {
 }
 
 func (e *FilterExec) Filter(kvp KVPair) (bool, error) {
-	ret, err := e.FilterBatch([]KVPair{kvp})
+	ret, err := e.filterBatch([]KVPair{kvp})
 	if err != nil {
 		return false, err
 	}
 	return ret[0], nil
 }
 
-func (e *FilterExec) FilterBatch(kvps []KVPair) ([]bool, error) {
+func (e *FilterExec) FilterBatch(chunk []KVPair) ([]bool, error) {
+	// return e.filterBatch(chunk)
+	return e.filterChunk(chunk)
+}
+
+func (e *FilterExec) filterChunk(chunk []KVPair) ([]bool, error) {
+	result, err := e.Ast.Expr.ExecuteBatch(chunk)
+	if err != nil {
+		return nil, err
+	}
+	var (
+		ret = make([]bool, len(result))
+		ok  bool
+	)
+	for i := 0; i < len(result); i++ {
+		ret[i], ok = result[i].(bool)
+		if !ok {
+			return nil, errors.New("Expression result is not boolean")
+		}
+	}
+	return ret, nil
+}
+
+func (e *FilterExec) filterBatch(kvps []KVPair) ([]bool, error) {
 	ret := make([]bool, len(kvps))
 	for idx, kvp := range kvps {
 		result, err := e.Ast.Expr.Execute(kvp)

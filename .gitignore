@@ -16,3 +16,4 @@
 bin/
 .idea/
 release
+*.pprof
