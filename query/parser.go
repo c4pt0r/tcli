@@ -380,14 +380,6 @@ func (p *Parser) parseSelect() (*SelectStmt, error) {
 		fieldNames = []string{fields[0].String(), fields[1].String()}
 	}
 
-	if len(fields) > 0 {
-		for _, f := range fields {
-			if err := f.Check(); err != nil {
-				return nil, err
-			}
-		}
-	}
-
 	return &SelectStmt{
 		Fields:     fields,
 		FieldNames: fieldNames,
@@ -690,5 +682,6 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 	selectStmt.Limit = limitStmt
 	selectStmt.Order = orderStmt
 	selectStmt.GroupBy = groupByStmt
-	return selectStmt, nil
+	err = selectStmt.ValidateFields()
+	return selectStmt, err
 }
