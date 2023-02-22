@@ -44,7 +44,7 @@ func (p *ProjectionPlan) Next() ([]Column, error) {
 	if p.AllFields {
 		return []Column{k, v}, nil
 	}
-	return p.processProjection(k, v)
+	return p.processProjection(NewKVP(k, v))
 }
 
 func (p *ProjectionPlan) Batch() ([][]Column, error) {
@@ -63,7 +63,7 @@ func (p *ProjectionPlan) Batch() ([][]Column, error) {
 		return ret, nil
 	}
 	for _, kvp := range kvps {
-		row, err := p.processProjection(kvp.Key, kvp.Value)
+		row, err := p.processProjection(kvp)
 		if err != nil {
 			return nil, err
 		}
@@ -72,10 +72,9 @@ func (p *ProjectionPlan) Batch() ([][]Column, error) {
 	return ret, nil
 }
 
-func (p *ProjectionPlan) processProjection(key []byte, value []byte) ([]Column, error) {
+func (p *ProjectionPlan) processProjection(kvp KVPair) ([]Column, error) {
 	nFields := len(p.Fields)
 	ret := make([]Column, nFields)
-	kvp := NewKVP(key, value)
 	for i := 0; i < nFields; i++ {
 		result, err := p.Fields[i].Execute(kvp)
 		if err != nil {
