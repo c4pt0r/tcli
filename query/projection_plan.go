@@ -21,7 +21,7 @@ func (p *ProjectionPlan) Init() error {
 
 func (p *ProjectionPlan) FieldNameList() []string {
 	if p.AllFields {
-		return []string{"Key", "Value"}
+		return []string{"KEY", "VALUE"}
 	}
 	return p.FieldNames
 }

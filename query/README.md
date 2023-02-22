@@ -15,9 +15,10 @@ Select Statement:
 ```
 SelectStmt ::= "SELECT" Fields "WHERE" WhereConditions ("ORDER" "BY" OrderByFields)? ("GROUP" "BY" GroupByFields)? ("LIMIT" LimitParameter)?
 
-Fields ::= Field (, Field)?
+Fields ::= Field (, Field)* |
+           "*"
 
-Field ::= Expression ("AS" FieldName)*
+Field ::= Expression ("AS" FieldName)?
 
 FieldName ::= String
 
@@ -58,3 +59,11 @@ FunctionArgs ::= FunctionArg ("," FunctionArg)*
 
 FunctionArg ::= Expression
 ```
+
+Features:
+
+1. Scan ranger optimize: EmptyResult, PrefixScan, RangeScan, MultiGet
+2. Plan support Volcano model and Batch model
+3. Expression constant folding
+4. Support scalar function and aggregate function
+5. Support hash aggregate plan
