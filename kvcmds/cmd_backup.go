@@ -81,8 +81,8 @@ func (c BackupCmd) Handler() func(ctx context.Context) {
 			csvWriter.Write([]string{"Key", "Value"})
 
 			opt := properties.NewProperties()
-			if len(ic.Args) > 1 {
-				err := utils.SetOptByString(ic.Args[1:], opt)
+			if len(ic.Args) > 2 {
+				err := utils.SetOptByString(ic.Args[2:], opt)
 				if err != nil {
 					return err
 				}
