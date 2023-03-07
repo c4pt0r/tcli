@@ -87,4 +87,5 @@ q select count(1), sum(int(value)) as sum, substr(key, 0, 2) as kprefix where ke
 
 # JSON access
 q select key, json(value)['x']['y'] where key ^= 'k' & int(json(value)['test']) >= 1
+q select key, json(value)['list'][1] where key ^= 'k'
 ```
