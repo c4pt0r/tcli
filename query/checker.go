@@ -258,16 +258,24 @@ func (e *ListExpr) Check() error {
 }
 
 func (e *FieldAccessExpr) Check() error {
+	_, leftIsFAE := e.Left.(*FieldAccessExpr)
 	if e.Left.ReturnType() != TJSON {
 		// Support cascade field access such as:
 		// json(value)['x']['y']
-		if _, ok := e.Left.(*FieldAccessExpr); ok {
+		if leftIsFAE {
 			return nil
 		}
 		return fmt.Errorf("Syntax Error: field access expression left not JSON type")
 	}
-	if _, ok := e.FieldName.(*StringExpr); !ok {
-		return fmt.Errorf("Syntax Error: invalid field name in field access expression")
+	switch e.FieldName.(type) {
+	case *StringExpr:
+		return nil
+	case *NumberExpr:
+		// Support cascade array index access such as:
+		// json(value)['list'][1]
+		if leftIsFAE {
+			return nil
+		}
 	}
-	return nil
+	return fmt.Errorf("Syntax Error: invalid field name in field access expression")
 }

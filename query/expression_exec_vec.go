@@ -555,22 +555,26 @@ func (e *FieldAccessExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	fnameExpr, ok := e.FieldName.(*StringExpr)
-	if !ok {
-		return nil, fmt.Errorf("Invalid field name")
+	switch fnval := e.FieldName.(type) {
+	case *StringExpr:
+		return e.execDictAccessBatch(fnval.Data, left)
+	case *NumberExpr:
+		return e.execListAccessBatch(int(fnval.Int), left)
 	}
-	fname := fnameExpr.Data
+	return nil, fmt.Errorf("Invalid field name")
+}
 
-	for i := 0; i < len(chunk); i++ {
+func (e *FieldAccessExpr) execDictAccessBatch(fieldName string, left []any) ([]any, error) {
+	for i := 0; i < len(left); i++ {
 		var (
 			fval any
 			have bool
 		)
 		switch lval := left[i].(type) {
 		case map[string]any:
-			fval, have = lval[fname]
+			fval, have = lval[fieldName]
 		case JSON:
-			fval, have = lval[fname]
+			fval, have = lval[fieldName]
 		case string:
 			if lval == "" {
 				have = false
@@ -579,6 +583,37 @@ func (e *FieldAccessExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
 			}
 		default:
 			return nil, fmt.Errorf("Invalid left type not JSON")
+		}
+		if !have {
+			left[i] = ""
+		} else {
+			left[i] = fval
+		}
+	}
+	return left, nil
+}
+
+func (e *FieldAccessExpr) execListAccessBatch(idx int, left []any) ([]any, error) {
+	for i := 0; i < len(left); i++ {
+		var (
+			fval any
+			have bool
+		)
+		switch lval := left[i].(type) {
+		case []any:
+			lvallen := len(lval)
+			if idx < lvallen {
+				have = true
+				fval = lval[idx]
+			}
+		case string:
+			if lval == "" {
+				have = false
+			} else {
+				return nil, fmt.Errorf("Invalid left type not List")
+			}
+		default:
+			return nil, fmt.Errorf("Invalid left type not List")
 		}
 		if !have {
 			left[i] = ""

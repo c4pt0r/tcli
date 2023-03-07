@@ -539,20 +539,25 @@ func (e *FieldAccessExpr) Execute(kv KVPair) (any, error) {
 		return nil, err
 	}
 
-	fnameExpr, ok := e.FieldName.(*StringExpr)
-	if !ok {
-		return nil, fmt.Errorf("Invalid field name")
+	switch fnval := e.FieldName.(type) {
+	case *StringExpr:
+		return e.execDictAccess(fnval.Data, left)
+	case *NumberExpr:
+		return e.execListAccess(int(fnval.Int), left)
 	}
-	fname := fnameExpr.Data
+	return nil, fmt.Errorf("Invalid field name")
+}
+
+func (e *FieldAccessExpr) execDictAccess(fieldName string, left any) (any, error) {
 	var (
 		fval any
 		have bool
 	)
 	switch lval := left.(type) {
 	case map[string]any:
-		fval, have = lval[fname]
+		fval, have = lval[fieldName]
 	case JSON:
-		fval, have = lval[fname]
+		fval, have = lval[fieldName]
 	case string:
 		if lval == "" {
 			have = false
@@ -561,6 +566,33 @@ func (e *FieldAccessExpr) Execute(kv KVPair) (any, error) {
 		}
 	default:
 		return nil, fmt.Errorf("Invalid left type not JSON")
+	}
+	if !have {
+		return "", nil
+	}
+	return fval, nil
+}
+
+func (e *FieldAccessExpr) execListAccess(idx int, left any) (any, error) {
+	var (
+		fval any
+		have bool
+	)
+	switch lval := left.(type) {
+	case []any:
+		lvallen := len(lval)
+		if idx < lvallen {
+			have = true
+			fval = lval[idx]
+		}
+	case string:
+		if lval == "" {
+			have = false
+		} else {
+			return nil, fmt.Errorf("Invalid left type not List")
+		}
+	default:
+		return nil, fmt.Errorf("Invalid left type not List")
 	}
 	if !have {
 		return "", nil
