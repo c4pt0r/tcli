@@ -52,7 +52,7 @@ CompareOperator ::= "=" | "!=" | "^=" | "~=" | ">" | ">=" | "<" | "<="
 KeyValueField ::= "KEY" | "VALUE"
 
 FunctionCall ::= FunctionName "(" FunctionArgs ")" |
-					FunctionName "(" FunctionArgs ")" FieldAccessExpression*
+				 FunctionName "(" FunctionArgs ")" FieldAccessExpression*
 
 FunctionName ::= String
 
@@ -60,7 +60,8 @@ FunctionArgs ::= FunctionArg ("," FunctionArg)*
 
 FunctionArg ::= Expression
 
-FieldAccessExpression ::= "[" String "]"
+FieldAccessExpression ::= "[" String "]" |
+					      "[" Number "]"
 ```
 
 Features:
