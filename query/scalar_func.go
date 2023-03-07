@@ -1,7 +1,9 @@
 package query
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -126,4 +128,20 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+type JSON map[string]any
+
+func funcJson(kv KVPair, args []Expression) (any, error) {
+	rarg, err := args[0].Execute(kv)
+	if err != nil {
+		return nil, err
+	}
+	jsonData, ok := convertToByteArray(rarg)
+	if !ok {
+		return nil, fmt.Errorf("Cannot convert to byte array")
+	}
+	ret := make(JSON)
+	json.Unmarshal(jsonData, &ret)
+	return ret, nil
 }

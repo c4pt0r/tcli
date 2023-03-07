@@ -532,3 +532,38 @@ func (e *BoolExpr) Execute(kv KVPair) (any, error) {
 func (e *ListExpr) Execute(kv KVPair) (any, error) {
 	return e.List, nil
 }
+
+func (e *FieldAccessExpr) Execute(kv KVPair) (any, error) {
+	left, err := e.Left.Execute(kv)
+	if err != nil {
+		return nil, err
+	}
+
+	fnameExpr, ok := e.FieldName.(*StringExpr)
+	if !ok {
+		return nil, fmt.Errorf("Invalid field name")
+	}
+	fname := fnameExpr.Data
+	var (
+		fval any
+		have bool
+	)
+	switch lval := left.(type) {
+	case map[string]any:
+		fval, have = lval[fname]
+	case JSON:
+		fval, have = lval[fname]
+	case string:
+		if lval == "" {
+			have = false
+		} else {
+			return nil, fmt.Errorf("Invalid left type not JSON")
+		}
+	default:
+		return nil, fmt.Errorf("Invalid left type not JSON")
+	}
+	if !have {
+		return "", nil
+	}
+	return fval, nil
+}

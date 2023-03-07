@@ -63,7 +63,7 @@ func (e *BinaryOpExpr) checkWithMath() error {
 				return fmt.Errorf("Syntax Error: %s operator has wrong type of left expression %s", op, exp)
 			}
 		}
-	case *StringExpr, *FieldExpr:
+	case *StringExpr, *FieldExpr, *FieldAccessExpr:
 		lstring = true
 	default:
 		return fmt.Errorf("Syntax Error: %s operator with invalid left expression %s", op, exp)
@@ -78,7 +78,7 @@ func (e *BinaryOpExpr) checkWithMath() error {
 				return fmt.Errorf("Syntax Error: %s operator has wrong type of right expression %s", op, exp)
 			}
 		}
-	case *StringExpr, *FieldExpr:
+	case *StringExpr, *FieldExpr, *FieldAccessExpr:
 		rstring = true
 	default:
 		return fmt.Errorf("Syntax Error: %s operator with invalid right expression %s", op, exp)
@@ -113,7 +113,7 @@ func (e *BinaryOpExpr) checkWithCompares() error {
 		}
 	case *FunctionCallExpr:
 		numCallExpr++
-	case *StringExpr, *BoolExpr, *NumberExpr, *FloatExpr, *BinaryOpExpr:
+	case *StringExpr, *BoolExpr, *NumberExpr, *FloatExpr, *BinaryOpExpr, *FieldAccessExpr:
 	default:
 		return fmt.Errorf("Syntax Error: %s operator with invalid left expression", op)
 	}
@@ -128,7 +128,7 @@ func (e *BinaryOpExpr) checkWithCompares() error {
 		}
 	case *FunctionCallExpr:
 		numCallExpr++
-	case *StringExpr, *BoolExpr, *NumberExpr, *FloatExpr, *BinaryOpExpr:
+	case *StringExpr, *BoolExpr, *NumberExpr, *FloatExpr, *BinaryOpExpr, *FieldAccessExpr:
 	default:
 		return fmt.Errorf("Syntax Error: %s operator with invalid right expression", op)
 	}
@@ -253,6 +253,21 @@ func (e *ListExpr) Check() error {
 				return fmt.Errorf("Syntax Error: List %d item has wrong type", i)
 			}
 		}
+	}
+	return nil
+}
+
+func (e *FieldAccessExpr) Check() error {
+	if e.Left.ReturnType() != TJSON {
+		// Support cascade field access such as:
+		// json(value)['x']['y']
+		if _, ok := e.Left.(*FieldAccessExpr); ok {
+			return nil
+		}
+		return fmt.Errorf("Syntax Error: field access expression left not JSON type")
+	}
+	if _, ok := e.FieldName.(*StringExpr); !ok {
+		return fmt.Errorf("Syntax Error: invalid field name in field access expression")
 	}
 	return nil
 }

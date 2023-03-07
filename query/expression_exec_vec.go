@@ -549,3 +549,42 @@ func (e *FunctionCallExpr) executeFuncBatch(funcObj *Function, chunk []KVPair) (
 	}
 	return ret, nil
 }
+
+func (e *FieldAccessExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
+	left, err := e.Left.ExecuteBatch(chunk)
+	if err != nil {
+		return nil, err
+	}
+	fnameExpr, ok := e.FieldName.(*StringExpr)
+	if !ok {
+		return nil, fmt.Errorf("Invalid field name")
+	}
+	fname := fnameExpr.Data
+
+	for i := 0; i < len(chunk); i++ {
+		var (
+			fval any
+			have bool
+		)
+		switch lval := left[i].(type) {
+		case map[string]any:
+			fval, have = lval[fname]
+		case JSON:
+			fval, have = lval[fname]
+		case string:
+			if lval == "" {
+				have = false
+			} else {
+				return nil, fmt.Errorf("Invalid left type not JSON")
+			}
+		default:
+			return nil, fmt.Errorf("Invalid left type not JSON")
+		}
+		if !have {
+			left[i] = ""
+		} else {
+			left[i] = fval
+		}
+	}
+	return left, nil
+}

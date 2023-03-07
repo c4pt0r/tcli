@@ -194,6 +194,35 @@ func (p *Parser) parseFuncCall(fun Expression) (Expression, error) {
 	return &FunctionCallExpr{Name: fun, Args: list}, nil
 }
 
+func (p *Parser) parseFieldAccess(left Expression) (Expression, error) {
+	err := p.expect(&Token{Tp: LBRACK, Data: "["})
+	if err != nil {
+		return nil, err
+	}
+	p.exprLev++
+	var fieldNames []Expression
+	for p.tok != nil && p.tok.Tp != RBRACK {
+		arg, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
+		fieldNames = append(fieldNames, arg)
+		if p.tok != nil && p.tok.Tp == RBRACK {
+			break
+		}
+		p.next()
+	}
+	p.exprLev--
+	err = p.expect(&Token{Tp: RBRACK, Data: "]"})
+	if err != nil {
+		return nil, err
+	}
+	if len(fieldNames) != 1 {
+		return nil, fmt.Errorf("Field access operator should only have one field name")
+	}
+	return &FieldAccessExpr{Left: left, FieldName: fieldNames[0]}, nil
+}
+
 func (p *Parser) parseList() (Expression, error) {
 	err := p.expect(&Token{Tp: LPAREN, Data: "("})
 	if err != nil {
@@ -259,6 +288,11 @@ func (p *Parser) parsePrimaryExpr(x Expression) (Expression, error) {
 		switch p.tok.Tp {
 		case LPAREN:
 			x, err = p.parseFuncCall(x)
+			if err != nil {
+				return nil, err
+			}
+		case LBRACK:
+			x, err = p.parseFieldAccess(x)
 			if err != nil {
 				return nil, err
 			}

@@ -33,6 +33,8 @@ const (
 	IN       TokenType = 22
 	BETWEEN  TokenType = 23
 	AND      TokenType = 24
+	LBRACK   TokenType = 25
+	RBRACK   TokenType = 26
 )
 
 var (
@@ -61,6 +63,8 @@ var (
 		IN:       "IN",
 		BETWEEN:  "BETWEEN",
 		AND:      "AND",
+		LBRACK:   "[",
+		RBRACK:   "]",
 	}
 )
 
@@ -262,7 +266,7 @@ func (l *Lexer) Split() []*Token {
 			}
 			tokStartPos = i + 1
 			tokStart = i + 1
-		case '&', '|', '(', ')':
+		case '&', '|', '(', ')', '[', ']':
 			if strStart {
 				tokLen++
 				break
@@ -281,6 +285,18 @@ func (l *Lexer) Split() []*Token {
 			} else if char == ')' {
 				token = &Token{
 					Tp:   RPAREN,
+					Data: string(char),
+					Pos:  i,
+				}
+			} else if char == '[' {
+				token = &Token{
+					Tp:   LBRACK,
+					Data: string(char),
+					Pos:  i,
+				}
+			} else if char == ']' {
+				token = &Token{
+					Tp:   RBRACK,
 					Data: string(char),
 					Pos:  i,
 				}

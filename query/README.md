@@ -51,13 +51,16 @@ CompareOperator ::= "=" | "!=" | "^=" | "~=" | ">" | ">=" | "<" | "<="
 
 KeyValueField ::= "KEY" | "VALUE"
 
-FunctionCall ::= FunctionName "(" FunctionArgs ")"
+FunctionCall ::= FunctionName "(" FunctionArgs ")" |
+					FunctionName "(" FunctionArgs ")" FieldAccessExpression*
 
 FunctionName ::= String
 
 FunctionArgs ::= FunctionArg ("," FunctionArg)*
 
 FunctionArg ::= Expression
+
+FieldAccessExpression ::= "[" String "]"
 ```
 
 Features:
@@ -67,3 +70,20 @@ Features:
 3. Expression constant folding
 4. Support scalar function and aggregate function
 5. Support hash aggregate plan
+6. Support JSON and field access expression
+
+Examples:
+
+```
+# Simple query
+q select * where key ^= 'k'
+
+# Projection and complex condition
+q select key, int(value) + 1 where key in ('k1', 'k2', 'k3') & is_int(value)
+
+# Aggregation query
+q select count(1), sum(int(value)) as sum, substr(key, 0, 2) as kprefix where key between 'k' and 'l' group by kprefix order by sum desc
+
+# JSON access
+q select key, json(value)['x']['y'] where key ^= 'k' & int(json(value)['test']) >= 1
+```

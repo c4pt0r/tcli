@@ -47,6 +47,7 @@ const (
 	TNUMBER  Type = 3
 	TIDENT   Type = 4
 	TLIST    Type = 5
+	TJSON    Type = 6
 )
 
 var (
@@ -134,6 +135,7 @@ var (
 	_ Expression = (*FloatExpr)(nil)
 	_ Expression = (*BoolExpr)(nil)
 	_ Expression = (*ListExpr)(nil)
+	_ Expression = (*FieldAccessExpr)(nil)
 )
 
 type Expression interface {
@@ -196,7 +198,7 @@ type StringExpr struct {
 }
 
 func (e *StringExpr) String() string {
-	return fmt.Sprintf("`%s`", e.Data)
+	return fmt.Sprintf("'%s'", e.Data)
 }
 
 func (e *StringExpr) ReturnType() Type {
@@ -331,4 +333,19 @@ func (e *ListExpr) String() string {
 
 func (e *ListExpr) ReturnType() Type {
 	return TLIST
+}
+
+type FieldAccessExpr struct {
+	Left      Expression
+	FieldName Expression
+}
+
+func (e *FieldAccessExpr) String() string {
+	left := e.Left.String()
+	fname := e.FieldName.String()
+	return fmt.Sprintf("%s[%s]", left, fname)
+}
+
+func (e *FieldAccessExpr) ReturnType() Type {
+	return TSTR
 }

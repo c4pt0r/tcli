@@ -17,6 +17,7 @@ var (
 		"is_int":   &Function{"is_int", 1, false, TBOOL, funcIsInt, funcIsIntVec},
 		"is_float": &Function{"is_float", 1, false, TBOOL, funcIsFloat, funcIsFloatVec},
 		"substr":   &Function{"substr", 3, false, TSTR, funcSubStr, funcSubStrVec},
+		"json":     &Function{"json", 1, false, TJSON, funcJson, funcJsonVec},
 	}
 
 	aggrFuncMap = map[string]*AggrFunc{
@@ -174,12 +175,24 @@ func toInt(value any, defVal int64) int64 {
 			}
 			return defVal
 		}
-	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+	case int8, int16, uint8, uint16:
 		if ret, err := strconv.ParseInt(fmt.Sprintf("%d", val), 10, 64); err == nil {
 			return ret
 		} else {
 			return defVal
 		}
+	case int:
+		return int64(val)
+	case uint:
+		return int64(val)
+	case int32:
+		return int64(val)
+	case uint32:
+		return int64(val)
+	case int64:
+		return val
+	case uint64:
+		return int64(val)
 	case float32:
 		return int64(val)
 	case float64:
@@ -203,12 +216,24 @@ func toFloat(value any, defVal float64) float64 {
 		} else {
 			return defVal
 		}
-	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+	case int8, int16, uint8, uint16:
 		if ret, err := strconv.ParseFloat(fmt.Sprintf("%d", val), 64); err == nil {
 			return ret
 		} else {
 			return defVal
 		}
+	case int:
+		return float64(val)
+	case uint:
+		return float64(val)
+	case int32:
+		return float64(val)
+	case uint32:
+		return float64(val)
+	case int64:
+		return float64(val)
+	case uint64:
+		return float64(val)
 	case float32:
 		return float64(val)
 	case float64:

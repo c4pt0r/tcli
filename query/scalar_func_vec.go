@@ -1,7 +1,9 @@
 package query
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -160,6 +162,23 @@ func funcSubStrVec(chunk []KVPair, args []Expression) ([]any, error) {
 			length = min(length, vlen-start)
 			values[i] = val[start:length]
 		}
+	}
+	return values, nil
+}
+
+func funcJsonVec(chunk []KVPair, args []Expression) ([]any, error) {
+	values, err := args[0].ExecuteBatch(chunk)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < len(chunk); i++ {
+		val, ok := convertToByteArray(values[i])
+		if !ok {
+			return nil, fmt.Errorf("Cannot convert to byte array")
+		}
+		item := make(JSON)
+		json.Unmarshal(val, &item)
+		values[i] = item
 	}
 	return values, nil
 }
