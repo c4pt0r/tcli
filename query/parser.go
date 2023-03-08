@@ -58,7 +58,7 @@ func (p *Parser) expect(tok *Token) error {
 		return NewSyntaxError(-1, "Expect token %s but got EOF", tok.Data)
 	}
 	if p.tok.Tp != tok.Tp {
-		return NewSyntaxError(tok.Pos, "Expect token %s bug got %s", tok.Data, p.tok.Data)
+		return NewSyntaxError(p.tok.Pos, "Expect token %s bug got %s", tok.Data, p.tok.Data)
 	}
 	p.next()
 	return nil
@@ -464,15 +464,17 @@ func (p *Parser) parseLimit() (*LimitStmt, error) {
 		}
 	}
 	if len(exprs) > 2 {
+		if p.tok == nil {
+			return nil, NewSyntaxError(-1, "Too many limit parameters")
+		}
 		return nil, NewSyntaxError(p.tok.Pos, "Too many limit parameters")
 	}
 	switch len(exprs) {
 	case 0:
 		if p.tok == nil {
 			return nil, NewSyntaxError(-1, "Invalid limit parameters")
-		} else {
-			return nil, NewSyntaxError(p.tok.Pos, "Invalid limit parameters")
 		}
+		return nil, NewSyntaxError(p.tok.Pos, "Invalid limit parameters")
 	case 1:
 		ret.Count = int(exprs[0].Int)
 	case 2:

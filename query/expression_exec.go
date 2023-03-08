@@ -279,7 +279,7 @@ func (e *BinaryOpExpr) execMath(kv KVPair, op byte) (any, error) {
 	if err != nil {
 		return false, err
 	}
-	return executeMathOp(left, right, op)
+	return executeMathOp(left, right, op, e.Right)
 }
 
 func (e *BinaryOpExpr) execNumberCompare(kv KVPair, op string) (any, error) {

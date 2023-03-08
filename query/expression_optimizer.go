@@ -133,9 +133,19 @@ func (o *ExpressionOptimizer) tryOptimizeBinaryOpExecute(e *BinaryOpExpr) (Expre
 			case *StringExpr:
 				return &StringExpr{Pos: leftPos, Data: ret.(string)}, true
 			case *NumberExpr:
-				return &NumberExpr{Pos: leftPos, Data: fmt.Sprintf("%v", ret), Int: ret.(int64)}, true
+				switch cret := ret.(type) {
+				case int64:
+					return &NumberExpr{Pos: leftPos, Data: fmt.Sprintf("%v", cret), Int: cret}, true
+				case float64:
+					return &NumberExpr{Pos: leftPos, Data: fmt.Sprintf("%v", int64(cret)), Int: int64(cret)}, true
+				}
 			case *FloatExpr:
-				return &FloatExpr{Pos: leftPos, Data: fmt.Sprintf("%v", ret), Float: ret.(float64)}, true
+				switch cret := ret.(type) {
+				case int64:
+					return &FloatExpr{Pos: leftPos, Data: fmt.Sprintf("%v", float64(cret)), Float: float64(cret)}, true
+				case float64:
+					return &FloatExpr{Pos: leftPos, Data: fmt.Sprintf("%v", cret), Float: cret}, true
+				}
 			}
 		}
 	case And, Or:

@@ -88,6 +88,18 @@ func (e *BinaryOpExpr) checkWithMath() error {
 			return NewSyntaxError(e.Right.GetPos(), "%s operator with invalid right expression %s", op, e.Left)
 		}
 	}
+	if op == "/" {
+		switch rval := e.Right.(type) {
+		case *NumberExpr:
+			if rval.Int == 0 {
+				return NewSyntaxError(e.Right.GetPos(), "/ operator divide by zero")
+			}
+		case *FloatExpr:
+			if rval.Float == 0.0 {
+				return NewSyntaxError(e.Right.GetPos(), "/ operator divide by zero")
+			}
+		}
+	}
 	return nil
 }
 

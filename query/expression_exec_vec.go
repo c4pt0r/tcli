@@ -316,7 +316,7 @@ func (e *BinaryOpExpr) execMathBatch(chunk []KVPair, op byte) ([]any, error) {
 		return nil, err
 	}
 	for i := 0; i < len(chunk); i++ {
-		val, err := executeMathOp(rleft[i], rright[i], op)
+		val, err := executeMathOp(rleft[i], rright[i], op, e.Right)
 		if err != nil {
 			return nil, err
 		}
