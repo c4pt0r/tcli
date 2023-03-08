@@ -276,31 +276,32 @@ func (l *Lexer) Split() []*Token {
 			if token != nil {
 				ret = append(ret, token)
 			}
-			if char == '(' {
+			switch char {
+			case '(':
 				token = &Token{
 					Tp:   LPAREN,
 					Data: string(char),
 					Pos:  i,
 				}
-			} else if char == ')' {
+			case ')':
 				token = &Token{
 					Tp:   RPAREN,
 					Data: string(char),
 					Pos:  i,
 				}
-			} else if char == '[' {
+			case '[':
 				token = &Token{
 					Tp:   LBRACK,
 					Data: string(char),
 					Pos:  i,
 				}
-			} else if char == ']' {
+			case ']':
 				token = &Token{
 					Tp:   RBRACK,
 					Data: string(char),
 					Pos:  i,
 				}
-			} else {
+			default:
 				token = &Token{
 					Tp:   OPERATOR,
 					Data: string(char),
