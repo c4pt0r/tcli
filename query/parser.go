@@ -2,14 +2,6 @@ package query
 
 import (
 	"errors"
-	"fmt"
-)
-
-var (
-	ErrSyntaxStartWhere       = errors.New("Syntax Error: not start with `where`")
-	ErrSyntaxEmptyFields      = errors.New("Syntax Error: empty select fields")
-	ErrSyntaxInvalidFields    = errors.New("Syntax Error: invalid fields")
-	ErrSyntaxInvalidFieldName = errors.New("Syntax Error: invalid field name")
 )
 
 const MaxNestLevel = 1e5
@@ -63,10 +55,10 @@ func (p *Parser) next() *Token {
 
 func (p *Parser) expect(tok *Token) error {
 	if p.tok == nil {
-		return fmt.Errorf("Expect token %s but got EOF", tok.Data)
+		return NewSyntaxError(tok.Pos, "Expect token %s but got EOF", tok.Data)
 	}
 	if p.tok.Tp != tok.Tp {
-		return fmt.Errorf("Expect token %s but got %s", tok.Data, p.tok.Data)
+		return NewSyntaxError(tok.Pos, "Expect token %s bug got %s", tok.Data, p.tok.Data)
 	}
 	p.next()
 	return nil
@@ -89,7 +81,7 @@ func (p *Parser) expectOp() (*Token, error) {
 	case OPERATOR:
 		return p.tok, nil
 	}
-	return nil, errors.New("Expect operator but got not operator")
+	return nil, NewSyntaxError(p.tok.Pos, "Expect operator but got %s", p.tok.Data)
 }
 
 func (p *Parser) parseExpr() (Expression, error) {
@@ -131,20 +123,20 @@ func (p *Parser) parseBinaryExpr(x Expression, prec1 int) (Expression, error) {
 		)
 		switch opTok.Data {
 		case "in":
-			y, err = p.parseList()
+			y, err = p.parseList(opTok.Pos)
 		case "between":
-			y, err = p.parseBetween(oprec + 1)
+			y, err = p.parseBetween(opTok.Pos, oprec+1)
 		default:
 			y, err = p.parseBinaryExpr(nil, oprec+1)
 		}
 		if err != nil {
 			return nil, err
 		}
-		op, err := BuildOp(opTok.Data)
+		op, err := BuildOp(opTok.Pos, opTok.Data)
 		if err != nil {
 			return nil, err
 		}
-		x = &BinaryOpExpr{Op: op, Left: x, Right: y}
+		x = &BinaryOpExpr{Pos: opTok.Pos, Op: op, Left: x, Right: y}
 	}
 }
 
@@ -162,7 +154,7 @@ func (p *Parser) parseUnaryExpr() (Expression, error) {
 			if err != nil {
 				return nil, err
 			}
-			return &NotExpr{Right: x}, nil
+			return &NotExpr{Pos: p.tok.Pos, Right: x}, nil
 		}
 	}
 	return p.parsePrimaryExpr(nil)
@@ -187,7 +179,7 @@ func (p *Parser) parseFuncCall(fun Expression) (Expression, error) {
 			} else if p.tok.Tp == SEP && p.tok.Data == "," {
 				// Correct do nothing
 			} else {
-				return nil, fmt.Errorf("Syntax Error: function argument expect `,` or  `)`")
+				return nil, NewSyntaxError(p.tok.Pos, "Function argument expect `,` or `)` but got %s", p.tok.Data)
 			}
 		}
 		p.next()
@@ -197,10 +189,10 @@ func (p *Parser) parseFuncCall(fun Expression) (Expression, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &FunctionCallExpr{Name: fun, Args: list}, nil
+	return &FunctionCallExpr{Pos: fun.GetPos(), Name: fun, Args: list}, nil
 }
 
-func (p *Parser) parseFieldAccess(left Expression) (Expression, error) {
+func (p *Parser) parseFieldAccess(pos int, left Expression) (Expression, error) {
 	err := p.expect(&Token{Tp: LBRACK, Data: "["})
 	if err != nil {
 		return nil, err
@@ -224,12 +216,12 @@ func (p *Parser) parseFieldAccess(left Expression) (Expression, error) {
 		return nil, err
 	}
 	if len(fieldNames) != 1 {
-		return nil, fmt.Errorf("Field access operator should only have one field name")
+		return nil, NewSyntaxError(p.tok.Pos, "Field access operator should only have on field name")
 	}
-	return &FieldAccessExpr{Left: left, FieldName: fieldNames[0]}, nil
+	return &FieldAccessExpr{Pos: pos, Left: left, FieldName: fieldNames[0]}, nil
 }
 
-func (p *Parser) parseList() (Expression, error) {
+func (p *Parser) parseList(pos int) (Expression, error) {
 	err := p.expect(&Token{Tp: LPAREN, Data: "("})
 	if err != nil {
 		return nil, err
@@ -252,10 +244,10 @@ func (p *Parser) parseList() (Expression, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ListExpr{List: list}, nil
+	return &ListExpr{Pos: pos, List: list}, nil
 }
 
-func (p *Parser) parseBetween(oprec int) (Expression, error) {
+func (p *Parser) parseBetween(pos int, oprec int) (Expression, error) {
 	lower, err := p.parseBinaryExpr(nil, oprec)
 	if err != nil {
 		return nil, err
@@ -269,7 +261,7 @@ func (p *Parser) parseBetween(oprec int) (Expression, error) {
 		return nil, err
 	}
 	list := []Expression{lower, upper}
-	return &ListExpr{List: list}, nil
+	return &ListExpr{Pos: pos, List: list}, nil
 }
 
 func (p *Parser) parsePrimaryExpr(x Expression) (Expression, error) {
@@ -298,7 +290,7 @@ func (p *Parser) parsePrimaryExpr(x Expression) (Expression, error) {
 				return nil, err
 			}
 		case LBRACK:
-			x, err = p.parseFieldAccess(x)
+			x, err = p.parseFieldAccess(p.tok.Pos, x)
 			if err != nil {
 				return nil, err
 			}
@@ -311,15 +303,15 @@ func (p *Parser) parsePrimaryExpr(x Expression) (Expression, error) {
 func (p *Parser) parseOperand() (Expression, error) {
 	switch p.tok.Tp {
 	case KEY:
-		x := &FieldExpr{Field: KeyKW}
+		x := &FieldExpr{Pos: p.tok.Pos, Field: KeyKW}
 		p.next()
 		return x, nil
 	case VALUE:
-		x := &FieldExpr{Field: ValueKW}
+		x := &FieldExpr{Pos: p.tok.Pos, Field: ValueKW}
 		p.next()
 		return x, nil
 	case STRING:
-		x := &StringExpr{Data: p.tok.Data}
+		x := &StringExpr{Pos: p.tok.Pos, Data: p.tok.Data}
 		p.next()
 		return x, nil
 	case LPAREN:
@@ -336,27 +328,27 @@ func (p *Parser) parseOperand() (Expression, error) {
 		}
 		return x, nil
 	case NAME:
-		x := &NameExpr{Data: p.tok.Data}
+		x := &NameExpr{Pos: p.tok.Pos, Data: p.tok.Data}
 		p.next()
 		return x, nil
 	case NUMBER:
-		x := newNumberExpr(p.tok.Data)
+		x := newNumberExpr(p.tok.Pos, p.tok.Data)
 		p.next()
 		return x, nil
 	case FLOAT:
-		x := newFloatExpr(p.tok.Data)
+		x := newFloatExpr(p.tok.Pos, p.tok.Data)
 		p.next()
 		return x, nil
 	case TRUE:
-		x := &BoolExpr{Data: p.tok.Data, Bool: true}
+		x := &BoolExpr{Pos: p.tok.Pos, Data: p.tok.Data, Bool: true}
 		p.next()
 		return x, nil
 	case FALSE:
-		x := &BoolExpr{Data: p.tok.Data, Bool: false}
+		x := &BoolExpr{Pos: p.tok.Pos, Data: p.tok.Data, Bool: false}
 		p.next()
 		return x, nil
 	}
-	return nil, errors.New("Bad Expression")
+	return nil, NewSyntaxError(p.tok.Pos, "Bad Expression")
 }
 
 func (p *Parser) parseSelect() (*SelectStmt, error) {
@@ -366,6 +358,7 @@ func (p *Parser) parseSelect() (*SelectStmt, error) {
 		fieldTypes = []Type{}
 		allFields  = false
 		err        error
+		pos        = p.tok.Pos
 	)
 	err = p.expect(&Token{Tp: SELECT, Data: "select"})
 	if err != nil {
@@ -377,10 +370,10 @@ func (p *Parser) parseSelect() (*SelectStmt, error) {
 			allFields = true
 			p.next()
 			if p.tok != nil && p.tok.Tp != WHERE {
-				return nil, ErrSyntaxInvalidFields
+				return nil, NewSyntaxError(p.tok.Pos, "Invalid field expression")
 			}
 			if len(fields) > 0 {
-				return nil, ErrSyntaxInvalidFields
+				return nil, NewSyntaxError(p.tok.Pos, "Invalid field expression")
 			}
 			break
 		}
@@ -393,7 +386,7 @@ func (p *Parser) parseSelect() (*SelectStmt, error) {
 			if p.tok.Tp == AS {
 				p.next()
 				if p.tok.Tp != NAME {
-					return nil, ErrSyntaxInvalidFieldName
+					return nil, NewSyntaxError(p.tok.Pos, "Invalid field name")
 				}
 				fieldName = p.tok.Data
 				p.next()
@@ -402,7 +395,7 @@ func (p *Parser) parseSelect() (*SelectStmt, error) {
 			} else if p.tok.Tp == WHERE {
 				// Correct do nothing
 			} else {
-				return nil, fmt.Errorf("Syntax Error: expect `as` or `,`")
+				return nil, NewSyntaxError(p.tok.Pos, "Expect `as` or `,` but got %s", p.tok.Data)
 			}
 		}
 		fields = append(fields, field)
@@ -414,20 +407,17 @@ func (p *Parser) parseSelect() (*SelectStmt, error) {
 		p.next()
 	}
 	p.exprLev--
-	err = p.expect(&Token{Tp: WHERE, Data: "where"})
-	if err != nil {
-		return nil, err
-	}
 	if len(fields) == 0 && !allFields {
-		return nil, ErrSyntaxEmptyFields
+		return nil, NewSyntaxError(p.tok.Pos, "Empty fields in select statement")
 	}
 
 	if allFields {
-		fields = []Expression{&FieldExpr{KeyKW}, &FieldExpr{ValueKW}}
+		fields = []Expression{&FieldExpr{0, KeyKW}, &FieldExpr{0, ValueKW}}
 		fieldNames = []string{fields[0].String(), fields[1].String()}
 	}
 
 	return &SelectStmt{
+		Pos:        pos,
 		Fields:     fields,
 		FieldNames: fieldNames,
 		FieldTypes: fieldTypes,
@@ -440,7 +430,7 @@ func (p *Parser) parseLimit() (*LimitStmt, error) {
 		err         error
 		shouldBreak bool          = false
 		exprs       []*NumberExpr = make([]*NumberExpr, 0, 2)
-		ret         *LimitStmt    = &LimitStmt{}
+		ret         *LimitStmt    = &LimitStmt{Pos: p.tok.Pos}
 	)
 	err = p.expect(&Token{Tp: LIMIT, Data: "limit"})
 	if err != nil {
@@ -449,24 +439,27 @@ func (p *Parser) parseLimit() (*LimitStmt, error) {
 	for p.tok != nil && !shouldBreak {
 		switch p.tok.Tp {
 		case NUMBER:
-			x := newNumberExpr(p.tok.Data)
+			x := newNumberExpr(p.tok.Pos, p.tok.Data)
 			p.next()
 			exprs = append(exprs, x)
 		case SEP:
+			prevPos := p.tok.Pos
 			p.next()
-			if p.tok == nil || p.tok.Tp != NUMBER {
-				return nil, errors.New("Invalid limit parameters after seperator")
+			if p.tok == nil {
+				return nil, NewSyntaxError(prevPos, "Invalid limit parameters after separator")
+			} else if p.tok.Tp != NUMBER {
+				return nil, NewSyntaxError(p.tok.Pos, "Invalid limit parameters after separator, require number")
 			}
 		default:
 			shouldBreak = true
 		}
 	}
 	if len(exprs) > 2 {
-		return nil, errors.New("Too many limit parameters")
+		return nil, NewSyntaxError(p.tok.Pos, "Too many limit parameters")
 	}
 	switch len(exprs) {
 	case 0:
-		return nil, errors.New("Invalid limit parameters")
+		return nil, NewSyntaxError(p.tok.Pos, "Invalid limit parameters")
 	case 1:
 		ret.Count = int(exprs[0].Int)
 	case 2:
@@ -476,7 +469,7 @@ func (p *Parser) parseLimit() (*LimitStmt, error) {
 	return ret, nil
 }
 
-func (p *Parser) findFieldInSelect(selStmt *SelectStmt, fieldName string) (Expression, error) {
+func (p *Parser) findFieldInSelect(selStmt *SelectStmt, fieldName string, pos int) (Expression, error) {
 	foundIdx := -1
 	for i, fname := range selStmt.FieldNames {
 		if fname == fieldName {
@@ -485,14 +478,14 @@ func (p *Parser) findFieldInSelect(selStmt *SelectStmt, fieldName string) (Expre
 		}
 	}
 	if foundIdx < 0 {
-		return nil, fmt.Errorf("Syntax error: cannot find field %s in select statement", fieldName)
+		return nil, NewSyntaxError(pos, "Cannot find field %s in select statement", fieldName)
 	}
 	fexpr := selStmt.Fields[foundIdx]
 	switch fexpr.ReturnType() {
 	case TSTR, TNUMBER, TBOOL:
 		break
 	default:
-		return nil, fmt.Errorf("Syntax error: field %s return wrong type.", fieldName)
+		return nil, NewSyntaxError(fexpr.GetPos(), "Field %s return wrong type", fieldName)
 	}
 	return fexpr, nil
 }
@@ -502,7 +495,7 @@ func (p *Parser) parseGroupBy(selStmt *SelectStmt) (*GroupByStmt, error) {
 		err         error
 		shouldBreak = false
 		fields      = []GroupByField{}
-		ret         = &GroupByStmt{}
+		ret         = &GroupByStmt{Pos: p.tok.Pos}
 	)
 	err = p.expect(&Token{Tp: GROUP, Data: "group"})
 	if err != nil {
@@ -520,7 +513,7 @@ func (p *Parser) parseGroupBy(selStmt *SelectStmt) (*GroupByStmt, error) {
 		}
 		switch e := field.(type) {
 		case *NameExpr:
-			fexpr, err := p.findFieldInSelect(selStmt, e.Data)
+			fexpr, err := p.findFieldInSelect(selStmt, e.Data, e.GetPos())
 			if err != nil {
 				return nil, err
 			}
@@ -528,7 +521,7 @@ func (p *Parser) parseGroupBy(selStmt *SelectStmt) (*GroupByStmt, error) {
 		case *FieldExpr:
 			fields = append(fields, GroupByField{field.String(), field})
 		case *FunctionCallExpr:
-			fexpr, err := p.findFieldInSelect(selStmt, field.String())
+			fexpr, err := p.findFieldInSelect(selStmt, field.String(), e.GetPos())
 			if err != nil {
 				return nil, err
 			}
@@ -537,11 +530,11 @@ func (p *Parser) parseGroupBy(selStmt *SelectStmt) (*GroupByStmt, error) {
 				return nil, err
 			}
 			if _, have := GetAggrFunctionByName(fname); have {
-				return nil, fmt.Errorf("Syntax error: cannot group by aggregate function `%s`", fname)
+				return nil, NewSyntaxError(fexpr.GetPos(), "Cannot find aggregate function: %s", fname)
 			}
 			fields = append(fields, GroupByField{field.String(), fexpr})
 		default:
-			fexpr, err := p.findFieldInSelect(selStmt, field.String())
+			fexpr, err := p.findFieldInSelect(selStmt, field.String(), e.GetPos())
 			if err != nil {
 				return nil, err
 			}
@@ -573,7 +566,7 @@ func (p *Parser) parseOrderBy(selStmt *SelectStmt) (*OrderStmt, error) {
 		err         error
 		shouldBreak bool         = false
 		fields      []OrderField = make([]OrderField, 0, 2)
-		ret         *OrderStmt   = &OrderStmt{}
+		ret         *OrderStmt   = &OrderStmt{Pos: p.tok.Pos}
 	)
 	err = p.expect(&Token{Tp: ORDER, Data: "order"})
 	if err != nil {
@@ -600,7 +593,7 @@ func (p *Parser) parseOrderBy(selStmt *SelectStmt) (*OrderStmt, error) {
 		default:
 			fieldName = field.String()
 		}
-		fexpr, err := p.findFieldInSelect(selStmt, fieldName)
+		fexpr, err := p.findFieldInSelect(selStmt, fieldName, field.GetPos())
 		if err != nil {
 			return nil, err
 		}
@@ -643,11 +636,11 @@ func (p *Parser) parseOrderBy(selStmt *SelectStmt) (*OrderStmt, error) {
 
 func (p *Parser) Parse() (*SelectStmt, error) {
 	if p.numToks == 0 {
-		return nil, ErrSyntaxStartWhere
+		return nil, NewSyntaxError(p.tok.Pos, "Expect select or where keyword")
 	}
 	p.next()
 	if p.tok == nil || (p.tok.Tp != WHERE && p.tok.Tp != SELECT) {
-		return nil, ErrSyntaxStartWhere
+		return nil, NewSyntaxError(p.tok.Pos, "Expect select or where keyword")
 	}
 	var (
 		selectStmt  *SelectStmt  = nil
@@ -655,6 +648,7 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 		orderStmt   *OrderStmt   = nil
 		groupByStmt *GroupByStmt = nil
 		err         error
+		wherePos    int
 	)
 
 	if p.tok.Tp == SELECT {
@@ -662,10 +656,13 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 		if err != nil {
 			return nil, err
 		}
+		wherePos = p.tok.Pos
+		p.next()
 	} else {
 		if p.tok.Tp != WHERE {
-			return nil, ErrSyntaxStartWhere
+			return nil, NewSyntaxError(p.tok.Pos, "Expect where keyword")
 		}
+		wherePos = p.tok.Pos
 		p.next()
 	}
 
@@ -678,7 +675,7 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 		switch p.tok.Tp {
 		case ORDER:
 			if orderStmt != nil {
-				return nil, errors.New("Syntax error duplicate order by expression")
+				return nil, NewSyntaxError(p.tok.Pos, "Duplicate order by expression")
 			}
 			orderStmt, err = p.parseOrderBy(selectStmt)
 			if err != nil {
@@ -686,7 +683,7 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 			}
 		case GROUP:
 			if groupByStmt != nil {
-				return nil, errors.New("Syntax error duplicate group by expression")
+				return nil, NewSyntaxError(p.tok.Pos, "Duplicate group by expression")
 			}
 			groupByStmt, err = p.parseGroupBy(selectStmt)
 			if err != nil {
@@ -694,17 +691,17 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 			}
 		case LIMIT:
 			if limitStmt != nil {
-				return nil, errors.New("Syntax error duplicate limit expression")
+				return nil, NewSyntaxError(p.tok.Pos, "Duplicate limit expression")
 			}
 			limitStmt, err = p.parseLimit()
 			if err != nil {
 				return nil, err
 			}
 			if p.tok != nil {
-				return nil, errors.New("Syntax error has more expression after limit keyword")
+				return nil, NewSyntaxError(p.tok.Pos, "Has more expression in limit expression")
 			}
 		default:
-			return nil, errors.New("Syntax error missing operator")
+			return nil, NewSyntaxError(p.tok.Pos, "Missing operator")
 		}
 	}
 
@@ -714,9 +711,10 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 		return nil, err
 	}
 	if expr.ReturnType() != TBOOL {
-		return nil, errors.New("Syntax error where should follow bool result expression")
+		return nil, NewSyntaxError(expr.GetPos(), "where statement result type should be boolean")
 	}
 	whereStmt := &WhereStmt{
+		Pos:  wherePos,
 		Expr: expr,
 	}
 	if selectStmt == nil {

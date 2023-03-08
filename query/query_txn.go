@@ -28,6 +28,9 @@ func NewQueryTxn(client client.Client) Txn {
 func (t *queryTxn) Get(key []byte) ([]byte, error) {
 	kv, err := t.client.Get(context.TODO(), client.Key(key))
 	if err != nil {
+		if err.Error() == "not exist" {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return kv.V, nil

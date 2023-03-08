@@ -1,10 +1,5 @@
 package query
 
-import (
-	"errors"
-	"fmt"
-)
-
 func (e *BinaryOpExpr) Check() error {
 	if err := e.Left.Check(); err != nil {
 		return err
@@ -16,7 +11,7 @@ func (e *BinaryOpExpr) Check() error {
 	case And, Or:
 		return e.checkWithAndOr()
 	case Not:
-		return errors.New("Syntax Error: Invalid operator !")
+		return NewSyntaxError(e.GetPos(), "Invalid operator !")
 	case Add, Sub, Mul, Div:
 		return e.checkWithMath()
 	case In:
@@ -33,19 +28,19 @@ func (e *BinaryOpExpr) checkWithAndOr() error {
 	switch exp := e.Left.(type) {
 	case *BinaryOpExpr, *FunctionCallExpr, *NotExpr:
 		if e.Left.ReturnType() != TBOOL {
-			return fmt.Errorf("Syntax Error: %s operator has wrong type of left expression %s", op, exp)
+			return NewSyntaxError(e.Left.GetPos(), "%s operator has wrong type of left expression %s", op, exp)
 		}
 	default:
-		return fmt.Errorf("Syntax Error: %s operator with invalid left expression %s", op, exp)
+		return NewSyntaxError(e.Left.GetPos(), "%s operator with invalid left expression %s", op, exp)
 	}
 
 	switch exp := e.Right.(type) {
 	case *BinaryOpExpr, *FunctionCallExpr, *NotExpr:
 		if exp.ReturnType() != TBOOL {
-			return fmt.Errorf("Syntax Error: %s operator has wrong type of right expression %s", op, exp)
+			return NewSyntaxError(e.Right.GetPos(), "%s operator has wrong type of right expression %s", op, exp)
 		}
 	default:
-		return fmt.Errorf("Syntax Error: %s operator with invalid right expression %s", op, exp)
+		return NewSyntaxError(e.Right.GetPos(), "%s operator with invalid right expression %s", op, exp)
 	}
 	return nil
 }
@@ -60,13 +55,13 @@ func (e *BinaryOpExpr) checkWithMath() error {
 			if e.Left.ReturnType() == TSTR {
 				lstring = true
 			} else {
-				return fmt.Errorf("Syntax Error: %s operator has wrong type of left expression %s", op, exp)
+				return NewSyntaxError(e.Left.GetPos(), "%s operator has wrong type of left expression %s", op, exp)
 			}
 		}
 	case *StringExpr, *FieldExpr, *FieldAccessExpr:
 		lstring = true
 	default:
-		return fmt.Errorf("Syntax Error: %s operator with invalid left expression %s", op, exp)
+		return NewSyntaxError(e.Left.GetPos(), "%s operator with invalid left expression %s", op, exp)
 	}
 
 	switch exp := e.Right.(type) {
@@ -75,21 +70,22 @@ func (e *BinaryOpExpr) checkWithMath() error {
 			if e.Right.ReturnType() == TSTR {
 				rstring = true
 			} else {
-				return fmt.Errorf("Syntax Error: %s operator has wrong type of right expression %s", op, exp)
+				return NewSyntaxError(e.Right.GetPos(), "%s operator has wrong type of right expression %s", op, exp)
 			}
 		}
 	case *StringExpr, *FieldExpr, *FieldAccessExpr:
 		rstring = true
 	default:
-		return fmt.Errorf("Syntax Error: %s operator with invalid right expression %s", op, exp)
+		return NewSyntaxError(e.Right.GetPos(), "%s operator with invalid right expression %s", op, exp)
 	}
+
 	if op == "+" && lstring && rstring {
 	} else {
 		if lstring {
-			return fmt.Errorf("Syntax Error: %s operator with invalid left expression %s", op, e.Left)
+			return NewSyntaxError(e.Left.GetPos(), "%s operator with invalid left expression %s", op, e.Left)
 		}
 		if rstring {
-			return fmt.Errorf("Syntax Error: %s operator with invalid right expression %s", op, e.Right)
+			return NewSyntaxError(e.Right.GetPos(), "%s operator with invalid right expression %s", op, e.Left)
 		}
 	}
 	return nil
@@ -115,7 +111,7 @@ func (e *BinaryOpExpr) checkWithCompares() error {
 		numCallExpr++
 	case *StringExpr, *BoolExpr, *NumberExpr, *FloatExpr, *BinaryOpExpr, *FieldAccessExpr:
 	default:
-		return fmt.Errorf("Syntax Error: %s operator with invalid left expression", op)
+		return NewSyntaxError(e.Left.GetPos(), "%s operator with invalid left expression", op)
 	}
 
 	switch exp := e.Right.(type) {
@@ -130,31 +126,26 @@ func (e *BinaryOpExpr) checkWithCompares() error {
 		numCallExpr++
 	case *StringExpr, *BoolExpr, *NumberExpr, *FloatExpr, *BinaryOpExpr, *FieldAccessExpr:
 	default:
-		return fmt.Errorf("Syntax Error: %s operator with invalid right expression", op)
+		return NewSyntaxError(e.Right.GetPos(), "%s operator with invalid right expression", op)
 	}
 
 	if numKeyFieldExpr == 2 || numValueFieldExpr == 2 {
-		return fmt.Errorf("Syntax Error: %s operator with two same field", op)
+		return NewSyntaxError(e.GetPos(), "%s operator with two same field", op)
 	}
-	/*
-		if numKeyFieldExpr == 0 && numValueFieldExpr == 0 && numCallExpr == 0 {
-			return fmt.Errorf("Syntax Error: %s operator with no field nor function call", op)
-		}
-	*/
 
 	ltype := e.Left.ReturnType()
 	rtype := e.Right.ReturnType()
 	if ltype != rtype {
-		return fmt.Errorf("Syntax Error: %s operator left and right type not same", op)
+		return NewSyntaxError(e.GetPos(), "%s operator left and right type not same", op)
 	}
 	switch e.Op {
 	case Gt, Gte, Lt, Lte:
 		if ltype != TNUMBER && ltype != TSTR {
-			return fmt.Errorf("Syntax Error: %s operator has wrong type of left expression", op)
+			return NewSyntaxError(e.Left.GetPos(), "%s operator has wrong type of left expression", op)
 		}
 	case PrefixMatch, RegExpMatch:
 		if ltype != TSTR {
-			return fmt.Errorf("Syntax Error: %s operator has wrong type of left expression", op)
+			return NewSyntaxError(e.Left.GetPos(), "%s operator has wrong type of left expression", op)
 		}
 	}
 	return nil
@@ -166,11 +157,11 @@ func (e *BinaryOpExpr) checkWithIn() error {
 	case *ListExpr:
 		for _, expr := range r.List {
 			if expr.ReturnType() != ltype {
-				return fmt.Errorf("Syntax Error: in operator right element has wrong type")
+				return NewSyntaxError(expr.GetPos(), "in operator element has wrong type")
 			}
 		}
 	default:
-		return fmt.Errorf("Syntax Error: in operator right must be list expression")
+		return NewSyntaxError(e.Right.GetPos(), "in operator right expression must be list expression")
 	}
 	return nil
 }
@@ -179,19 +170,19 @@ func (e *BinaryOpExpr) checkWithBetween() error {
 	ltype := e.Left.ReturnType()
 	rlist, ok := e.Right.(*ListExpr)
 	if !ok || len(rlist.List) != 2 {
-		return fmt.Errorf("Syntax Error: between operator invalid right expression")
+		return NewSyntaxError(e.Right.GetPos(), "between operator invalid right expression")
 	}
 
 	switch ltype {
 	case TSTR, TNUMBER:
 	default:
-		return fmt.Errorf("Syntax Error: between operator only support string and number type")
+		return NewSyntaxError(e.Left.GetPos(), "between operator only support string and number type")
 	}
 
 	lexpr := rlist.List[0]
 	uexpr := rlist.List[1]
 	if lexpr.ReturnType() != ltype || uexpr.ReturnType() != ltype {
-		return fmt.Errorf("Syntax Error: between operator invalid right expression type")
+		return NewSyntaxError(e.Right.GetPos(), "between operator right expression with wrong type")
 	}
 	return nil
 }
@@ -206,7 +197,7 @@ func (e *StringExpr) Check() error {
 
 func (e *NotExpr) Check() error {
 	if e.Right.ReturnType() != TBOOL {
-		return errors.New("Syntax Error: ! operator followed wrong type expression")
+		return NewSyntaxError(e.Right.GetPos(), "! operator right expression has wrong type")
 	}
 	return nil
 }
@@ -214,7 +205,7 @@ func (e *NotExpr) Check() error {
 func (e *FunctionCallExpr) Check() error {
 	_, ok := e.Name.(*NameExpr)
 	if !ok {
-		return errors.New("Syntax Error: Invalid function name")
+		return NewSyntaxError(e.Name.GetPos(), "Invalid function name")
 	}
 	if len(e.Args) > 0 {
 		for _, a := range e.Args {
@@ -244,13 +235,13 @@ func (e *BoolExpr) Check() error {
 
 func (e *ListExpr) Check() error {
 	if len(e.List) == 0 {
-		return fmt.Errorf("Syntax Error: Empty list")
+		return NewSyntaxError(e.GetPos(), "Empty list")
 	}
 	if len(e.List) > 1 {
 		ftype := e.List[0].ReturnType()
 		for i, item := range e.List[1:] {
 			if item.ReturnType() != ftype {
-				return fmt.Errorf("Syntax Error: List %d item has wrong type", i)
+				return NewSyntaxError(item.GetPos(), "List %d item has wrong type", i)
 			}
 		}
 	}
@@ -265,7 +256,7 @@ func (e *FieldAccessExpr) Check() error {
 		if leftIsFAE {
 			return nil
 		}
-		return fmt.Errorf("Syntax Error: field access expression left not JSON type")
+		return NewSyntaxError(e.Left.GetPos(), "Field access expression left require JSON type")
 	}
 	switch e.FieldName.(type) {
 	case *StringExpr:
@@ -277,5 +268,5 @@ func (e *FieldAccessExpr) Check() error {
 			return nil
 		}
 	}
-	return fmt.Errorf("Syntax Error: invalid field name in field access expression")
+	return NewSyntaxError(e.GetPos(), "Invalid field name")
 }

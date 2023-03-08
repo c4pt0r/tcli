@@ -82,12 +82,12 @@ func (c QueryCmd) Handler() func(ctx context.Context) {
 			opt := query.NewOptimizer(sql)
 			plan, err := opt.BuildPlan(qtxn)
 			if err != nil {
-				return err
+				return bindQueryToError(sql, err)
 			}
 			// ret, err := c.getRows(plan)
 			ret, err := c.getRowsBatch(plan)
 			if err != nil {
-				return err
+				return bindQueryToError(sql, err)
 			}
 			if len(ret) > 1 {
 				utils.PrintTable(ret)
@@ -97,6 +97,16 @@ func (c QueryCmd) Handler() func(ctx context.Context) {
 			}
 			return nil
 		})
+	}
+}
+
+func bindQueryToError(sql string, err error) error {
+	switch val := err.(type) {
+	case query.QueryBinder:
+		val.BindQuery(sql)
+		return err
+	default:
+		return err
 	}
 }
 

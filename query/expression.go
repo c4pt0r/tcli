@@ -97,10 +97,10 @@ var (
 	}
 )
 
-func BuildOp(op string) (Operator, error) {
+func BuildOp(pos int, op string) (Operator, error) {
 	ret, have := StringToOperator[op]
 	if !have {
-		return Unknown, ErrSyntaxUnknownOperator
+		return Unknown, NewSyntaxError(pos, "Unknown operator")
 	}
 	return ret, nil
 }
@@ -144,9 +144,11 @@ type Expression interface {
 	Execute(kv KVPair) (any, error)
 	ExecuteBatch(chunk []KVPair) ([]any, error)
 	ReturnType() Type
+	GetPos() int
 }
 
 type BinaryOpExpr struct {
+	Pos   int
 	Op    Operator
 	Left  Expression
 	Right Expression
@@ -166,6 +168,10 @@ func (e *BinaryOpExpr) String() string {
 	}
 }
 
+func (e *BinaryOpExpr) GetPos() int {
+	return e.Pos
+}
+
 func (e *BinaryOpExpr) ReturnType() Type {
 	switch e.Op {
 	case And, Or, Not, Eq, NotEq, PrefixMatch, RegExpMatch, Gt, Gte, Lt, Lte, In, Between:
@@ -182,6 +188,7 @@ func (e *BinaryOpExpr) ReturnType() Type {
 }
 
 type FieldExpr struct {
+	Pos   int
 	Field KVKeyword
 }
 
@@ -193,7 +200,12 @@ func (e *FieldExpr) ReturnType() Type {
 	return TSTR
 }
 
+func (e *FieldExpr) GetPos() int {
+	return e.Pos
+}
+
 type StringExpr struct {
+	Pos  int
 	Data string
 }
 
@@ -205,7 +217,12 @@ func (e *StringExpr) ReturnType() Type {
 	return TSTR
 }
 
+func (e *StringExpr) GetPos() int {
+	return e.Pos
+}
+
 type NotExpr struct {
+	Pos   int
 	Right Expression
 }
 
@@ -217,10 +234,19 @@ func (e *NotExpr) ReturnType() Type {
 	return TBOOL
 }
 
+func (e *NotExpr) GetPos() int {
+	return e.Pos
+}
+
 type FunctionCallExpr struct {
+	Pos    int
 	Name   Expression
 	Args   []Expression
 	Result any
+}
+
+func (e *FunctionCallExpr) GetPos() int {
+	return e.Pos
 }
 
 func (e *FunctionCallExpr) String() string {
@@ -247,7 +273,12 @@ func (e *FunctionCallExpr) ReturnType() Type {
 }
 
 type NameExpr struct {
+	Pos  int
 	Data string
+}
+
+func (e *NameExpr) GetPos() int {
+	return e.Pos
 }
 
 func (e *NameExpr) String() string {
@@ -259,16 +290,22 @@ func (e *NameExpr) ReturnType() Type {
 }
 
 type NumberExpr struct {
+	Pos  int
 	Data string
 	Int  int64
 }
 
-func newNumberExpr(data string) *NumberExpr {
+func (e *NumberExpr) GetPos() int {
+	return e.Pos
+}
+
+func newNumberExpr(pos int, data string) *NumberExpr {
 	num, err := strconv.ParseInt(data, 10, 64)
 	if err != nil {
 		num = 0
 	}
 	return &NumberExpr{
+		Pos:  pos,
 		Data: data,
 		Int:  num,
 	}
@@ -283,16 +320,22 @@ func (e *NumberExpr) ReturnType() Type {
 }
 
 type FloatExpr struct {
+	Pos   int
 	Data  string
 	Float float64
 }
 
-func newFloatExpr(data string) *FloatExpr {
+func (e *FloatExpr) GetPos() int {
+	return e.Pos
+}
+
+func newFloatExpr(pos int, data string) *FloatExpr {
 	num, err := strconv.ParseFloat(data, 64)
 	if err != nil {
 		num = 0.0
 	}
 	return &FloatExpr{
+		Pos:   pos,
 		Data:  data,
 		Float: num,
 	}
@@ -307,6 +350,7 @@ func (e *FloatExpr) ReturnType() Type {
 }
 
 type BoolExpr struct {
+	Pos  int
 	Data string
 	Bool bool
 }
@@ -319,8 +363,17 @@ func (e *BoolExpr) ReturnType() Type {
 	return TBOOL
 }
 
+func (e *BoolExpr) GetPos() int {
+	return e.Pos
+}
+
 type ListExpr struct {
+	Pos  int
 	List []Expression
+}
+
+func (e *ListExpr) GetPos() int {
+	return e.Pos
 }
 
 func (e *ListExpr) String() string {
@@ -336,8 +389,13 @@ func (e *ListExpr) ReturnType() Type {
 }
 
 type FieldAccessExpr struct {
+	Pos       int
 	Left      Expression
 	FieldName Expression
+}
+
+func (e *FieldAccessExpr) GetPos() int {
+	return e.Pos
 }
 
 func (e *FieldAccessExpr) String() string {

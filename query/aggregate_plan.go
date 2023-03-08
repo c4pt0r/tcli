@@ -1,7 +1,6 @@
 package query
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -75,10 +74,10 @@ func (a *AggregatePlan) listAggrFunctions(expr Expression) ([]*FunctionCallExpr,
 	for i, fname := range fnames {
 		functor, have := GetAggrFunctionByName(fname)
 		if !have {
-			return nil, nil, false, fmt.Errorf("Cannot find aggregate function: %s", fname)
+			return nil, nil, false, NewExecuteError(fcexprs[i].GetPos(), "Cannot find aggregate function: %s", fname)
 		}
 		if !functor.VarArgs && functor.NumArgs != len(fcexprs[i].Args) {
-			return nil, nil, false, fmt.Errorf("Function %s require %d arguments but got %d", functor.Name, functor.NumArgs, len(fcexprs[i].Args))
+			return nil, nil, false, NewExecuteError(fcexprs[i].GetPos(), "Function %s require %d arguments but got %d", functor.Name, functor.NumArgs, len(fcexprs[i].Args))
 		}
 		functors = append(functors, functor.Body())
 	}
@@ -270,7 +269,7 @@ func (a *AggregatePlan) updateRowAggrFunc(row []*AggrPlanField, kvp KVPair) erro
 		}
 		fcexprs := col.FuncExprs
 		if len(fcexprs) == 0 {
-			return errors.New("Cannot cast expression to function call expression")
+			return NewExecuteError(0, "Cannot cast expression to function call expression")
 		}
 		for i, fcexpr := range fcexprs {
 			err := col.Funcs[i].Update(kvp, fcexpr.Args)
@@ -534,6 +533,6 @@ func (a *AggregatePlan) convertToBytes(val any) ([]byte, error) {
 		if val == nil {
 			return nil, nil
 		}
-		return nil, errors.New("Expression result type not support")
+		return nil, NewExecuteError(0, "Expression result type not support")
 	}
 }

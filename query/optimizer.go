@@ -1,9 +1,5 @@
 package query
 
-import (
-	"errors"
-)
-
 type Optimizer struct {
 	Query  string
 	stmt   *SelectStmt
@@ -86,6 +82,9 @@ func (o *Optimizer) buildFinalPlan(t Txn, fp Plan) (FinalPlan, error) {
 		hasAggr = allInSelect
 	}
 	var ffp FinalPlan
+	if !hasAggr && len(o.stmt.GroupBy.Fields) > 0 {
+		return nil, NewSyntaxError(o.stmt.Pos, "No aggregate fields in select statement")
+	}
 	if !hasAggr {
 		ffp = &ProjectionPlan{
 			Txn:        t,
@@ -127,8 +126,12 @@ func (o *Optimizer) buildFinalPlan(t Txn, fp Plan) (FinalPlan, error) {
 		aggrAll = true
 	}
 
+	if aggrFields == 0 && len(groupByFields) > 0 {
+		return nil, NewSyntaxError(o.stmt.Pos, "No aggregate fields in select statement")
+	}
+
 	if aggrFields+len(groupByFields) < len(o.stmt.Fields) {
-		return nil, errors.New("Syntax error: Missing aggregate fields in group by")
+		return nil, NewSyntaxError(o.stmt.GroupBy.Pos, "Missing aggregate fields in group by statement")
 	}
 
 	ffp = &AggregatePlan{
