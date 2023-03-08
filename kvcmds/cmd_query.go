@@ -59,6 +59,8 @@ func convertColumnToString(c query.Column) string {
 			return "true"
 		}
 		return "false"
+	case map[string]any, query.JSON, []any:
+		return fmt.Sprintf("%v", v)
 	default:
 		if v == nil {
 			return "nil"

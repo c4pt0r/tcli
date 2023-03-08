@@ -181,8 +181,14 @@ func (p *Parser) parseFuncCall(fun Expression) (Expression, error) {
 			return nil, err
 		}
 		list = append(list, arg)
-		if p.tok != nil && p.tok.Tp == RPAREN {
-			break
+		if p.tok != nil {
+			if p.tok.Tp == RPAREN {
+				break
+			} else if p.tok.Tp == SEP && p.tok.Data == "," {
+				// Correct do nothing
+			} else {
+				return nil, fmt.Errorf("Syntax Error: function argument expect `,` or  `)`")
+			}
 		}
 		p.next()
 	}
@@ -383,15 +389,22 @@ func (p *Parser) parseSelect() (*SelectStmt, error) {
 			return nil, err
 		}
 		fieldName := field.String()
-		if p.tok != nil && p.tok.Tp == AS {
-			p.next()
-			if p.tok.Tp != NAME {
-				return nil, ErrSyntaxInvalidFieldName
+		if p.tok != nil {
+			if p.tok.Tp == AS {
+				p.next()
+				if p.tok.Tp != NAME {
+					return nil, ErrSyntaxInvalidFieldName
+				}
+				fieldName = p.tok.Data
+				p.next()
+			} else if p.tok.Tp == SEP && p.tok.Data == "," {
+				// Correct do nothing
+			} else if p.tok.Tp == WHERE {
+				// Correct do nothing
+			} else {
+				return nil, fmt.Errorf("Syntax Error: expect `as` or `,`")
 			}
-			fieldName = p.tok.Data
-			p.next()
 		}
-
 		fields = append(fields, field)
 		fieldNames = append(fieldNames, fieldName)
 		fieldTypes = append(fieldTypes, field.ReturnType())
