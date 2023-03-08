@@ -141,7 +141,7 @@ func (l *Lexer) Split() []*Token {
 				tokLen++
 				break
 			}
-			curr = l.Query[tokStart : tokStart+tokLen]
+			curr = l.Query[tokStart : tokStart+min(tokLen, l.Length-tokStart)]
 			if token := buildToken(curr, tokStartPos); token != nil {
 				ret = append(ret, token)
 			}
@@ -156,7 +156,7 @@ func (l *Lexer) Split() []*Token {
 				tokStart = i + 1
 			} else if strStartChar == char {
 				strStart = false
-				curr = l.Query[tokStart : tokStart+tokLen]
+				curr = l.Query[tokStart : tokStart+min(tokLen, l.Length-tokStart)]
 				token := &Token{
 					Tp:   STRING,
 					Data: curr,
@@ -175,7 +175,7 @@ func (l *Lexer) Split() []*Token {
 				tokStart = i + 1
 			} else if strStartChar == char {
 				strStart = false
-				curr = l.Query[tokStart : tokStart+tokLen]
+				curr = l.Query[tokStart : tokStart+min(tokLen, l.Length-tokStart)]
 				token := &Token{
 					Tp:   NAME,
 					Data: curr,
@@ -191,7 +191,7 @@ func (l *Lexer) Split() []*Token {
 				tokLen++
 				break
 			}
-			curr = l.Query[tokStart : tokStart+tokLen]
+			curr = l.Query[tokStart : tokStart+min(tokLen, l.Length-tokStart)]
 			if token := buildToken(curr, tokStartPos); token != nil {
 				ret = append(ret, token)
 			}
@@ -271,7 +271,7 @@ func (l *Lexer) Split() []*Token {
 				tokLen++
 				break
 			}
-			curr = l.Query[tokStart : tokStart+tokLen]
+			curr = l.Query[tokStart : tokStart+min(tokLen, l.Length-tokStart)]
 			token := buildToken(curr, tokStartPos)
 			if token != nil {
 				ret = append(ret, token)
@@ -317,7 +317,7 @@ func (l *Lexer) Split() []*Token {
 				tokLen++
 				break
 			}
-			curr = l.Query[tokStart : tokStart+tokLen]
+			curr = l.Query[tokStart : tokStart+min(tokLen, l.Length-tokStart)]
 			token := buildToken(curr, tokStartPos)
 			if token != nil {
 				ret = append(ret, token)
@@ -337,7 +337,7 @@ func (l *Lexer) Split() []*Token {
 		prev = char
 	}
 	if tokLen > 0 {
-		curr = l.Query[tokStart : tokStart+tokLen]
+		curr = l.Query[tokStart : tokStart+min(tokLen, l.Length-tokStart)]
 		if token := buildToken(curr, tokStartPos); token != nil {
 			ret = append(ret, token)
 		}
@@ -425,5 +425,4 @@ func buildToken(curr string, pos int) *Token {
 		token.Tp = NAME
 		return token
 	}
-	return nil
 }

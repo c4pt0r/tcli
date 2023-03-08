@@ -156,7 +156,7 @@ func (o *Optimizer) buildFinalPlan(t Txn, fp Plan) (FinalPlan, error) {
 	return ffp, nil
 }
 
-func (o *Optimizer) BuildPlan(t Txn) (FinalPlan, error) {
+func (o *Optimizer) buildPlan(t Txn) (FinalPlan, error) {
 	err := o.init()
 	if err != nil {
 		return nil, err
@@ -181,6 +181,14 @@ func (o *Optimizer) BuildPlan(t Txn) (FinalPlan, error) {
 	}
 
 	ret, err := o.buildFinalPlan(t, fp)
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func (o *Optimizer) BuildPlan(t Txn) (FinalPlan, error) {
+	ret, err := o.buildPlan(t)
 	if err != nil {
 		return nil, err
 	}

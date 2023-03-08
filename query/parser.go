@@ -377,6 +377,9 @@ func (p *Parser) parseSelect() (*SelectStmt, error) {
 				return nil, NewSyntaxError(p.tok.Pos, "Invalid field expression")
 			}
 			if len(fields) > 0 {
+				if p.tok == nil {
+					return nil, NewSyntaxError(-1, "Invalid field expression")
+				}
 				return nil, NewSyntaxError(p.tok.Pos, "Invalid field expression")
 			}
 			break
@@ -389,7 +392,9 @@ func (p *Parser) parseSelect() (*SelectStmt, error) {
 		if p.tok != nil {
 			if p.tok.Tp == AS {
 				p.next()
-				if p.tok.Tp != NAME {
+				if p.tok == nil {
+					return nil, NewSyntaxError(-1, "Require field name")
+				} else if p.tok.Tp != NAME {
 					return nil, NewSyntaxError(p.tok.Pos, "Invalid field name")
 				}
 				fieldName = p.tok.Data
@@ -644,10 +649,12 @@ func (p *Parser) parseOrderBy(selStmt *SelectStmt) (*OrderStmt, error) {
 
 func (p *Parser) Parse() (*SelectStmt, error) {
 	if p.numToks == 0 {
-		return nil, NewSyntaxError(p.tok.Pos, "Expect select or where keyword")
+		return nil, NewSyntaxError(-1, "Expect select or where keyword")
 	}
 	p.next()
-	if p.tok == nil || (p.tok.Tp != WHERE && p.tok.Tp != SELECT) {
+	if p.tok == nil {
+		return nil, NewSyntaxError(-1, "Expect select or where keyword")
+	} else if p.tok.Tp != WHERE && p.tok.Tp != SELECT {
 		return nil, NewSyntaxError(p.tok.Pos, "Expect select or where keyword")
 	}
 	var (
