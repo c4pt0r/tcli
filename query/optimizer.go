@@ -82,7 +82,7 @@ func (o *Optimizer) buildFinalPlan(t Txn, fp Plan) (FinalPlan, error) {
 		hasAggr = allInSelect
 	}
 	var ffp FinalPlan
-	if !hasAggr && len(o.stmt.GroupBy.Fields) > 0 {
+	if !hasAggr && o.stmt.GroupBy != nil && len(o.stmt.GroupBy.Fields) > 0 {
 		return nil, NewSyntaxError(o.stmt.Pos, "No aggregate fields in select statement")
 	}
 	if !hasAggr {

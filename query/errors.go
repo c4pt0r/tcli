@@ -87,6 +87,9 @@ func (e *ExecuteError) queryError() string {
 func outputQueryAndErrPos(query string, pos int, adjust int) string {
 	tquery := strings.TrimSpace(query)
 	qlen := len(tquery)
+	if pos == -1 {
+		pos = qlen
+	}
 	trimLeft := false
 	trimRight := false
 	if qlen > 70 {

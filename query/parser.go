@@ -55,7 +55,7 @@ func (p *Parser) next() *Token {
 
 func (p *Parser) expect(tok *Token) error {
 	if p.tok == nil {
-		return NewSyntaxError(tok.Pos, "Expect token %s but got EOF", tok.Data)
+		return NewSyntaxError(-1, "Expect token %s but got EOF", tok.Data)
 	}
 	if p.tok.Tp != tok.Tp {
 		return NewSyntaxError(tok.Pos, "Expect token %s bug got %s", tok.Data, p.tok.Data)
@@ -145,16 +145,20 @@ func (p *Parser) parseUnaryExpr() (Expression, error) {
 	defer func() {
 		p.decNestLev()
 	}()
+	if p.tok == nil {
+		return nil, NewSyntaxError(-1, "Unexpected EOF")
+	}
 	switch p.tok.Tp {
 	case OPERATOR:
 		switch p.tok.Data {
 		case "!":
+			pos := p.tok.Pos
 			p.next()
 			x, err := p.parseUnaryExpr()
 			if err != nil {
 				return nil, err
 			}
-			return &NotExpr{Pos: p.tok.Pos, Right: x}, nil
+			return &NotExpr{Pos: pos, Right: x}, nil
 		}
 	}
 	return p.parsePrimaryExpr(nil)
@@ -216,7 +220,7 @@ func (p *Parser) parseFieldAccess(pos int, left Expression) (Expression, error) 
 		return nil, err
 	}
 	if len(fieldNames) != 1 {
-		return nil, NewSyntaxError(p.tok.Pos, "Field access operator should only have on field name")
+		return nil, NewSyntaxError(pos, "Field access operator should only have one field name")
 	}
 	return &FieldAccessExpr{Pos: pos, Left: left, FieldName: fieldNames[0]}, nil
 }
@@ -408,7 +412,7 @@ func (p *Parser) parseSelect() (*SelectStmt, error) {
 	}
 	p.exprLev--
 	if len(fields) == 0 && !allFields {
-		return nil, NewSyntaxError(p.tok.Pos, "Empty fields in select statement")
+		return nil, NewSyntaxError(pos, "Empty fields in select statement")
 	}
 
 	if allFields {
@@ -459,7 +463,11 @@ func (p *Parser) parseLimit() (*LimitStmt, error) {
 	}
 	switch len(exprs) {
 	case 0:
-		return nil, NewSyntaxError(p.tok.Pos, "Invalid limit parameters")
+		if p.tok == nil {
+			return nil, NewSyntaxError(-1, "Invalid limit parameters")
+		} else {
+			return nil, NewSyntaxError(p.tok.Pos, "Invalid limit parameters")
+		}
 	case 1:
 		ret.Count = int(exprs[0].Int)
 	case 2:
@@ -656,19 +664,36 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 		if err != nil {
 			return nil, err
 		}
-		wherePos = p.tok.Pos
+		if p.tok != nil {
+			wherePos = p.tok.Pos
+		} else {
+			return nil, NewSyntaxError(-1, "Expect where keyword")
+		}
 		p.next()
 	} else {
 		if p.tok.Tp != WHERE {
 			return nil, NewSyntaxError(p.tok.Pos, "Expect where keyword")
 		}
-		wherePos = p.tok.Pos
+		if p.tok != nil {
+			wherePos = p.tok.Pos
+		}
 		p.next()
+	}
+
+	if p.tok == nil {
+		return nil, NewSyntaxError(-1, "Expect where statement")
 	}
 
 	expr, err := p.parseExpr()
 	if err != nil {
 		return nil, err
+	}
+
+	if selectStmt == nil {
+		selectStmt = &SelectStmt{
+			Fields:    nil,
+			AllFields: true,
+		}
 	}
 
 	for p.tok != nil {
@@ -681,6 +706,9 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 			if err != nil {
 				return nil, err
 			}
+			if len(orderStmt.Orders) == 0 {
+				return nil, NewSyntaxError(orderStmt.Pos, "Require order by fields")
+			}
 		case GROUP:
 			if groupByStmt != nil {
 				return nil, NewSyntaxError(p.tok.Pos, "Duplicate group by expression")
@@ -688,6 +716,9 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 			groupByStmt, err = p.parseGroupBy(selectStmt)
 			if err != nil {
 				return nil, err
+			}
+			if len(groupByStmt.Fields) == 0 {
+				return nil, NewSyntaxError(groupByStmt.Pos, "Require group by fields")
 			}
 		case LIMIT:
 			if limitStmt != nil {
@@ -716,12 +747,6 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 	whereStmt := &WhereStmt{
 		Pos:  wherePos,
 		Expr: expr,
-	}
-	if selectStmt == nil {
-		selectStmt = &SelectStmt{
-			Fields:    nil,
-			AllFields: true,
-		}
 	}
 	selectStmt.Where = whereStmt
 	selectStmt.Limit = limitStmt

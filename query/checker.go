@@ -268,5 +268,5 @@ func (e *FieldAccessExpr) Check() error {
 			return nil
 		}
 	}
-	return NewSyntaxError(e.GetPos(), "Invalid field name")
+	return NewSyntaxError(e.FieldName.GetPos(), "Invalid field name")
 }
