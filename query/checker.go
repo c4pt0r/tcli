@@ -262,21 +262,32 @@ func (e *ListExpr) Check() error {
 
 func (e *FieldAccessExpr) Check() error {
 	_, leftIsFAE := e.Left.(*FieldAccessExpr)
-	if e.Left.ReturnType() != TJSON {
-		// Support cascade field access such as:
-		// json(value)['x']['y']
+	lrType := e.Left.ReturnType()
+	switch lrType {
+	case TJSON, TLIST:
+	default:
 		if leftIsFAE {
+			// Support cascade field access such as:
+			// json(value)['x']['y']
 			return nil
 		}
-		return NewSyntaxError(e.Left.GetPos(), "Field access expression left require JSON type")
+		return NewSyntaxError(e.Left.GetPos(), "Field access expression left require JSON or List type")
 	}
 	switch e.FieldName.(type) {
 	case *StringExpr:
-		return nil
+		if lrType == TJSON {
+			return nil
+		} else if leftIsFAE {
+			// Support cascade array index access such as:
+			// json(value)['list'][1]
+			return nil
+		}
 	case *NumberExpr:
-		// Support cascade array index access such as:
-		// json(value)['list'][1]
-		if leftIsFAE {
+		if lrType == TLIST {
+			return nil
+		} else if leftIsFAE {
+			// Support cascade array index access such as:
+			// json(value)['list'][1]
 			return nil
 		}
 	}

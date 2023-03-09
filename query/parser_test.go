@@ -288,3 +288,23 @@ func TestParser26(t *testing.T) {
 	}
 	fmt.Printf("%+v\n", expr.Where.Expr.String())
 }
+
+func TestParser27(t *testing.T) {
+	query := "select key, json(value)[1] where key ^= 'k' & json(value)['test'][1] = 'v1'"
+	p := NewParser(query)
+	expr, err := p.Parse()
+	if err == nil {
+		t.Fatal("Require error")
+	}
+	fmt.Printf("%+v\n", expr.Where.Expr.String())
+}
+
+func TestParser28(t *testing.T) {
+	query := "select key, split(key, '_')[1], split(key, '_')[2] where key ^= 'k' & json(value)['test'][1] = 'v1'"
+	p := NewParser(query)
+	expr, err := p.Parse()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("%+v\n", expr.Where.Expr.String())
+}

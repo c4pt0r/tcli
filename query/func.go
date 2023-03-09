@@ -1,7 +1,6 @@
 package query
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -18,6 +17,7 @@ var (
 		"is_float": &Function{"is_float", 1, false, TBOOL, funcIsFloat, funcIsFloatVec},
 		"substr":   &Function{"substr", 3, false, TSTR, funcSubStr, funcSubStrVec},
 		"json":     &Function{"json", 1, false, TJSON, funcJson, funcJsonVec},
+		"split":    &Function{"split", 2, false, TLIST, funcSplit, funcSplitVec},
 	}
 
 	aggrFuncMap = map[string]*AggrFunc{
@@ -60,7 +60,7 @@ type AggrFunction interface {
 func GetFuncNameFromExpr(expr Expression) (string, error) {
 	fc, ok := expr.(*FunctionCallExpr)
 	if !ok {
-		return "", errors.New("Not function call expression")
+		return "", NewSyntaxError(expr.GetPos(), "Not function call expression")
 	}
 	rfname, err := fc.Name.Execute(NewKVP(nil, nil))
 	if err != nil {
@@ -68,7 +68,7 @@ func GetFuncNameFromExpr(expr Expression) (string, error) {
 	}
 	fname, ok := rfname.(string)
 	if !ok {
-		return "", errors.New("Invalid function name")
+		return "", NewSyntaxError(expr.GetPos(), "Invalid function name")
 	}
 	return strings.ToLower(fname), nil
 }
@@ -80,7 +80,7 @@ func GetScalarFunction(expr Expression) (*Function, error) {
 	}
 	fobj, have := funcMap[fname]
 	if !have {
-		return nil, fmt.Errorf("Cannot find function %s", fname)
+		return nil, NewSyntaxError(expr.GetPos(), "Cannot find function %s", fname)
 	}
 	return fobj, nil
 }

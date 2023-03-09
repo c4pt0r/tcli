@@ -608,6 +608,24 @@ func (e *FieldAccessExpr) execListAccessBatch(idx int, left []any) ([]any, error
 				have = true
 				fval = lval[idx]
 			}
+		case []string:
+			lvallen := len(lval)
+			if idx < lvallen {
+				have = true
+				fval = lval[idx]
+			}
+		case []int64:
+			lvallen := len(lval)
+			if idx < lvallen {
+				have = true
+				fval = lval[idx]
+			}
+		case []float64:
+			lvallen := len(lval)
+			if idx < lvallen {
+				have = true
+				fval = lval[idx]
+			}
 		case string:
 			if lval == "" {
 				have = false

@@ -1,7 +1,5 @@
 package query
 
-import "errors"
-
 type SelectStmt struct {
 	Pos        int
 	AllFields  bool
@@ -111,7 +109,7 @@ func (s *SelectStmt) checkAggrFuncArg(arg Expression) error {
 	case *FunctionCallExpr:
 		fname, err := GetFuncNameFromExpr(e)
 		if err == nil && IsAggrFunc(fname) {
-			return errors.New("Aggregate function arguments should not contains aggregate function")
+			return NewSyntaxError(arg.GetPos(), "Aggregate function arguments should not contains aggregate function")
 		}
 	}
 	return nil
