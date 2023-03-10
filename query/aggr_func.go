@@ -1,8 +1,9 @@
 package query
 
 import (
-	"fmt"
 	"strconv"
+
+	"github.com/beorn7/perks/quantile"
 )
 
 var (
@@ -11,6 +12,7 @@ var (
 	_ AggrFunction = (*aggrAvgFunc)(nil)
 	_ AggrFunction = (*aggrMinFunc)(nil)
 	_ AggrFunction = (*aggrMaxFunc)(nil)
+	_ AggrFunction = (*aggrQuantileFunc)(nil)
 )
 
 func convertToNumber(value any) (int64, float64, bool) {
@@ -33,11 +35,26 @@ func convertToNumber(value any) (int64, float64, bool) {
 		if err == nil {
 			return int64(fval), fval, true
 		}
-	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-		ival, err := strconv.ParseInt(fmt.Sprintf("%d", val), 10, 64)
-		if err == nil {
-			return ival, float64(ival), false
-		}
+	case int8:
+		return int64(val), float64(val), false
+	case int16:
+		return int64(val), float64(val), false
+	case int:
+		return int64(val), float64(val), false
+	case int32:
+		return int64(val), float64(val), false
+	case int64:
+		return val, float64(val), false
+	case uint8:
+		return int64(val), float64(val), false
+	case uint16:
+		return int64(val), float64(val), false
+	case uint:
+		return int64(val), float64(val), false
+	case uint32:
+		return int64(val), float64(val), false
+	case uint64:
+		return int64(val), float64(val), false
 	case float32:
 		return int64(val), float64(val), true
 	case float64:
@@ -52,11 +69,12 @@ func convertToNumber(value any) (int64, float64, bool) {
 
 // Aggr Count
 type aggrCountFunc struct {
+	args    []Expression
 	counter int64
 }
 
-func newAggrCountFunc() AggrFunction {
-	return &aggrCountFunc{counter: 0}
+func newAggrCountFunc(args []Expression) (AggrFunction, error) {
+	return &aggrCountFunc{counter: 0}, nil
 }
 
 func (f *aggrCountFunc) Update(kv KVPair, args []Expression) error {
@@ -69,22 +87,25 @@ func (f *aggrCountFunc) Complete() (any, error) {
 }
 
 func (f *aggrCountFunc) Clone() AggrFunction {
-	return newAggrCountFunc()
+	ret, _ := newAggrCountFunc(f.args)
+	return ret
 }
 
 // Aggr Sum
 type aggrSumFunc struct {
+	args    []Expression
 	isum    int64
 	fsum    float64
 	isFloat bool
 }
 
-func newAggrSumFunc() AggrFunction {
+func newAggrSumFunc(args []Expression) (AggrFunction, error) {
 	return &aggrSumFunc{
+		args:    args,
 		isum:    0,
 		fsum:    0.0,
 		isFloat: false,
-	}
+	}, nil
 }
 
 func (f *aggrSumFunc) Update(kv KVPair, args []Expression) error {
@@ -109,24 +130,27 @@ func (f *aggrSumFunc) Complete() (any, error) {
 }
 
 func (f *aggrSumFunc) Clone() AggrFunction {
-	return newAggrSumFunc()
+	ret, _ := newAggrSumFunc(f.args)
+	return ret
 }
 
 // Aggr Avg
 type aggrAvgFunc struct {
+	args    []Expression
 	isum    int64
 	fsum    float64
 	count   int64
 	isFloat bool
 }
 
-func newAggrAvgFunc() AggrFunction {
+func newAggrAvgFunc(args []Expression) (AggrFunction, error) {
 	return &aggrAvgFunc{
+		args:    args,
 		isum:    0,
 		fsum:    0.0,
 		count:   0,
 		isFloat: false,
-	}
+	}, nil
 }
 
 func (f *aggrAvgFunc) Update(kv KVPair, args []Expression) error {
@@ -152,24 +176,27 @@ func (f *aggrAvgFunc) Complete() (any, error) {
 }
 
 func (f *aggrAvgFunc) Clone() AggrFunction {
-	return newAggrAvgFunc()
+	ret, _ := newAggrAvgFunc(f.args)
+	return ret
 }
 
 // Aggr Min
 type aggrMinFunc struct {
+	args    []Expression
 	imin    int64
 	fmin    float64
 	isFloat bool
 	first   bool
 }
 
-func newAggrMinFunc() AggrFunction {
+func newAggrMinFunc(args []Expression) (AggrFunction, error) {
 	return &aggrMinFunc{
+		args:    args,
 		imin:    0,
 		fmin:    0.0,
 		isFloat: false,
 		first:   false,
-	}
+	}, nil
 }
 
 func (f *aggrMinFunc) Update(kv KVPair, args []Expression) error {
@@ -209,24 +236,27 @@ func (f *aggrMinFunc) Complete() (any, error) {
 }
 
 func (f *aggrMinFunc) Clone() AggrFunction {
-	return newAggrMinFunc()
+	ret, _ := newAggrMinFunc(f.args)
+	return ret
 }
 
 // Aggr Max
 type aggrMaxFunc struct {
+	args    []Expression
 	imax    int64
 	fmax    float64
 	isFloat bool
 	first   bool
 }
 
-func newAggrMaxFunc() AggrFunction {
+func newAggrMaxFunc(args []Expression) (AggrFunction, error) {
 	return &aggrMaxFunc{
+		args:    args,
 		imax:    0,
 		fmax:    0.0,
 		isFloat: false,
 		first:   false,
-	}
+	}, nil
 }
 
 func (f *aggrMaxFunc) Update(kv KVPair, args []Expression) error {
@@ -266,5 +296,64 @@ func (f *aggrMaxFunc) Complete() (any, error) {
 }
 
 func (f *aggrMaxFunc) Clone() AggrFunction {
-	return newAggrMaxFunc()
+	ret, _ := newAggrMaxFunc(f.args)
+	return ret
+}
+
+// Aggr Quantile
+type aggrQuantileFunc struct {
+	args    []Expression
+	percent float64
+	stream  *quantile.Stream
+}
+
+func newAggrQuantileFunc(args []Expression) (AggrFunction, error) {
+	if args[1].ReturnType() != TNUMBER {
+		return nil, NewSyntaxError(args[1].GetPos(), "quantile function second parameter require number type")
+	}
+
+	pvar, err := args[1].Execute(NewKVP(nil, nil))
+	if err != nil {
+		return nil, err
+	}
+	percent, ok := convertToFloat(pvar)
+	if !ok {
+		return nil, NewExecuteError(args[1].GetPos(), "quantile function second parameter type should be float")
+	}
+	if percent > 1.0 {
+		return nil, NewExecuteError(args[1].GetPos(), "quantile function second parameter type should be less than 1")
+	}
+	stream := quantile.NewTargeted(map[float64]float64{
+		percent: 0.0001,
+	})
+	return &aggrQuantileFunc{
+		percent: percent,
+		stream:  stream,
+	}, nil
+}
+
+func (f *aggrQuantileFunc) Update(kv KVPair, args []Expression) error {
+	rarg, err := args[0].Execute(kv)
+	if err != nil {
+		return err
+	}
+	_, fval, _ := convertToNumber(rarg)
+	f.stream.Insert(fval)
+	return nil
+}
+
+func (f *aggrQuantileFunc) Complete() (any, error) {
+	ret := f.stream.Query(f.percent)
+	return ret, nil
+}
+
+func (f *aggrQuantileFunc) Clone() AggrFunction {
+	percent := f.percent
+	return &aggrQuantileFunc{
+		args:    f.args,
+		percent: percent,
+		stream: quantile.NewTargeted(map[float64]float64{
+			percent: 0.0001,
+		}),
+	}
 }

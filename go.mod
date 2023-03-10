@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.16
 	github.com/abiosoft/ishell v2.0.0+incompatible
+	github.com/beorn7/perks v1.0.1
 	github.com/c4pt0r/log v0.0.0-20211004143616-aa6380016a47
 	github.com/fatih/color v1.12.0
 	github.com/magiconair/properties v1.8.0
@@ -20,7 +21,6 @@ require (
 
 require (
 	github.com/abiosoft/readline v0.0.0-20180607040430-155bce2042db // indirect
-	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect

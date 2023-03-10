@@ -21,11 +21,12 @@ var (
 	}
 
 	aggrFuncMap = map[string]*AggrFunc{
-		"count": &AggrFunc{"count", 1, false, TNUMBER, newAggrCountFunc},
-		"sum":   &AggrFunc{"sum", 1, false, TNUMBER, newAggrSumFunc},
-		"avg":   &AggrFunc{"avg", 1, false, TNUMBER, newAggrAvgFunc},
-		"min":   &AggrFunc{"min", 1, false, TNUMBER, newAggrMinFunc},
-		"max":   &AggrFunc{"max", 1, false, TNUMBER, newAggrMaxFunc},
+		"count":    &AggrFunc{"count", 1, false, TNUMBER, newAggrCountFunc},
+		"sum":      &AggrFunc{"sum", 1, false, TNUMBER, newAggrSumFunc},
+		"avg":      &AggrFunc{"avg", 1, false, TNUMBER, newAggrAvgFunc},
+		"min":      &AggrFunc{"min", 1, false, TNUMBER, newAggrMinFunc},
+		"max":      &AggrFunc{"max", 1, false, TNUMBER, newAggrMaxFunc},
+		"quantile": &AggrFunc{"quantile", 2, false, TNUMBER, newAggrQuantileFunc},
 	}
 )
 
@@ -49,7 +50,7 @@ type AggrFunc struct {
 	Body       AggrFunctor
 }
 
-type AggrFunctor func() AggrFunction
+type AggrFunctor func(args []Expression) (AggrFunction, error)
 
 type AggrFunction interface {
 	Update(kv KVPair, args []Expression) error

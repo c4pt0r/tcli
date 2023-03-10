@@ -79,7 +79,11 @@ func (a *AggregatePlan) listAggrFunctions(expr Expression) ([]*FunctionCallExpr,
 		if !functor.VarArgs && functor.NumArgs != len(fcexprs[i].Args) {
 			return nil, nil, false, NewExecuteError(fcexprs[i].GetPos(), "Function %s require %d arguments but got %d", functor.Name, functor.NumArgs, len(fcexprs[i].Args))
 		}
-		functors = append(functors, functor.Body())
+		fbody, err := functor.Body(fcexprs[i].Args)
+		if err != nil {
+			return nil, nil, false, err
+		}
+		functors = append(functors, fbody)
 	}
 	return fcexprs, functors, true, nil
 }
