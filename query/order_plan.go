@@ -28,7 +28,7 @@ func (p *FinalOrderPlan) findOrderIdx(o OrderField) (int, error) {
 			return i, nil
 		}
 	}
-	return 0, fmt.Errorf("Cannot find field: %s", fname)
+	return 0, NewSyntaxError(o.Field.GetPos(), "Cannot find field: %s", fname)
 }
 
 func (p *FinalOrderPlan) Init() error {

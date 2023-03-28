@@ -1,7 +1,6 @@
 package query
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -100,14 +99,15 @@ func (p *ProjectionPlan) processProjection(kvp KVPair) ([]Column, error) {
 		case bool, []byte, string,
 			int, int8, int16, int32, int64,
 			uint, uint8, uint16, uint32, uint64,
-			float32, float64:
+			float32, float64,
+			JSON, map[string]any, []any:
 			ret[i] = value
 		default:
 			if value == nil {
 				ret[i] = nil
 				break
 			}
-			return nil, errors.New("Expression result type not support")
+			return nil, NewExecuteError(p.Fields[i].GetPos(), "Expression result type not support")
 		}
 	}
 	return ret, nil

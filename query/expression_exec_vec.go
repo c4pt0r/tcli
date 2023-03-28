@@ -2,8 +2,6 @@ package query
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"regexp"
 )
 
@@ -17,7 +15,7 @@ func (e *StringExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
 
 func (e *FieldExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
 	if e.Field != KeyKW && e.Field != ValueKW {
-		return nil, errors.New("Invalid Field")
+		return nil, NewExecuteError(e.GetPos(), "Invalid field name %v", e.Field)
 	}
 	ret := make([]any, len(chunk))
 	isKey := e.Field == KeyKW
@@ -39,7 +37,7 @@ func (e *NotExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
 	for i := 0; i < len(chunk); i++ {
 		rval, rok := right[i].(bool)
 		if !rok {
-			return nil, errors.New("! right value error")
+			return nil, NewExecuteError(e.Right.GetPos(), "! operator right expression has wrong type, not boolean")
 		}
 		right[i] = !rval
 	}
@@ -155,7 +153,7 @@ func (e *BinaryOpExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
 			return e.execBetweenBatch(chunk, true)
 		}
 	}
-	return nil, errors.New("Unknown operator")
+	return nil, NewExecuteError(e.GetPos(), "Unknown operator %v", e.Op)
 }
 
 func (e *BinaryOpExpr) execEqualBatch(chunk []KVPair, not bool) ([]any, error) {
@@ -184,7 +182,7 @@ func (e *BinaryOpExpr) execEqualBatch(chunk []KVPair, not bool) ([]any, error) {
 	case bool:
 		isBool = true
 	default:
-		return nil, errors.New("Invalid = operator left type")
+		return nil, NewExecuteError(e.GetPos(), "= operator left expression has wrong type")
 	}
 
 	for i := 0; i < len(chunk); i++ {
@@ -192,7 +190,7 @@ func (e *BinaryOpExpr) execEqualBatch(chunk []KVPair, not bool) ([]any, error) {
 			left, lok := convertToByteArray(rleft[i])
 			right, rok := convertToByteArray(rright[i])
 			if !lok || !rok {
-				return nil, errors.New("Invalid = operator left type")
+				return nil, NewExecuteError(e.GetPos(), "= operator left or right expression has wrong type")
 			}
 			if not {
 				rleft[i] = !bytes.Equal(left, right)
@@ -204,7 +202,7 @@ func (e *BinaryOpExpr) execEqualBatch(chunk []KVPair, not bool) ([]any, error) {
 			left, lok := convertToInt(rleft[i])
 			right, rok := convertToInt(rright[i])
 			if !lok || !rok {
-				return nil, errors.New("Invalid = operator left type")
+				return nil, NewExecuteError(e.GetPos(), "= operator left or right expression has wrong type")
 			}
 			if not {
 				rleft[i] = left != right
@@ -216,7 +214,7 @@ func (e *BinaryOpExpr) execEqualBatch(chunk []KVPair, not bool) ([]any, error) {
 			left, lok := rleft[i].(bool)
 			right, rok := rright[i].(bool)
 			if !lok || !rok {
-				return nil, errors.New("Invalid = operator left type")
+				return nil, NewExecuteError(e.GetPos(), "= operator left or right expression has wrong type")
 			}
 			if not {
 				rleft[i] = left != right
@@ -241,7 +239,7 @@ func (e *BinaryOpExpr) execPrefixMatchBatch(chunk []KVPair) ([]any, error) {
 		left, lok := convertToByteArray(rleft[i])
 		right, rok := convertToByteArray(rright[i])
 		if !lok || !rok {
-			return nil, errors.New("^= left value error")
+			return nil, NewExecuteError(e.GetPos(), "^= operator left or right expression has wrong type")
 		}
 		rleft[i] = bytes.HasPrefix(left, right)
 	}
@@ -264,7 +262,7 @@ func (e *BinaryOpExpr) execRegexpMatchBatch(chunk []KVPair) ([]any, error) {
 		left, lok := convertToByteArray(rleft[i])
 		right, rok := convertToByteArray(rright[i])
 		if !lok || !rok {
-			return nil, errors.New("^= left value error")
+			return nil, NewExecuteError(e.GetPos(), "~= operator left or right expression has wrong type")
 		}
 		regKey := string(right)
 		reg, have := regexpCache[regKey]
@@ -293,7 +291,11 @@ func (e *BinaryOpExpr) execAndOrBatch(chunk []KVPair, and bool) ([]any, error) {
 		left, lok := rleft[i].(bool)
 		right, rok := rright[i].(bool)
 		if !lok || !rok {
-			return nil, errors.New("| left or right value type not bool")
+			if and {
+				return nil, NewExecuteError(e.GetPos(), "& operator left or right expression has wrong type, not boolean")
+			} else {
+				return nil, NewExecuteError(e.GetPos(), "| operator left or right expression has wrong type, not boolean")
+			}
 		}
 		if and {
 			rleft[i] = left && right
@@ -314,7 +316,7 @@ func (e *BinaryOpExpr) execMathBatch(chunk []KVPair, op byte) ([]any, error) {
 		return nil, err
 	}
 	for i := 0; i < len(chunk); i++ {
-		val, err := executeMathOp(rleft[i], rright[i], op)
+		val, err := executeMathOp(rleft[i], rright[i], op, e.Right)
 		if err != nil {
 			return nil, err
 		}
@@ -368,7 +370,7 @@ func (e *BinaryOpExpr) execInBatch(chunk []KVPair, number bool) ([]any, error) {
 	}
 	rlist, ok := e.Right.(*ListExpr)
 	if !ok {
-		return nil, errors.New("operator in right expression is not list")
+		return nil, NewExecuteError(e.GetPos(), "in operator right expression has wrong type, not list")
 	}
 	var (
 		listValues = make([][]any, len(rlist.List))
@@ -379,10 +381,10 @@ func (e *BinaryOpExpr) execInBatch(chunk []KVPair, number bool) ([]any, error) {
 
 	for l, expr := range rlist.List {
 		if number && expr.ReturnType() != TNUMBER {
-			return nil, errors.New("operator in right expression type is not number")
+			return nil, NewExecuteError(expr.GetPos(), "in operator right expression element has wrong type, not number")
 		}
 		if !number && expr.ReturnType() != TSTR {
-			return nil, errors.New("operator in right expression type is not string")
+			return nil, NewExecuteError(expr.GetPos(), "in operator right expression element has wrong type, not string")
 		}
 		values, err = expr.ExecuteBatch(chunk)
 		if err != nil {
@@ -422,21 +424,21 @@ func (e *BinaryOpExpr) execBetweenBatch(chunk []KVPair, number bool) ([]any, err
 	}
 	rlist, ok := e.Right.(*ListExpr)
 	if !ok || len(rlist.List) != 2 {
-		return nil, errors.New("operator in right expression is not list")
+		return nil, NewExecuteError(e.Right.GetPos(), "between operator right expression invalid")
 	}
 	lexpr := rlist.List[0]
 	uexpr := rlist.List[1]
 	if !number && lexpr.ReturnType() != TSTR {
-		return nil, errors.New("operator between lower boundary expression type is not string")
+		return nil, NewExecuteError(lexpr.GetPos(), "between operator lower boundary expression has wrong type, not string")
 	}
 	if !number && lexpr.ReturnType() != TSTR {
-		return nil, errors.New("operator between upper boundary expression type is not string")
+		return nil, NewExecuteError(uexpr.GetPos(), "between operator upper boundary expression has wrong type, not string")
 	}
 	if number && lexpr.ReturnType() != TNUMBER {
-		return nil, errors.New("operator between lower boundary expression type is not string")
+		return nil, NewExecuteError(lexpr.GetPos(), "between operator lower boundary expression has wrong type, not number")
 	}
 	if number && uexpr.ReturnType() != TNUMBER {
-		return nil, errors.New("operator between upper boundary expression type is not string")
+		return nil, NewExecuteError(uexpr.GetPos(), "between operator upper boundary expression has wrong type, not number")
 	}
 	lbvals, err := lexpr.ExecuteBatch(chunk)
 	if err != nil {
@@ -459,7 +461,7 @@ func (e *BinaryOpExpr) execBetweenBatch(chunk []KVPair, number bool) ([]any, err
 			return nil, err
 		}
 		if !cmp {
-			return nil, errors.New("operator between lower boundary is greater than upper boundary.")
+			return nil, NewExecuteError(e.GetPos(), "between operator lower boundary is greater than upper boundary")
 		}
 		if number {
 			lcmp, err = execNumberCompare(lbvals[i], rleft[i], "<=")
@@ -501,7 +503,7 @@ func (e *BinaryOpExpr) execStringConcateBatch(chunk []KVPair) ([]any, error) {
 		lval, lok := convertToByteArray(left[i])
 		rval, rok := convertToByteArray(right[i])
 		if !lok || !rok {
-			return nil, errors.New("+ operator left or right expression not string")
+			return nil, NewExecuteError(e.GetPos(), "+ operator left or right expression has wrong type, not string")
 		}
 		cval := make([]byte, 0, len(lval)+len(rval))
 		cval = append(cval, lval...)
@@ -527,7 +529,7 @@ func (e *FunctionCallExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
 		return nil, err
 	}
 	if !funcObj.VarArgs && len(e.Args) != funcObj.NumArgs {
-		return nil, fmt.Errorf("Function %s require %d arguments but got %d", funcObj.Name, funcObj.NumArgs, len(e.Args))
+		return nil, NewExecuteError(e.GetPos(), "Function %s require %d arguments but got %d", funcObj.Name, funcObj.NumArgs, len(e.Args))
 	}
 	return e.executeFuncBatch(funcObj, chunk)
 }
@@ -548,4 +550,96 @@ func (e *FunctionCallExpr) executeFuncBatch(funcObj *Function, chunk []KVPair) (
 		}
 	}
 	return ret, nil
+}
+
+func (e *FieldAccessExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
+	left, err := e.Left.ExecuteBatch(chunk)
+	if err != nil {
+		return nil, err
+	}
+	switch fnval := e.FieldName.(type) {
+	case *StringExpr:
+		return e.execDictAccessBatch(fnval.Data, left)
+	case *NumberExpr:
+		return e.execListAccessBatch(int(fnval.Int), left)
+	}
+	return nil, NewSyntaxError(e.FieldName.GetPos(), "Invalid field name")
+}
+
+func (e *FieldAccessExpr) execDictAccessBatch(fieldName string, left []any) ([]any, error) {
+	for i := 0; i < len(left); i++ {
+		var (
+			fval any
+			have bool
+		)
+		switch lval := left[i].(type) {
+		case map[string]any:
+			fval, have = lval[fieldName]
+		case JSON:
+			fval, have = lval[fieldName]
+		case string:
+			if lval == "" {
+				have = false
+			} else {
+				return nil, NewExecuteError(e.Left.GetPos(), "Field access left expression has wrong type, not JSON")
+			}
+		default:
+			return nil, NewExecuteError(e.Left.GetPos(), "Field access left expression has wrong type, not JSON")
+		}
+		if !have {
+			left[i] = ""
+		} else {
+			left[i] = fval
+		}
+	}
+	return left, nil
+}
+
+func (e *FieldAccessExpr) execListAccessBatch(idx int, left []any) ([]any, error) {
+	for i := 0; i < len(left); i++ {
+		var (
+			fval any
+			have bool
+		)
+		switch lval := left[i].(type) {
+		case []any:
+			lvallen := len(lval)
+			if idx < lvallen {
+				have = true
+				fval = lval[idx]
+			}
+		case []string:
+			lvallen := len(lval)
+			if idx < lvallen {
+				have = true
+				fval = lval[idx]
+			}
+		case []int64:
+			lvallen := len(lval)
+			if idx < lvallen {
+				have = true
+				fval = lval[idx]
+			}
+		case []float64:
+			lvallen := len(lval)
+			if idx < lvallen {
+				have = true
+				fval = lval[idx]
+			}
+		case string:
+			if lval == "" {
+				have = false
+			} else {
+				return nil, NewExecuteError(e.Left.GetPos(), "Field access left expression has wrong type, not List")
+			}
+		default:
+			return nil, NewExecuteError(e.Left.GetPos(), "Field access left expression has wrong type, not List")
+		}
+		if !have {
+			left[i] = ""
+		} else {
+			left[i] = fval
+		}
+	}
+	return left, nil
 }

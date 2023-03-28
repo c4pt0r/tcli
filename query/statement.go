@@ -1,8 +1,7 @@
 package query
 
-import "errors"
-
 type SelectStmt struct {
+	Pos        int
 	AllFields  bool
 	FieldNames []string
 	FieldTypes []Type
@@ -14,6 +13,7 @@ type SelectStmt struct {
 }
 
 type WhereStmt struct {
+	Pos  int
 	Expr Expression
 }
 
@@ -24,6 +24,7 @@ type OrderField struct {
 }
 
 type OrderStmt struct {
+	Pos    int
 	Orders []OrderField
 }
 
@@ -33,10 +34,12 @@ type GroupByField struct {
 }
 
 type GroupByStmt struct {
+	Pos    int
 	Fields []GroupByField
 }
 
 type LimitStmt struct {
+	Pos   int
 	Start int
 	Count int
 }
@@ -106,7 +109,7 @@ func (s *SelectStmt) checkAggrFuncArg(arg Expression) error {
 	case *FunctionCallExpr:
 		fname, err := GetFuncNameFromExpr(e)
 		if err == nil && IsAggrFunc(fname) {
-			return errors.New("Aggregate function arguments should not contains aggregate function")
+			return NewSyntaxError(arg.GetPos(), "Aggregate function arguments should not contains aggregate function")
 		}
 	}
 	return nil

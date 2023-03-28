@@ -65,11 +65,11 @@ func (o *ExpressionOptimizer) tryReorderBinaryOp(e *BinaryOpExpr) {
 			case *StringExpr, *NumberExpr, *FloatExpr:
 				// (ANY op VALUE) op VALUE
 				e.Left = leftOpExpr.Left
-				e.Right = &BinaryOpExpr{Op: e.Op, Left: leftOpExpr.Right, Right: e.Right}
+				e.Right = &BinaryOpExpr{Pos: e.GetPos(), Op: e.Op, Left: leftOpExpr.Right, Right: e.Right}
 			case *BinaryOpExpr:
 				if isBinaryOpExprAllValue(rexpr, e.Op) {
 					e.Left = leftOpExpr.Left
-					e.Right = &BinaryOpExpr{Op: e.Op, Left: leftOpExpr.Right, Right: e.Right}
+					e.Right = &BinaryOpExpr{Pos: e.GetPos(), Op: e.Op, Left: leftOpExpr.Right, Right: e.Right}
 				}
 			}
 		}
@@ -124,28 +124,39 @@ func (o *ExpressionOptimizer) tryOptimizeBinaryOpExecute(e *BinaryOpExpr) (Expre
 	if !(leftIsValue && rightIsValue) {
 		return e, false
 	}
+	leftPos := e.Left.GetPos()
 	switch e.Op {
 	case Add, Sub, Mul, Div:
 		ret, err := e.Execute(NewKVP(nil, nil))
 		if err == nil {
 			switch e.Left.(type) {
 			case *StringExpr:
-				return &StringExpr{Data: ret.(string)}, true
+				return &StringExpr{Pos: leftPos, Data: ret.(string)}, true
 			case *NumberExpr:
-				return &NumberExpr{Data: fmt.Sprintf("%v", ret), Int: ret.(int64)}, true
+				switch cret := ret.(type) {
+				case int64:
+					return &NumberExpr{Pos: leftPos, Data: fmt.Sprintf("%v", cret), Int: cret}, true
+				case float64:
+					return &NumberExpr{Pos: leftPos, Data: fmt.Sprintf("%v", int64(cret)), Int: int64(cret)}, true
+				}
 			case *FloatExpr:
-				return &FloatExpr{Data: fmt.Sprintf("%v", ret), Float: ret.(float64)}, true
+				switch cret := ret.(type) {
+				case int64:
+					return &FloatExpr{Pos: leftPos, Data: fmt.Sprintf("%v", float64(cret)), Float: float64(cret)}, true
+				case float64:
+					return &FloatExpr{Pos: leftPos, Data: fmt.Sprintf("%v", cret), Float: cret}, true
+				}
 			}
 		}
 	case And, Or:
 		ret, err := e.Execute(NewKVP(nil, nil))
 		if err == nil {
-			return &BoolExpr{Data: fmt.Sprintf("%v", ret), Bool: ret.(bool)}, true
+			return &BoolExpr{Pos: leftPos, Data: fmt.Sprintf("%v", ret), Bool: ret.(bool)}, true
 		}
 	case Eq, NotEq, Gt, Gte, Lt, Lte:
 		ret, err := e.Execute(NewKVP(nil, nil))
 		if err == nil {
-			return &BoolExpr{Data: fmt.Sprintf("%v", ret), Bool: ret.(bool)}, true
+			return &BoolExpr{Pos: leftPos, Data: fmt.Sprintf("%v", ret), Bool: ret.(bool)}, true
 		}
 	}
 	return e, false
@@ -186,12 +197,12 @@ func (o *ExpressionOptimizer) tryOptimizeAndOr(expr Expression) (Expression, boo
 				return e.Right, true
 			} else {
 				// false & Expr => false
-				return &BoolExpr{Data: "false", Bool: false}, true
+				return &BoolExpr{Pos: e.Left.GetPos(), Data: "false", Bool: false}, true
 			}
 		case Or:
 			if leftVal {
 				// true | Expr => true
-				return &BoolExpr{Data: "true", Bool: true}, true
+				return &BoolExpr{Pos: e.Left.GetPos(), Data: "true", Bool: true}, true
 			} else {
 				// false | Expr => Expr
 				return e.Right, true
@@ -207,12 +218,12 @@ func (o *ExpressionOptimizer) tryOptimizeAndOr(expr Expression) (Expression, boo
 				return e.Left, true
 			} else {
 				// Expr & false => false
-				return &BoolExpr{Data: "false", Bool: false}, true
+				return &BoolExpr{Pos: e.Right.GetPos(), Data: "false", Bool: false}, true
 			}
 		case Or:
 			if rightVal {
 				// Expr | true => true
-				return &BoolExpr{Data: "true", Bool: true}, true
+				return &BoolExpr{Pos: e.Right.GetPos(), Data: "true", Bool: true}, true
 			} else {
 				// Expr | false => Expr
 				return e.Left, true
@@ -224,14 +235,14 @@ func (o *ExpressionOptimizer) tryOptimizeAndOr(expr Expression) (Expression, boo
 		switch e.Op {
 		case And:
 			if leftVal && rightVal {
-				return &BoolExpr{Data: "true", Bool: true}, true
+				return &BoolExpr{Pos: e.Left.GetPos(), Data: "true", Bool: true}, true
 			}
-			return &BoolExpr{Data: "false", Bool: false}, true
+			return &BoolExpr{Pos: e.Left.GetPos(), Data: "false", Bool: false}, true
 		case Or:
 			if leftVal || rightVal {
-				return &BoolExpr{Data: "true", Bool: true}, true
+				return &BoolExpr{Pos: e.Left.GetPos(), Data: "true", Bool: true}, true
 			}
-			return &BoolExpr{Data: "false", Bool: false}, true
+			return &BoolExpr{Pos: e.Left.GetPos(), Data: "false", Bool: false}, true
 		}
 	}
 
@@ -256,25 +267,29 @@ func (o *ExpressionOptimizer) tryOptimizeFunctionCall(e *FunctionCallExpr) (Expr
 	}
 
 	retTp := e.ReturnType()
+	switch retTp {
+	case TJSON:
+		return e, false
+	}
 	ret, err := e.Execute(NewKVP(nil, nil))
 	if err == nil {
 		switch retTp {
 		case TSTR:
-			return &StringExpr{Data: ret.(string)}, true
+			return &StringExpr{Pos: e.GetPos(), Data: ret.(string)}, true
 		case TNUMBER:
 			iret, ok := ret.(int64)
 			if ok {
-				return &NumberExpr{Data: fmt.Sprintf("%v", ret), Int: iret}, true
+				return &NumberExpr{Pos: e.GetPos(), Data: fmt.Sprintf("%v", ret), Int: iret}, true
 			}
 			fret, ok := ret.(float64)
 			if ok {
-				return &FloatExpr{Data: fmt.Sprintf("%v", ret), Float: fret}, true
+				return &FloatExpr{Pos: e.GetPos(), Data: fmt.Sprintf("%v", ret), Float: fret}, true
 			}
 		case TBOOL:
 			if ret.(bool) {
-				return &BoolExpr{Data: "true", Bool: true}, true
+				return &BoolExpr{Pos: e.GetPos(), Data: "true", Bool: true}, true
 			}
-			return &BoolExpr{Data: "false", Bool: false}, true
+			return &BoolExpr{Pos: e.GetPos(), Data: "false", Bool: false}, true
 		}
 	}
 	return e, false

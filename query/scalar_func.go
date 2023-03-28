@@ -1,7 +1,7 @@
 package query
 
 import (
-	"errors"
+	"encoding/json"
 	"strconv"
 	"strings"
 )
@@ -98,10 +98,10 @@ func funcSubStr(kv KVPair, args []Expression) (any, error) {
 	}
 	val := toString(rarg)
 	if args[1].ReturnType() != TNUMBER {
-		return nil, errors.New("substr function require number type parameter for second parameter")
+		return nil, NewExecuteError(args[1].GetPos(), "substr function second parameter require number type")
 	}
 	if args[2].ReturnType() != TNUMBER {
-		return nil, errors.New("substr function require number type parameter for third parameter")
+		return nil, NewExecuteError(args[2].GetPos(), "substr function third parameter require number type")
 	}
 	rarg, err = args[1].Execute(kv)
 	if err != nil {
@@ -126,4 +126,38 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+type JSON map[string]any
+
+func funcJson(kv KVPair, args []Expression) (any, error) {
+	rarg, err := args[0].Execute(kv)
+	if err != nil {
+		return nil, err
+	}
+	jsonData, ok := convertToByteArray(rarg)
+	if !ok {
+		return nil, NewExecuteError(args[0].GetPos(), "Cannot convert to byte array")
+	}
+	ret := make(JSON)
+	json.Unmarshal(jsonData, &ret)
+	return ret, nil
+}
+
+func funcSplit(kv KVPair, args []Expression) (any, error) {
+	rarg, err := args[0].Execute(kv)
+	if err != nil {
+		return nil, err
+	}
+	if args[1].ReturnType() != TSTR {
+		return nil, NewExecuteError(args[1].GetPos(), "split function second parameter require string type")
+	}
+	rspliter, err := args[1].Execute(kv)
+	if err != nil {
+		return nil, err
+	}
+	val := toString(rarg)
+	spliter := toString(rspliter)
+	ret := strings.Split(val, spliter)
+	return ret, nil
 }

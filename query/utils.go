@@ -65,7 +65,7 @@ func convertToFloat(value any) (float64, bool) {
 	}
 }
 
-func executeMathOp(left any, right any, op byte) (any, error) {
+func executeMathOp(left any, right any, op byte, rightExpr Expression) (any, error) {
 	lint, liok := convertToInt(left)
 	rint, riok := convertToInt(right)
 	if liok && riok {
@@ -77,6 +77,9 @@ func executeMathOp(left any, right any, op byte) (any, error) {
 		case '*':
 			return lint * rint, nil
 		case '/':
+			if rint == 0 {
+				return 0, NewExecuteError(rightExpr.GetPos(), "Divide by zero")
+			}
 			return lint / rint, nil
 		default:
 			return 0.0, errors.New("Unknown operator")
@@ -94,6 +97,9 @@ func executeMathOp(left any, right any, op byte) (any, error) {
 		case '*':
 			return lfloat * rfloat, nil
 		case '/':
+			if rfloat == 0.0 {
+				return 0, NewExecuteError(rightExpr.GetPos(), "Divide by zero")
+			}
 			return lfloat / rfloat, nil
 		default:
 			return 0.0, errors.New("Unknown operator")
@@ -121,6 +127,9 @@ func executeMathOp(left any, right any, op byte) (any, error) {
 	case '*':
 		return lfval * rfval, nil
 	case '/':
+		if rfval == 0.0 {
+			return 0, NewExecuteError(rightExpr.GetPos(), "Divide by zero")
+		}
 		return lfval / rfval, nil
 	default:
 		return 0.0, errors.New("Unknown operator")

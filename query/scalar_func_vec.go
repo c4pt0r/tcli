@@ -1,7 +1,7 @@
 package query
 
 import (
-	"errors"
+	"encoding/json"
 	"strconv"
 	"strings"
 )
@@ -132,10 +132,10 @@ func funcIsFloatVec(chunk []KVPair, args []Expression) ([]any, error) {
 
 func funcSubStrVec(chunk []KVPair, args []Expression) ([]any, error) {
 	if args[1].ReturnType() != TNUMBER {
-		return nil, errors.New("substr function require number type parameter for second parameter")
+		return nil, NewExecuteError(args[1].GetPos(), "substr function second parameter require number type")
 	}
 	if args[2].ReturnType() != TNUMBER {
-		return nil, errors.New("substr function require number type parameter for third parameter")
+		return nil, NewExecuteError(args[2].GetPos(), "substr function third parameter require number type")
 	}
 	values, err := args[0].ExecuteBatch(chunk)
 	if err != nil {
@@ -160,6 +160,43 @@ func funcSubStrVec(chunk []KVPair, args []Expression) ([]any, error) {
 			length = min(length, vlen-start)
 			values[i] = val[start:length]
 		}
+	}
+	return values, nil
+}
+
+func funcJsonVec(chunk []KVPair, args []Expression) ([]any, error) {
+	values, err := args[0].ExecuteBatch(chunk)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < len(chunk); i++ {
+		val, ok := convertToByteArray(values[i])
+		if !ok {
+			return nil, NewExecuteError(args[0].GetPos(), "Cannot convert to byte array")
+		}
+		item := make(JSON)
+		json.Unmarshal(val, &item)
+		values[i] = item
+	}
+	return values, nil
+}
+
+func funcSplitVec(chunk []KVPair, args []Expression) ([]any, error) {
+	if args[1].ReturnType() != TSTR {
+		return nil, NewExecuteError(args[1].GetPos(), "split function second parameter require string type")
+	}
+	values, err := args[0].ExecuteBatch(chunk)
+	if err != nil {
+		return nil, err
+	}
+	spliters, err := args[1].ExecuteBatch(chunk)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < len(chunk); i++ {
+		val := toString(values[i])
+		spliter := toString(spliters[i])
+		values[i] = strings.Split(val, spliter)
 	}
 	return values, nil
 }

@@ -44,7 +44,7 @@ func (c ExplainCmd) Handler() func(ctx context.Context) {
 			opt := query.NewOptimizer(sql)
 			plan, err := opt.BuildPlan(qtxn)
 			if err != nil {
-				return err
+				return bindQueryToError(sql, err)
 			}
 			ret := [][]string{
 				{"Plan"},
