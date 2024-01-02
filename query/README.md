@@ -73,7 +73,7 @@ Features:
 5. Support hash aggregate plan
 6. Support JSON and field access expression
 
-Examples:
+## Examples:
 
 ```
 # Simple query
@@ -93,4 +93,22 @@ q select key, json(value)['list'][1] where key ^= 'k'
 q select key, value, cosine_distance(list(1,2,3,4), split(value, ',')) as cosine_dis where key ^= 'embedding' order by cosine_dis desc
 q select key, value, l2_distance(list(1,2,3,4), split(value, ',')) as l2_dis where key ^= 'embedding' order by l2_dis
 q select key, value, l2_distance(list(1,2,3,4), json(value) as l2_dis where key ^= 'embedding_json' order by l2_dis
+```
+
+## Build With LLama
+
+```
+make build-with-llama
+```
+
+Then you can use `embedding` function to calculate string's embeddings
+
+```
+q select key, l2_distance(embedding("This is a test"), embedding(value)) where key ^= 'e_'
+```
+
+You can use environment variables to tell tcli where is llama's model:
+
+```
+MODEL_PATH=/data/models/llama-2-7b.ggmlv3.q4_0.bin bin/tcli
 ```

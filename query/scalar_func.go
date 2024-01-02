@@ -296,3 +296,43 @@ func funcToList(kv KVPair, args []Expression) (any, error) {
 	}
 	return funcFloatList(kv, args)
 }
+
+func funcLen(kv KVPair, args []Expression) (any, error) {
+	rarg, err := args[0].Execute(kv)
+	if err != nil {
+		return nil, err
+	}
+	ret, err := getListLength(rarg)
+	if err != nil {
+		return nil, NewExecuteError(args[0].GetPos(), err.Error())
+	}
+	return ret, nil
+}
+
+func getListLength(data any) (int, error) {
+	switch val := data.(type) {
+	case string:
+		return len(val), nil
+	case int, int32, int64, uint, uint32, uint64, float32, float64:
+		return 0, nil
+	case []byte:
+		return len(val), nil
+	case []int:
+		return len(val), nil
+	case []int32:
+		return len(val), nil
+	case []int64:
+		return len(val), nil
+	case []uint:
+		return len(val), nil
+	case []uint32:
+		return len(val), nil
+	case []uint64:
+		return len(val), nil
+	case []float32:
+		return len(val), nil
+	case []float64:
+		return len(val), nil
+	}
+	return 0, fmt.Errorf("invalid type")
+}

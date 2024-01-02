@@ -23,6 +23,7 @@ var (
 		"int_list":   &Function{"int_list", 1, true, TLIST, funcIntList, funcIntListVec},
 		"flist":      &Function{"flist", 1, true, TLIST, funcFloatList, funcFloatListVec},
 		"ilist":      &Function{"ilist", 1, true, TLIST, funcIntList, funcIntListVec},
+		"len":        &Function{"len", 1, false, TNUMBER, funcLen, funcLenVec},
 
 		"cosine_distance": &Function{"cosine_distance", 2, false, TNUMBER, funcCosineDistance, funcCosineDistanceVec},
 		"l2_distance":     &Function{"l2_distance", 2, false, TNUMBER, funcL2Distance, funcL2DistanceVec},

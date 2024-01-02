@@ -311,3 +311,18 @@ func funcToListVec(chunk []KVPair, args []Expression) ([]any, error) {
 	}
 	return funcFloatListVec(chunk, args)
 }
+
+func funcLenVec(chunk []KVPair, args []Expression) ([]any, error) {
+	rarg, err := args[0].ExecuteBatch(chunk)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < len(chunk); i++ {
+		val, err := getListLength(rarg[i])
+		if err != nil {
+			return nil, NewExecuteError(args[0].GetPos(), err.Error())
+		}
+		rarg[i] = val
+	}
+	return rarg, nil
+}
