@@ -88,4 +88,9 @@ q select count(1), sum(int(value)) as sum, substr(key, 0, 2) as kprefix where ke
 # JSON access
 q select key, json(value)['x']['y'] where key ^= 'k' & int(json(value)['test']) >= 1
 q select key, json(value)['list'][1] where key ^= 'k'
+
+# Vector query
+q select key, value, cosine_distance(list(1,2,3,4), split(value, ',')) as cosine_dis where key ^= 'embedding' order by cosine_dis desc
+q select key, value, l2_distance(list(1,2,3,4), split(value, ',')) as l2_dis where key ^= 'embedding' order by l2_dis
+q select key, value, l2_distance(list(1,2,3,4), json(value) as l2_dis where key ^= 'embedding_json' order by l2_dis
 ```
