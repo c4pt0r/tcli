@@ -2,6 +2,8 @@ package query
 
 import (
 	"encoding/json"
+	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -160,4 +162,137 @@ func funcSplit(kv KVPair, args []Expression) (any, error) {
 	spliter := toString(rspliter)
 	ret := strings.Split(val, spliter)
 	return ret, nil
+}
+
+func funcCosineDistance(kv KVPair, args []Expression) (any, error) {
+	larg, err := args[0].Execute(kv)
+	if err != nil {
+		return nil, err
+	}
+	rarg, err := args[1].Execute(kv)
+	if err != nil {
+		return nil, err
+	}
+	lvec, err := toFloatList(larg)
+	if err != nil {
+		return nil, err
+	}
+	rvec, err := toFloatList(rarg)
+	if err != nil {
+		return nil, err
+	}
+	ret, err := cosineDistance(lvec, rvec)
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func cosineDistance(left, right []float64) (float64, error) {
+	if len(left) != len(right) {
+		return 0, fmt.Errorf("length must equals")
+	}
+	var t1 float64
+	var t2 float64
+	var t3 float64
+	for i := 0; i < len(left); i++ {
+		t1 += left[i] * right[i]
+		t2 += left[i] * left[i]
+		t3 += right[i] * right[i]
+	}
+	return t1 / (math.Sqrt(t2) * math.Sqrt(t3)), nil
+}
+
+func funcL2Distance(kv KVPair, args []Expression) (any, error) {
+	larg, err := args[0].Execute(kv)
+	if err != nil {
+		return nil, err
+	}
+	rarg, err := args[1].Execute(kv)
+	if err != nil {
+		return nil, err
+	}
+	lvec, err := toFloatList(larg)
+	if err != nil {
+		return nil, err
+	}
+	rvec, err := toFloatList(rarg)
+	if err != nil {
+		return nil, err
+	}
+	ret, err := l2Distance(lvec, rvec)
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func l2Distance(left, right []float64) (float64, error) {
+	if len(left) != len(right) {
+		return 0, fmt.Errorf("length must equals")
+	}
+	var total float64 = 0
+	for i := 0; i < len(left); i++ {
+		diff := math.Abs(left[i] - right[i])
+		total += diff * diff
+	}
+	return math.Sqrt(total), nil
+}
+
+func funcFloatList(kv KVPair, args []Expression) (any, error) {
+	ret := make([]float64, len(args))
+	for i := 0; i < len(args); i++ {
+		val, err := args[i].Execute(kv)
+		if err != nil {
+			return nil, err
+		}
+		ret[i] = toFloat(val, 0.0)
+	}
+	return ret, nil
+}
+
+func funcIntList(kv KVPair, args []Expression) (any, error) {
+	ret := make([]int64, len(args))
+	for i := 0; i < len(args); i++ {
+		val, err := args[i].Execute(kv)
+		if err != nil {
+			return nil, err
+		}
+		ret[i] = toInt(val, 0)
+	}
+	return ret, nil
+}
+
+func funcToList(kv KVPair, args []Expression) (any, error) {
+	if len(args) == 0 {
+		return []int64{}, nil
+	}
+
+	first, err := args[0].Execute(kv)
+	if err != nil {
+		return nil, err
+	}
+	useInt := false
+	switch fval := first.(type) {
+	case string:
+		if _, err := strconv.ParseInt(fval, 10, 64); err == nil {
+			useInt = true
+		} else if _, err := strconv.ParseFloat(fval, 64); err == nil {
+			useInt = false
+		}
+	case []byte:
+		if _, err := strconv.ParseInt(string(fval), 10, 64); err == nil {
+			useInt = true
+		} else if _, err := strconv.ParseFloat(string(fval), 64); err == nil {
+			useInt = false
+		}
+	case int, uint, int32, uint32, int64, uint64:
+		useInt = true
+	case float32, float64:
+		useInt = false
+	}
+	if useInt {
+		return funcIntList(kv, args)
+	}
+	return funcFloatList(kv, args)
 }

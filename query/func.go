@@ -8,16 +8,24 @@ import (
 
 var (
 	funcMap = map[string]*Function{
-		"lower":    &Function{"lower", 1, false, TSTR, funcToLower, funcToLowerVec},
-		"upper":    &Function{"upper", 1, false, TSTR, funcToUpper, funcToUpperVec},
-		"int":      &Function{"int", 1, false, TNUMBER, funcToInt, funcToIntVec},
-		"float":    &Function{"float", 1, false, TNUMBER, funcToFloat, funcToFloatVec},
-		"str":      &Function{"str", 1, false, TSTR, funcToString, funcToStringVec},
-		"is_int":   &Function{"is_int", 1, false, TBOOL, funcIsInt, funcIsIntVec},
-		"is_float": &Function{"is_float", 1, false, TBOOL, funcIsFloat, funcIsFloatVec},
-		"substr":   &Function{"substr", 3, false, TSTR, funcSubStr, funcSubStrVec},
-		"json":     &Function{"json", 1, false, TJSON, funcJson, funcJsonVec},
-		"split":    &Function{"split", 2, false, TLIST, funcSplit, funcSplitVec},
+		"lower":      &Function{"lower", 1, false, TSTR, funcToLower, funcToLowerVec},
+		"upper":      &Function{"upper", 1, false, TSTR, funcToUpper, funcToUpperVec},
+		"int":        &Function{"int", 1, false, TNUMBER, funcToInt, funcToIntVec},
+		"float":      &Function{"float", 1, false, TNUMBER, funcToFloat, funcToFloatVec},
+		"str":        &Function{"str", 1, false, TSTR, funcToString, funcToStringVec},
+		"is_int":     &Function{"is_int", 1, false, TBOOL, funcIsInt, funcIsIntVec},
+		"is_float":   &Function{"is_float", 1, false, TBOOL, funcIsFloat, funcIsFloatVec},
+		"substr":     &Function{"substr", 3, false, TSTR, funcSubStr, funcSubStrVec},
+		"json":       &Function{"json", 1, false, TJSON, funcJson, funcJsonVec},
+		"split":      &Function{"split", 2, false, TLIST, funcSplit, funcSplitVec},
+		"list":       &Function{"list", 1, true, TLIST, funcToList, funcToListVec},
+		"float_list": &Function{"float_list", 1, true, TLIST, funcFloatList, funcFloatListVec},
+		"int_list":   &Function{"int_list", 1, true, TLIST, funcIntList, funcIntListVec},
+		"flist":      &Function{"flist", 1, true, TLIST, funcFloatList, funcFloatListVec},
+		"ilist":      &Function{"ilist", 1, true, TLIST, funcIntList, funcIntListVec},
+
+		"cosine_distance": &Function{"cosine_distance", 2, false, TNUMBER, funcCosineDistance, funcCosineDistanceVec},
+		"l2_distance":     &Function{"l2_distance", 2, false, TNUMBER, funcL2Distance, funcL2DistanceVec},
 	}
 
 	aggrFuncMap = map[string]*AggrFunc{
@@ -241,5 +249,147 @@ func toFloat(value any, defVal float64) float64 {
 		return val
 	default:
 		return defVal
+	}
+}
+
+func toFloatList(value any) ([]float64, error) {
+	switch val := value.(type) {
+	case []string:
+		ret := make([]float64, len(val))
+		for i := 0; i < len(val); i++ {
+			fval, err := strconv.ParseFloat(val[i], 64)
+			if err != nil {
+				return nil, err
+			}
+			ret[i] = fval
+		}
+		return ret, nil
+	case [][]byte:
+		ret := make([]float64, len(val))
+		for i := 0; i < len(val); i++ {
+			fval, err := strconv.ParseFloat(string(val[i]), 64)
+			if err != nil {
+				return nil, err
+			}
+			ret[i] = fval
+		}
+		return ret, nil
+	case []int:
+		ret := make([]float64, len(val))
+		for i := 0; i < len(val); i++ {
+			ret[i] = float64(val[i])
+		}
+		return ret, nil
+	case []uint:
+		ret := make([]float64, len(val))
+		for i := 0; i < len(val); i++ {
+			ret[i] = float64(val[i])
+		}
+		return ret, nil
+	case []int32:
+		ret := make([]float64, len(val))
+		for i := 0; i < len(val); i++ {
+			ret[i] = float64(val[i])
+		}
+		return ret, nil
+	case []uint32:
+		ret := make([]float64, len(val))
+		for i := 0; i < len(val); i++ {
+			ret[i] = float64(val[i])
+		}
+		return ret, nil
+	case []int64:
+		ret := make([]float64, len(val))
+		for i := 0; i < len(val); i++ {
+			ret[i] = float64(val[i])
+		}
+		return ret, nil
+	case []uint64:
+		ret := make([]float64, len(val))
+		for i := 0; i < len(val); i++ {
+			ret[i] = float64(val[i])
+		}
+		return ret, nil
+	case []float32:
+		ret := make([]float64, len(val))
+		for i := 0; i < len(val); i++ {
+			ret[i] = float64(val[i])
+		}
+		return ret, nil
+	case []float64:
+		return val, nil
+	default:
+		return nil, fmt.Errorf("Cannot convert to float list")
+	}
+}
+
+func toIntList(value any) ([]int64, error) {
+	switch val := value.(type) {
+	case []string:
+		ret := make([]int64, len(val))
+		for i := 0; i < len(val); i++ {
+			fval, err := strconv.ParseInt(val[i], 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			ret[i] = fval
+		}
+		return ret, nil
+	case [][]byte:
+		ret := make([]int64, len(val))
+		for i := 0; i < len(val); i++ {
+			fval, err := strconv.ParseInt(string(val[i]), 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			ret[i] = fval
+		}
+		return ret, nil
+	case []int:
+		ret := make([]int64, len(val))
+		for i := 0; i < len(val); i++ {
+			ret[i] = int64(val[i])
+		}
+		return ret, nil
+	case []uint:
+		ret := make([]int64, len(val))
+		for i := 0; i < len(val); i++ {
+			ret[i] = int64(val[i])
+		}
+		return ret, nil
+	case []int32:
+		ret := make([]int64, len(val))
+		for i := 0; i < len(val); i++ {
+			ret[i] = int64(val[i])
+		}
+		return ret, nil
+	case []uint32:
+		ret := make([]int64, len(val))
+		for i := 0; i < len(val); i++ {
+			ret[i] = int64(val[i])
+		}
+		return ret, nil
+	case []int64:
+		return val, nil
+	case []uint64:
+		ret := make([]int64, len(val))
+		for i := 0; i < len(val); i++ {
+			ret[i] = int64(val[i])
+		}
+		return ret, nil
+	case []float32:
+		ret := make([]int64, len(val))
+		for i := 0; i < len(val); i++ {
+			ret[i] = int64(val[i])
+		}
+		return ret, nil
+	case []float64:
+		ret := make([]int64, len(val))
+		for i := 0; i < len(val); i++ {
+			ret[i] = int64(val[i])
+		}
+		return ret, nil
+	default:
+		return nil, fmt.Errorf("Cannot convert to float list")
 	}
 }

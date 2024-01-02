@@ -200,3 +200,114 @@ func funcSplitVec(chunk []KVPair, args []Expression) ([]any, error) {
 	}
 	return values, nil
 }
+
+func funcCosineDistanceVec(chunk []KVPair, args []Expression) ([]any, error) {
+	largs, err := args[0].ExecuteBatch(chunk)
+	if err != nil {
+		return nil, err
+	}
+	rargs, err := args[1].ExecuteBatch(chunk)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < len(chunk); i++ {
+		lvec, err := toFloatList(largs[i])
+		if err != nil {
+			return nil, err
+		}
+		rvec, err := toFloatList(rargs[i])
+		if err != nil {
+			return nil, err
+		}
+		ret, err := cosineDistance(lvec, rvec)
+		if err != nil {
+			return nil, err
+		}
+		largs[i] = ret
+	}
+	return largs, nil
+}
+
+func funcL2DistanceVec(chunk []KVPair, args []Expression) ([]any, error) {
+	largs, err := args[0].ExecuteBatch(chunk)
+	if err != nil {
+		return nil, err
+	}
+	rargs, err := args[1].ExecuteBatch(chunk)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < len(chunk); i++ {
+		lvec, err := toFloatList(largs[i])
+		if err != nil {
+			return nil, err
+		}
+		rvec, err := toFloatList(rargs[i])
+		if err != nil {
+			return nil, err
+		}
+		ret, err := l2Distance(lvec, rvec)
+		if err != nil {
+			return nil, err
+		}
+		largs[i] = ret
+	}
+	return largs, nil
+}
+
+func funcFloatListVec(chunk []KVPair, args []Expression) ([]any, error) {
+	ret := make([]any, len(chunk))
+	for i := 0; i < len(chunk); i++ {
+		row, err := funcFloatList(chunk[i], args)
+		if err != nil {
+			return nil, err
+		}
+		ret[i] = row
+	}
+	return ret, nil
+}
+
+func funcIntListVec(chunk []KVPair, args []Expression) ([]any, error) {
+	ret := make([]any, len(chunk))
+	for i := 0; i < len(chunk); i++ {
+		row, err := funcIntList(chunk[i], args)
+		if err != nil {
+			return nil, err
+		}
+		ret[i] = row
+	}
+	return ret, nil
+}
+
+func funcToListVec(chunk []KVPair, args []Expression) ([]any, error) {
+	if len(args) == 0 || len(chunk) == 0 {
+		return nil, nil
+	}
+	first, err := args[0].Execute(chunk[0])
+	if err != nil {
+		return nil, err
+	}
+	useInt := false
+	switch fval := first.(type) {
+	case string:
+		if _, err := strconv.ParseInt(fval, 10, 64); err == nil {
+			useInt = true
+		} else if _, err := strconv.ParseFloat(fval, 64); err == nil {
+			useInt = false
+		}
+	case []byte:
+		if _, err := strconv.ParseInt(string(fval), 10, 64); err == nil {
+			useInt = true
+		} else if _, err := strconv.ParseFloat(string(fval), 64); err == nil {
+			useInt = false
+		}
+	case int, uint, int32, uint32, int64, uint64:
+		useInt = true
+	case float32, float64:
+		useInt = false
+	}
+	if useInt {
+		return funcIntListVec(chunk, args)
+	}
+	return funcFloatListVec(chunk, args)
+}
