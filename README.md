@@ -95,12 +95,12 @@ make build-with-llama
 Then you can start `tcli` and then use `ask` command to ask questions to LLama
 
 ```
-MODEL_PATH=/data/models/llama-2-7b.ggmlv3.q4_0.bin bin/tcli
+LLAMA_PATH=/data/models/llama-2-7b.ggmlv3.q4_0.bin bin/tcli
 
 >>> ask who are you?
 ...
 ```
 
-The `MODEL_PATH` environment variable is tell `tcli` where to load LLama2 model.
+The `LLAMA_PATH` environment variable is tell `tcli` where to load LLama2 model.
 
 And you can also use `embedding` function in `query` command

@@ -110,5 +110,5 @@ q select key, l2_distance(embedding("This is a test"), embedding(value)) where k
 You can use environment variables to tell tcli where is llama's model:
 
 ```
-MODEL_PATH=/data/models/llama-2-7b.ggmlv3.q4_0.bin bin/tcli
+LLAMA_PATH=/data/models/llama-2-7b.ggmlv3.q4_0.bin bin/tcli
 ```
