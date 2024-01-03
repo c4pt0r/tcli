@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	llamaModel      *llama.LLama = nil
+	LLamaModel      *llama.LLama = nil
 	LLamaModelPath  string       = "./models/ggml-model-q4_0.bin"
 	LLamaContextLen int          = 512
 )
@@ -40,7 +40,7 @@ func init() {
 		}
 	}
 
-	llamaModel, err = llama.New(LLamaModelPath, llama.EnableF16Memory, llama.SetContext(LLamaContextLen), llama.EnableEmbeddings)
+	LLamaModel, err = llama.New(LLamaModelPath, llama.EnableF16Memory, llama.SetContext(LLamaContextLen), llama.EnableEmbeddings)
 	if err != nil {
 		fmt.Println("Loading LLama model got error:", err)
 	} else {
@@ -57,10 +57,10 @@ func funcEmbedding(kv KVPair, args []Expression) (any, error) {
 		return nil, err
 	}
 	text := toString(rarg)
-	if llamaModel == nil {
+	if LLamaModel == nil {
 		return nil, fmt.Errorf("llama model not loaded")
 	}
-	embeds, err := llamaModel.Embeddings(text)
+	embeds, err := LLamaModel.Embeddings(text)
 	if err != nil {
 		return nil, err
 	}
