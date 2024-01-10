@@ -123,7 +123,13 @@ func (p *Parser) parseBinaryExpr(x Expression, prec1 int) (Expression, error) {
 		)
 		switch opTok.Data {
 		case "in":
-			y, err = p.parseList(opTok.Pos)
+			// If `(` just parse list expression
+			// else just continue to parse as normal expression
+			if p.tok.Tp == LPAREN {
+				y, err = p.parseList(opTok.Pos)
+			} else {
+				y, err = p.parseBinaryExpr(nil, oprec+1)
+			}
 		case "between":
 			y, err = p.parseBetween(opTok.Pos, oprec+1)
 		default:
@@ -505,7 +511,7 @@ func (p *Parser) findFieldInSelect(selStmt *SelectStmt, fieldName string, pos in
 	return fexpr, nil
 }
 
-func (p *Parser) parseGroupBy(selStmt *SelectStmt) (*GroupByStmt, error) {
+func (p *Parser) parseGroupBy(selStmt *SelectStmt, ctx *CheckCtx) (*GroupByStmt, error) {
 	var (
 		err         error
 		shouldBreak = false
@@ -567,7 +573,7 @@ func (p *Parser) parseGroupBy(selStmt *SelectStmt) (*GroupByStmt, error) {
 	p.exprLev--
 	if len(fields) > 0 {
 		for _, f := range fields {
-			if err := f.Expr.Check(); err != nil {
+			if err := f.Expr.Check(ctx); err != nil {
 				return nil, err
 			}
 		}
@@ -700,9 +706,17 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 
 	if selectStmt == nil {
 		selectStmt = &SelectStmt{
-			Fields:    nil,
-			AllFields: true,
+			Fields:     nil,
+			FieldNames: nil,
+			FieldTypes: nil,
+			AllFields:  true,
 		}
+	}
+
+	checkCtx := &CheckCtx{
+		Fields:     selectStmt.Fields,
+		FieldNames: selectStmt.FieldNames,
+		FieldTypes: selectStmt.FieldTypes,
 	}
 
 	for p.tok != nil {
@@ -722,7 +736,7 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 			if groupByStmt != nil {
 				return nil, NewSyntaxError(p.tok.Pos, "Duplicate group by expression")
 			}
-			groupByStmt, err = p.parseGroupBy(selectStmt)
+			groupByStmt, err = p.parseGroupBy(selectStmt, checkCtx)
 			if err != nil {
 				return nil, err
 			}
@@ -746,7 +760,7 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 	}
 
 	// Check syntax
-	err = expr.Check()
+	err = expr.Check(checkCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -761,6 +775,6 @@ func (p *Parser) Parse() (*SelectStmt, error) {
 	selectStmt.Limit = limitStmt
 	selectStmt.Order = orderStmt
 	selectStmt.GroupBy = groupByStmt
-	err = selectStmt.ValidateFields()
+	err = selectStmt.ValidateFields(checkCtx)
 	return selectStmt, err
 }

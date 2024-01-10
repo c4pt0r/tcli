@@ -138,8 +138,25 @@ var (
 	_ Expression = (*FieldAccessExpr)(nil)
 )
 
+type CheckCtx struct {
+	Fields     []Expression
+	FieldNames []string
+	FieldTypes []Type
+}
+
+func (c *CheckCtx) GetNamedExpr(name string) (Expression, bool) {
+	for i, fname := range c.FieldNames {
+		if fname == name {
+			if len(c.Fields) > i {
+				return c.Fields[i], true
+			}
+		}
+	}
+	return nil, false
+}
+
 type Expression interface {
-	Check() error
+	Check(ctx *CheckCtx) error
 	String() string
 	Execute(kv KVPair) (any, error)
 	ExecuteBatch(chunk []KVPair) ([]any, error)

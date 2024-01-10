@@ -308,3 +308,13 @@ func TestParser28(t *testing.T) {
 	}
 	fmt.Printf("%+v\n", expr.Where.Expr.String())
 }
+
+func TestParser29(t *testing.T) {
+	query := "select key, int(split(key, '_')[1]) as f2, split(key, '_')[2] as f3 where key ^= 'k' & f2 > 10"
+	p := NewParser(query)
+	expr, err := p.Parse()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("%+v\n", expr.Where.Expr.String())
+}

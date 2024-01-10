@@ -3,6 +3,7 @@ package query
 import (
 	"bytes"
 	"errors"
+	"reflect"
 )
 
 func BuildExecutor(query string) (*SelectStmt, *FilterExec, error) {
@@ -200,4 +201,93 @@ func execStringCompare(left any, right any, op string) (bool, error) {
 	}
 
 	return false, errors.New("Invalid operator left or right parameter type")
+}
+
+func unpackArray(s any) ([]any, bool) {
+	var ret []any
+	switch val := s.(type) {
+	case []string:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []int16:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []uint16:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []int:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []uint:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []int32:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []uint32:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []int64:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []uint64:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []float32:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []float64:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case [][]byte:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	default:
+		return nil, false
+	}
+}
+
+func unpackArrayR(s any) []any {
+	v := reflect.ValueOf(s)
+	r := make([]any, v.Len())
+	for i := 0; i < v.Len(); i++ {
+		r[i] = v.Index(i).Interface()
+	}
+	return r
 }

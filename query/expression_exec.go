@@ -311,27 +311,49 @@ func (e *BinaryOpExpr) execStringIn(kv KVPair) (any, error) {
 	if err != nil {
 		return false, err
 	}
-	rlist, ok := e.Right.(*ListExpr)
-	if !ok {
-		return false, NewExecuteError(e.GetPos(), "in operator right expression has wrong type, not list")
-	}
-	for _, expr := range rlist.List {
-		if expr.ReturnType() != TSTR {
-			return false, NewExecuteError(expr.GetPos(), "in operator right expression element has wrong type")
+	switch rlist := e.Right.(type) {
+	case *ListExpr:
+		for _, expr := range rlist.List {
+			if expr.ReturnType() != TSTR {
+				return false, NewExecuteError(expr.GetPos(), "in operator right expression element has wrong type")
+			}
+			lvalue, err := expr.Execute(kv)
+			if err != nil {
+				return false, err
+			}
+			cmp, err := execStringCompare(left, lvalue, "=")
+			if err != nil {
+				return false, err
+			}
+			if cmp {
+				return true, nil
+			}
 		}
-		lvalue, err := expr.Execute(kv)
+		return false, nil
+	case *FunctionCallExpr:
+		if rlist.ReturnType() != TLIST {
+			return false, NewExecuteError(rlist.GetPos(), "in operator right expression has wrong type, not list 1")
+		}
+		fret, err := rlist.Execute(kv)
 		if err != nil {
 			return false, err
 		}
-		cmp, err := execStringCompare(left, lvalue, "=")
-		if err != nil {
-			return false, err
+		vals, ok := fret.([]any)
+		if !ok {
+			return false, NewExecuteError(rlist.GetPos(), "in operator right expression has wrong type, not list 2")
 		}
-		if cmp {
-			return true, nil
+		for _, val := range vals {
+			cmp, err := execStringCompare(left, val, "=")
+			if err != nil {
+				return false, nil
+			}
+			if cmp {
+				return true, nil
+			}
 		}
+		return false, nil
 	}
-	return false, nil
+	return false, NewExecuteError(e.GetPos(), "in operator right expression has wrong type, not list 3")
 }
 
 func (e *BinaryOpExpr) execNumberIn(kv KVPair) (any, error) {
@@ -339,27 +361,49 @@ func (e *BinaryOpExpr) execNumberIn(kv KVPair) (any, error) {
 	if err != nil {
 		return false, err
 	}
-	rlist, ok := e.Right.(*ListExpr)
-	if !ok {
-		return false, NewExecuteError(e.Right.GetPos(), "in operator right expression has wrong type, not list")
-	}
-	for _, expr := range rlist.List {
-		if expr.ReturnType() != TNUMBER {
-			return false, NewExecuteError(expr.GetPos(), "in operator right expression has wrong type, not number")
+	switch rlist := e.Right.(type) {
+	case *ListExpr:
+		for _, expr := range rlist.List {
+			if expr.ReturnType() != TNUMBER {
+				return false, NewExecuteError(expr.GetPos(), "in operator right expression has wrong type, not number")
+			}
+			lvalue, err := expr.Execute(kv)
+			if err != nil {
+				return false, err
+			}
+			cmp, err := execNumberCompare(left, lvalue, "=")
+			if err != nil {
+				return false, err
+			}
+			if cmp {
+				return true, nil
+			}
 		}
-		lvalue, err := expr.Execute(kv)
+		return false, nil
+	case *FunctionCallExpr:
+		if rlist.ReturnType() != TLIST {
+			return false, NewExecuteError(rlist.GetPos(), "in operator right expression has wrong type, not list")
+		}
+		fret, err := rlist.Execute(kv)
 		if err != nil {
 			return false, err
 		}
-		cmp, err := execNumberCompare(left, lvalue, "=")
-		if err != nil {
-			return false, err
+		vals, ok := fret.([]any)
+		if !ok {
+			return false, NewExecuteError(rlist.GetPos(), "in operator right expression has wrong type, not list")
 		}
-		if cmp {
-			return true, nil
+		for _, val := range vals {
+			cmp, err := execNumberCompare(left, val, "=")
+			if err != nil {
+				return false, nil
+			}
+			if cmp {
+				return true, nil
+			}
 		}
+		return false, nil
 	}
-	return false, nil
+	return false, NewExecuteError(e.Right.GetPos(), "in operator right expression has wrong type, not list")
 }
 
 func (e *BinaryOpExpr) execStringBetween(kv KVPair) (any, error) {

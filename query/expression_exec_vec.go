@@ -368,53 +368,85 @@ func (e *BinaryOpExpr) execInBatch(chunk []KVPair, number bool) ([]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	rlist, ok := e.Right.(*ListExpr)
-	if !ok {
-		return nil, NewExecuteError(e.GetPos(), "in operator right expression has wrong type, not list")
-	}
+
 	var (
-		listValues = make([][]any, len(rlist.List))
+		listValues [][]any
 		cmp        bool
 		values     []any
 		cmpRet     bool
+		ok         bool
 	)
 
-	for l, expr := range rlist.List {
-		if number && expr.ReturnType() != TNUMBER {
-			return nil, NewExecuteError(expr.GetPos(), "in operator right expression element has wrong type, not number")
-		}
-		if !number && expr.ReturnType() != TSTR {
-			return nil, NewExecuteError(expr.GetPos(), "in operator right expression element has wrong type, not string")
-		}
-		values, err = expr.ExecuteBatch(chunk)
-		if err != nil {
-			return nil, err
-		}
-		listValues[l] = values
-	}
-
-	for i := 0; i < len(chunk); i++ {
-		cmpRet = false
-		for j := 0; j < len(listValues); j++ {
-			lval := listValues[j][i]
-			left := rleft[i]
-
-			if number {
-				cmp, err = execNumberCompare(left, lval, "=")
-			} else {
-				cmp, err = execStringCompare(left, lval, "=")
+	switch rlist := e.Right.(type) {
+	case *ListExpr:
+		listValues = make([][]any, len(rlist.List))
+		for l, expr := range rlist.List {
+			if number && expr.ReturnType() != TNUMBER {
+				return nil, NewExecuteError(expr.GetPos(), "in operator right expression element has wrong type, not number")
 			}
+			if !number && expr.ReturnType() != TSTR {
+				return nil, NewExecuteError(expr.GetPos(), "in operator right expression element has wrong type, not string")
+			}
+			values, err = expr.ExecuteBatch(chunk)
 			if err != nil {
 				return nil, err
 			}
-			if cmp {
-				cmpRet = true
-				break
-			}
+			listValues[l] = values
 		}
-		rleft[i] = cmpRet
+		for i := 0; i < len(chunk); i++ {
+			cmpRet = false
+			left := rleft[i]
+			for j := 0; j < len(listValues); j++ {
+				lval := listValues[j][i]
+				if number {
+					cmp, err = execNumberCompare(left, lval, "=")
+				} else {
+					cmp, err = execStringCompare(left, lval, "=")
+				}
+				if err != nil {
+					return nil, err
+				}
+				if cmp {
+					cmpRet = true
+					break
+				}
+			}
+			rleft[i] = cmpRet
+		}
+		return rleft, nil
+	case *FunctionCallExpr:
+		frets, err := rlist.ExecuteBatch(chunk)
+		if err != nil {
+			return nil, err
+		}
+		for i := 0; i < len(chunk); i++ {
+			cmpRet = false
+			values, ok = unpackArray(frets[i])
+			if !ok {
+				return nil, NewExecuteError(e.GetPos(), "in operator right expression has wrong type, not list")
+			}
+			left := rleft[i]
+			for j := 0; j < len(values); j++ {
+				lval := values[j]
+				if number {
+					cmp, err = execNumberCompare(left, lval, "=")
+				} else {
+					cmp, err = execStringCompare(left, lval, "=")
+				}
+				if err != nil {
+					return nil, err
+				}
+				if cmp {
+					cmpRet = true
+					break
+				}
+			}
+			rleft[i] = cmpRet
+		}
+		return rleft, nil
+	default:
+		return nil, NewExecuteError(e.GetPos(), "in operator right expression has wrong type, not list 2")
 	}
-	return rleft, nil
 }
 
 func (e *BinaryOpExpr) execBetweenBatch(chunk []KVPair, number bool) ([]any, error) {

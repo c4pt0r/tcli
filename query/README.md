@@ -39,7 +39,8 @@ UnaryExpression ::= KeyValueField | String | Number | Boolean | FunctionCall
 
 BinaryExpression ::= Expression Operator Expression |
                      Expression "BETWEEN" Expression "AND" Expression |
-                     Expression "IN" "(" Expression (, Expression)* ")"
+                     Expression "IN" "(" Expression (, Expression)* ")" |
+                     Expression "IN" FunctionCall
 
 Operator ::= MathOperator | CompareOperator | AndOrOperator
 
@@ -93,6 +94,11 @@ q select key, json(value)['list'][1] where key ^= 'k'
 q select key, value, cosine_distance(list(1,2,3,4), split(value, ',')) as cosine_dis where key ^= 'embedding' order by cosine_dis desc
 q select key, value, l2_distance(list(1,2,3,4), split(value, ',')) as l2_dis where key ^= 'embedding' order by l2_dis
 q select key, value, l2_distance(list(1,2,3,4), json(value) as l2_dis where key ^= 'embedding_json' order by l2_dis
+
+# Filter by field name defined in select statement
+q select key, int(value) as f1 where f1 > 10
+q select key, split(value) as f1 where 'a' in f1
+q select key, value, l2_distance(list(1,2,3,4), json(value)) as l2_dis where key ^= 'embedding_json' & l2_dis > 0.6 order by l2_dis desc limit 5
 ```
 
 ## Build With LLama
