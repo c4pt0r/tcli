@@ -200,7 +200,7 @@ func cosineDistance(left, right []float64) (float64, error) {
 		t2 += left[i] * left[i]
 		t3 += right[i] * right[i]
 	}
-	return t1 / (math.Sqrt(t2) * math.Sqrt(t3)), nil
+	return 1 - t1/(math.Sqrt(t2)*math.Sqrt(t3)), nil
 }
 
 func funcL2Distance(kv KVPair, args []Expression) (any, error) {
