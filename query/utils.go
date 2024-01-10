@@ -141,7 +141,6 @@ func executeMathOp(left any, right any, op byte, rightExpr Expression) (any, err
 func execNumberCompare(left any, right any, op string) (bool, error) {
 	lint, liok := convertToInt(left)
 	rint, riok := convertToInt(right)
-	fmt.Println(lint, liok, rint, riok)
 	if liok && riok {
 		switch op {
 		case ">":
@@ -159,7 +158,6 @@ func execNumberCompare(left any, right any, op string) (bool, error) {
 
 	lfloat, lfok := convertToFloat(left)
 	rfloat, rfok := convertToFloat(right)
-	fmt.Println(lfloat, lfok, rfloat, rfok)
 	if liok && rfok {
 		lfloat = float64(lint)
 	} else if lfok && riok {

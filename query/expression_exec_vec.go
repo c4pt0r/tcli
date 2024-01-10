@@ -2,7 +2,6 @@ package query
 
 import (
 	"bytes"
-	"fmt"
 	"regexp"
 )
 
@@ -678,7 +677,6 @@ func (e *FieldAccessExpr) execListAccessBatch(idx int, left []any) ([]any, error
 }
 
 func (e *FieldReferenceExpr) ExecuteBatch(chunk []KVPair, ctx *ExecuteCtx) ([]any, error) {
-	fmt.Println(e.Name.Data, chunk[0].Key)
 	if ctx != nil {
 		cval, have := ctx.GetChunkFieldResult(e.Name.Data, chunk[0].Key)
 		if have {
@@ -690,7 +688,6 @@ func (e *FieldReferenceExpr) ExecuteBatch(chunk []KVPair, ctx *ExecuteCtx) ([]an
 		}
 	}
 	ret, err := e.FieldExpr.ExecuteBatch(chunk, ctx)
-	fmt.Println(ret)
 	if err != nil {
 		return ret, err
 	}
