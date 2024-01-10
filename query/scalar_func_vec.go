@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-func funcToLowerVec(chunk []KVPair, args []Expression) ([]any, error) {
-	rarg, err := args[0].ExecuteBatch(chunk)
+func funcToLowerVec(chunk []KVPair, args []Expression, ctx *ExecuteCtx) ([]any, error) {
+	rarg, err := args[0].ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -21,8 +21,8 @@ func funcToLowerVec(chunk []KVPair, args []Expression) ([]any, error) {
 	return ret, nil
 }
 
-func funcToUpperVec(chunk []KVPair, args []Expression) ([]any, error) {
-	rarg, err := args[0].ExecuteBatch(chunk)
+func funcToUpperVec(chunk []KVPair, args []Expression, ctx *ExecuteCtx) ([]any, error) {
+	rarg, err := args[0].ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -36,8 +36,8 @@ func funcToUpperVec(chunk []KVPair, args []Expression) ([]any, error) {
 	return ret, nil
 }
 
-func funcToIntVec(chunk []KVPair, args []Expression) ([]any, error) {
-	rarg, err := args[0].ExecuteBatch(chunk)
+func funcToIntVec(chunk []KVPair, args []Expression, ctx *ExecuteCtx) ([]any, error) {
+	rarg, err := args[0].ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +50,8 @@ func funcToIntVec(chunk []KVPair, args []Expression) ([]any, error) {
 	return ret, nil
 }
 
-func funcToFloatVec(chunk []KVPair, args []Expression) ([]any, error) {
-	rarg, err := args[0].ExecuteBatch(chunk)
+func funcToFloatVec(chunk []KVPair, args []Expression, ctx *ExecuteCtx) ([]any, error) {
+	rarg, err := args[0].ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -64,8 +64,8 @@ func funcToFloatVec(chunk []KVPair, args []Expression) ([]any, error) {
 	return ret, nil
 }
 
-func funcToStringVec(chunk []KVPair, args []Expression) ([]any, error) {
-	rarg, err := args[0].ExecuteBatch(chunk)
+func funcToStringVec(chunk []KVPair, args []Expression, ctx *ExecuteCtx) ([]any, error) {
+	rarg, err := args[0].ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -78,8 +78,8 @@ func funcToStringVec(chunk []KVPair, args []Expression) ([]any, error) {
 	return ret, nil
 }
 
-func funcIsIntVec(chunk []KVPair, args []Expression) ([]any, error) {
-	rarg, err := args[0].ExecuteBatch(chunk)
+func funcIsIntVec(chunk []KVPair, args []Expression, ctx *ExecuteCtx) ([]any, error) {
+	rarg, err := args[0].ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -104,8 +104,8 @@ func funcIsIntVec(chunk []KVPair, args []Expression) ([]any, error) {
 	return ret, nil
 }
 
-func funcIsFloatVec(chunk []KVPair, args []Expression) ([]any, error) {
-	rarg, err := args[0].ExecuteBatch(chunk)
+func funcIsFloatVec(chunk []KVPair, args []Expression, ctx *ExecuteCtx) ([]any, error) {
+	rarg, err := args[0].ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -130,22 +130,22 @@ func funcIsFloatVec(chunk []KVPair, args []Expression) ([]any, error) {
 	return ret, nil
 }
 
-func funcSubStrVec(chunk []KVPair, args []Expression) ([]any, error) {
+func funcSubStrVec(chunk []KVPair, args []Expression, ctx *ExecuteCtx) ([]any, error) {
 	if args[1].ReturnType() != TNUMBER {
 		return nil, NewExecuteError(args[1].GetPos(), "substr function second parameter require number type")
 	}
 	if args[2].ReturnType() != TNUMBER {
 		return nil, NewExecuteError(args[2].GetPos(), "substr function third parameter require number type")
 	}
-	values, err := args[0].ExecuteBatch(chunk)
+	values, err := args[0].ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
-	starts, err := args[1].ExecuteBatch(chunk)
+	starts, err := args[1].ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
-	lengths, err := args[2].ExecuteBatch(chunk)
+	lengths, err := args[2].ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -164,8 +164,8 @@ func funcSubStrVec(chunk []KVPair, args []Expression) ([]any, error) {
 	return values, nil
 }
 
-func funcJsonVec(chunk []KVPair, args []Expression) ([]any, error) {
-	values, err := args[0].ExecuteBatch(chunk)
+func funcJsonVec(chunk []KVPair, args []Expression, ctx *ExecuteCtx) ([]any, error) {
+	values, err := args[0].ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -181,15 +181,15 @@ func funcJsonVec(chunk []KVPair, args []Expression) ([]any, error) {
 	return values, nil
 }
 
-func funcSplitVec(chunk []KVPair, args []Expression) ([]any, error) {
+func funcSplitVec(chunk []KVPair, args []Expression, ctx *ExecuteCtx) ([]any, error) {
 	if args[1].ReturnType() != TSTR {
 		return nil, NewExecuteError(args[1].GetPos(), "split function second parameter require string type")
 	}
-	values, err := args[0].ExecuteBatch(chunk)
+	values, err := args[0].ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
-	spliters, err := args[1].ExecuteBatch(chunk)
+	spliters, err := args[1].ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -201,12 +201,12 @@ func funcSplitVec(chunk []KVPair, args []Expression) ([]any, error) {
 	return values, nil
 }
 
-func funcCosineDistanceVec(chunk []KVPair, args []Expression) ([]any, error) {
-	largs, err := args[0].ExecuteBatch(chunk)
+func funcCosineDistanceVec(chunk []KVPair, args []Expression, ctx *ExecuteCtx) ([]any, error) {
+	largs, err := args[0].ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
-	rargs, err := args[1].ExecuteBatch(chunk)
+	rargs, err := args[1].ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -228,12 +228,12 @@ func funcCosineDistanceVec(chunk []KVPair, args []Expression) ([]any, error) {
 	return largs, nil
 }
 
-func funcL2DistanceVec(chunk []KVPair, args []Expression) ([]any, error) {
-	largs, err := args[0].ExecuteBatch(chunk)
+func funcL2DistanceVec(chunk []KVPair, args []Expression, ctx *ExecuteCtx) ([]any, error) {
+	largs, err := args[0].ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
-	rargs, err := args[1].ExecuteBatch(chunk)
+	rargs, err := args[1].ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -255,10 +255,10 @@ func funcL2DistanceVec(chunk []KVPair, args []Expression) ([]any, error) {
 	return largs, nil
 }
 
-func funcFloatListVec(chunk []KVPair, args []Expression) ([]any, error) {
+func funcFloatListVec(chunk []KVPair, args []Expression, ctx *ExecuteCtx) ([]any, error) {
 	ret := make([]any, len(chunk))
 	for i := 0; i < len(chunk); i++ {
-		row, err := funcFloatList(chunk[i], args)
+		row, err := funcFloatList(chunk[i], args, ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -267,10 +267,10 @@ func funcFloatListVec(chunk []KVPair, args []Expression) ([]any, error) {
 	return ret, nil
 }
 
-func funcIntListVec(chunk []KVPair, args []Expression) ([]any, error) {
+func funcIntListVec(chunk []KVPair, args []Expression, ctx *ExecuteCtx) ([]any, error) {
 	ret := make([]any, len(chunk))
 	for i := 0; i < len(chunk); i++ {
-		row, err := funcIntList(chunk[i], args)
+		row, err := funcIntList(chunk[i], args, ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -279,11 +279,11 @@ func funcIntListVec(chunk []KVPair, args []Expression) ([]any, error) {
 	return ret, nil
 }
 
-func funcToListVec(chunk []KVPair, args []Expression) ([]any, error) {
+func funcToListVec(chunk []KVPair, args []Expression, ctx *ExecuteCtx) ([]any, error) {
 	if len(args) == 0 || len(chunk) == 0 {
 		return nil, nil
 	}
-	first, err := args[0].Execute(chunk[0])
+	first, err := args[0].Execute(chunk[0], ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -307,13 +307,13 @@ func funcToListVec(chunk []KVPair, args []Expression) ([]any, error) {
 		useInt = false
 	}
 	if useInt {
-		return funcIntListVec(chunk, args)
+		return funcIntListVec(chunk, args, ctx)
 	}
-	return funcFloatListVec(chunk, args)
+	return funcFloatListVec(chunk, args, ctx)
 }
 
-func funcLenVec(chunk []KVPair, args []Expression) ([]any, error) {
-	rarg, err := args[0].ExecuteBatch(chunk)
+func funcLenVec(chunk []KVPair, args []Expression, ctx *ExecuteCtx) ([]any, error) {
+	rarg, err := args[0].ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}

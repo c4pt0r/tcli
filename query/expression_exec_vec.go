@@ -2,10 +2,11 @@ package query
 
 import (
 	"bytes"
+	"fmt"
 	"regexp"
 )
 
-func (e *StringExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
+func (e *StringExpr) ExecuteBatch(chunk []KVPair, ctx *ExecuteCtx) ([]any, error) {
 	ret := make([]any, len(chunk))
 	for i := 0; i < len(chunk); i++ {
 		ret[i] = []byte(e.Data)
@@ -13,7 +14,7 @@ func (e *StringExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
 	return ret, nil
 }
 
-func (e *FieldExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
+func (e *FieldExpr) ExecuteBatch(chunk []KVPair, ctx *ExecuteCtx) ([]any, error) {
 	if e.Field != KeyKW && e.Field != ValueKW {
 		return nil, NewExecuteError(e.GetPos(), "Invalid field name %v", e.Field)
 	}
@@ -29,8 +30,8 @@ func (e *FieldExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
 	return ret, nil
 }
 
-func (e *NotExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
-	right, err := e.Right.ExecuteBatch(chunk)
+func (e *NotExpr) ExecuteBatch(chunk []KVPair, ctx *ExecuteCtx) ([]any, error) {
+	right, err := e.Right.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +45,7 @@ func (e *NotExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
 	return right, nil
 }
 
-func (e *NameExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
+func (e *NameExpr) ExecuteBatch(chunk []KVPair, ctx *ExecuteCtx) ([]any, error) {
 	ret := make([]any, len(chunk))
 	for i := 0; i < len(chunk); i++ {
 		ret[i] = e.Data
@@ -52,7 +53,7 @@ func (e *NameExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
 	return ret, nil
 }
 
-func (e *NumberExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
+func (e *NumberExpr) ExecuteBatch(chunk []KVPair, ctx *ExecuteCtx) ([]any, error) {
 	ret := make([]any, len(chunk))
 	for i := 0; i < len(chunk); i++ {
 		ret[i] = e.Int
@@ -60,7 +61,7 @@ func (e *NumberExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
 	return ret, nil
 }
 
-func (e *FloatExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
+func (e *FloatExpr) ExecuteBatch(chunk []KVPair, ctx *ExecuteCtx) ([]any, error) {
 	ret := make([]any, len(chunk))
 	for i := 0; i < len(chunk); i++ {
 		ret[i] = e.Float
@@ -68,7 +69,7 @@ func (e *FloatExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
 	return ret, nil
 }
 
-func (e *BoolExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
+func (e *BoolExpr) ExecuteBatch(chunk []KVPair, ctx *ExecuteCtx) ([]any, error) {
 	ret := make([]any, len(chunk))
 	for i := 0; i < len(chunk); i++ {
 		ret[i] = e.Bool
@@ -76,7 +77,7 @@ func (e *BoolExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
 	return ret, nil
 }
 
-func (e *ListExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
+func (e *ListExpr) ExecuteBatch(chunk []KVPair, ctx *ExecuteCtx) ([]any, error) {
 	ret := make([]any, len(chunk))
 	for i := 0; i < len(chunk); i++ {
 		ret[i] = e.List
@@ -84,84 +85,84 @@ func (e *ListExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
 	return ret, nil
 }
 
-func (e *BinaryOpExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
+func (e *BinaryOpExpr) ExecuteBatch(chunk []KVPair, ctx *ExecuteCtx) ([]any, error) {
 	leftTp := e.Left.ReturnType()
 	switch e.Op {
 	case Eq:
-		return e.execEqualBatch(chunk, false)
+		return e.execEqualBatch(chunk, false, ctx)
 	case NotEq:
-		return e.execEqualBatch(chunk, true)
+		return e.execEqualBatch(chunk, true, ctx)
 	case PrefixMatch:
-		return e.execPrefixMatchBatch(chunk)
+		return e.execPrefixMatchBatch(chunk, ctx)
 	case RegExpMatch:
-		return e.execRegexpMatchBatch(chunk)
+		return e.execRegexpMatchBatch(chunk, ctx)
 	case And:
-		return e.execAndOrBatch(chunk, true)
+		return e.execAndOrBatch(chunk, true, ctx)
 	case Or:
-		return e.execAndOrBatch(chunk, false)
+		return e.execAndOrBatch(chunk, false, ctx)
 	case Add:
 		if e.Left.ReturnType() == TSTR {
-			return e.execStringConcateBatch(chunk)
+			return e.execStringConcateBatch(chunk, ctx)
 		}
-		return e.execMathBatch(chunk, '+')
+		return e.execMathBatch(chunk, '+', ctx)
 	case Sub:
-		return e.execMathBatch(chunk, '-')
+		return e.execMathBatch(chunk, '-', ctx)
 	case Mul:
-		return e.execMathBatch(chunk, '*')
+		return e.execMathBatch(chunk, '*', ctx)
 	case Div:
-		return e.execMathBatch(chunk, '/')
+		return e.execMathBatch(chunk, '/', ctx)
 	case Gt:
 		switch leftTp {
 		case TSTR:
-			return e.execStringCompareBatch(chunk, ">")
+			return e.execStringCompareBatch(chunk, ">", ctx)
 		default:
-			return e.execNumberCompareBatch(chunk, ">")
+			return e.execNumberCompareBatch(chunk, ">", ctx)
 		}
 	case Gte:
 		switch leftTp {
 		case TSTR:
-			return e.execStringCompareBatch(chunk, ">=")
+			return e.execStringCompareBatch(chunk, ">=", ctx)
 		default:
-			return e.execNumberCompareBatch(chunk, ">=")
+			return e.execNumberCompareBatch(chunk, ">=", ctx)
 		}
 	case Lt:
 		switch leftTp {
 		case TSTR:
-			return e.execStringCompareBatch(chunk, "<")
+			return e.execStringCompareBatch(chunk, "<", ctx)
 		default:
-			return e.execNumberCompareBatch(chunk, "<")
+			return e.execNumberCompareBatch(chunk, "<", ctx)
 		}
 	case Lte:
 		switch leftTp {
 		case TSTR:
-			return e.execStringCompareBatch(chunk, "<=")
+			return e.execStringCompareBatch(chunk, "<=", ctx)
 		default:
-			return e.execNumberCompareBatch(chunk, "<=")
+			return e.execNumberCompareBatch(chunk, "<=", ctx)
 		}
 	case In:
 		switch leftTp {
 		case TSTR:
-			return e.execInBatch(chunk, false)
+			return e.execInBatch(chunk, false, ctx)
 		default:
-			return e.execInBatch(chunk, true)
+			return e.execInBatch(chunk, true, ctx)
 		}
 	case Between:
 		switch leftTp {
 		case TSTR:
-			return e.execBetweenBatch(chunk, false)
+			return e.execBetweenBatch(chunk, false, ctx)
 		default:
-			return e.execBetweenBatch(chunk, true)
+			return e.execBetweenBatch(chunk, true, ctx)
 		}
 	}
 	return nil, NewExecuteError(e.GetPos(), "Unknown operator %v", e.Op)
 }
 
-func (e *BinaryOpExpr) execEqualBatch(chunk []KVPair, not bool) ([]any, error) {
-	rleft, err := e.Left.ExecuteBatch(chunk)
+func (e *BinaryOpExpr) execEqualBatch(chunk []KVPair, not bool, ctx *ExecuteCtx) ([]any, error) {
+	rleft, err := e.Left.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
-	rright, err := e.Right.ExecuteBatch(chunk)
+	rright, err := e.Right.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -226,12 +227,12 @@ func (e *BinaryOpExpr) execEqualBatch(chunk []KVPair, not bool) ([]any, error) {
 	return rleft, nil
 }
 
-func (e *BinaryOpExpr) execPrefixMatchBatch(chunk []KVPair) ([]any, error) {
-	rleft, err := e.Left.ExecuteBatch(chunk)
+func (e *BinaryOpExpr) execPrefixMatchBatch(chunk []KVPair, ctx *ExecuteCtx) ([]any, error) {
+	rleft, err := e.Left.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
-	rright, err := e.Right.ExecuteBatch(chunk)
+	rright, err := e.Right.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -246,12 +247,12 @@ func (e *BinaryOpExpr) execPrefixMatchBatch(chunk []KVPair) ([]any, error) {
 	return rleft, nil
 }
 
-func (e *BinaryOpExpr) execRegexpMatchBatch(chunk []KVPair) ([]any, error) {
-	rleft, err := e.Left.ExecuteBatch(chunk)
+func (e *BinaryOpExpr) execRegexpMatchBatch(chunk []KVPair, ctx *ExecuteCtx) ([]any, error) {
+	rleft, err := e.Left.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
-	rright, err := e.Right.ExecuteBatch(chunk)
+	rright, err := e.Right.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -278,12 +279,12 @@ func (e *BinaryOpExpr) execRegexpMatchBatch(chunk []KVPair) ([]any, error) {
 	return rleft, nil
 }
 
-func (e *BinaryOpExpr) execAndOrBatch(chunk []KVPair, and bool) ([]any, error) {
-	rleft, err := e.Left.ExecuteBatch(chunk)
+func (e *BinaryOpExpr) execAndOrBatch(chunk []KVPair, and bool, ctx *ExecuteCtx) ([]any, error) {
+	rleft, err := e.Left.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
-	rright, err := e.Right.ExecuteBatch(chunk)
+	rright, err := e.Right.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -306,12 +307,12 @@ func (e *BinaryOpExpr) execAndOrBatch(chunk []KVPair, and bool) ([]any, error) {
 	return rleft, nil
 }
 
-func (e *BinaryOpExpr) execMathBatch(chunk []KVPair, op byte) ([]any, error) {
-	rleft, err := e.Left.ExecuteBatch(chunk)
+func (e *BinaryOpExpr) execMathBatch(chunk []KVPair, op byte, ctx *ExecuteCtx) ([]any, error) {
+	rleft, err := e.Left.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
-	rright, err := e.Right.ExecuteBatch(chunk)
+	rright, err := e.Right.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -325,12 +326,12 @@ func (e *BinaryOpExpr) execMathBatch(chunk []KVPair, op byte) ([]any, error) {
 	return rleft, nil
 }
 
-func (e *BinaryOpExpr) execNumberCompareBatch(chunk []KVPair, op string) ([]any, error) {
-	rleft, err := e.Left.ExecuteBatch(chunk)
+func (e *BinaryOpExpr) execNumberCompareBatch(chunk []KVPair, op string, ctx *ExecuteCtx) ([]any, error) {
+	rleft, err := e.Left.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
-	rright, err := e.Right.ExecuteBatch(chunk)
+	rright, err := e.Right.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -344,12 +345,12 @@ func (e *BinaryOpExpr) execNumberCompareBatch(chunk []KVPair, op string) ([]any,
 	return rleft, nil
 }
 
-func (e *BinaryOpExpr) execStringCompareBatch(chunk []KVPair, op string) ([]any, error) {
-	rleft, err := e.Left.ExecuteBatch(chunk)
+func (e *BinaryOpExpr) execStringCompareBatch(chunk []KVPair, op string, ctx *ExecuteCtx) ([]any, error) {
+	rleft, err := e.Left.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
-	rright, err := e.Right.ExecuteBatch(chunk)
+	rright, err := e.Right.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -363,8 +364,8 @@ func (e *BinaryOpExpr) execStringCompareBatch(chunk []KVPair, op string) ([]any,
 	return rleft, nil
 }
 
-func (e *BinaryOpExpr) execInBatch(chunk []KVPair, number bool) ([]any, error) {
-	rleft, err := e.Left.ExecuteBatch(chunk)
+func (e *BinaryOpExpr) execInBatch(chunk []KVPair, number bool, ctx *ExecuteCtx) ([]any, error) {
+	rleft, err := e.Left.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -387,7 +388,7 @@ func (e *BinaryOpExpr) execInBatch(chunk []KVPair, number bool) ([]any, error) {
 			if !number && expr.ReturnType() != TSTR {
 				return nil, NewExecuteError(expr.GetPos(), "in operator right expression element has wrong type, not string")
 			}
-			values, err = expr.ExecuteBatch(chunk)
+			values, err = expr.ExecuteBatch(chunk, ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -414,8 +415,8 @@ func (e *BinaryOpExpr) execInBatch(chunk []KVPair, number bool) ([]any, error) {
 			rleft[i] = cmpRet
 		}
 		return rleft, nil
-	case *FunctionCallExpr:
-		frets, err := rlist.ExecuteBatch(chunk)
+	case *FunctionCallExpr, *FieldReferenceExpr:
+		frets, err := rlist.ExecuteBatch(chunk, ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -449,8 +450,8 @@ func (e *BinaryOpExpr) execInBatch(chunk []KVPair, number bool) ([]any, error) {
 	}
 }
 
-func (e *BinaryOpExpr) execBetweenBatch(chunk []KVPair, number bool) ([]any, error) {
-	rleft, err := e.Left.ExecuteBatch(chunk)
+func (e *BinaryOpExpr) execBetweenBatch(chunk []KVPair, number bool, ctx *ExecuteCtx) ([]any, error) {
+	rleft, err := e.Left.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -472,11 +473,11 @@ func (e *BinaryOpExpr) execBetweenBatch(chunk []KVPair, number bool) ([]any, err
 	if number && uexpr.ReturnType() != TNUMBER {
 		return nil, NewExecuteError(uexpr.GetPos(), "between operator upper boundary expression has wrong type, not number")
 	}
-	lbvals, err := lexpr.ExecuteBatch(chunk)
+	lbvals, err := lexpr.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
-	ubvals, err := uexpr.ExecuteBatch(chunk)
+	ubvals, err := uexpr.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -522,12 +523,12 @@ func (e *BinaryOpExpr) execBetweenBatch(chunk []KVPair, number bool) ([]any, err
 	return rleft, nil
 }
 
-func (e *BinaryOpExpr) execStringConcateBatch(chunk []KVPair) ([]any, error) {
-	left, err := e.Left.ExecuteBatch(chunk)
+func (e *BinaryOpExpr) execStringConcateBatch(chunk []KVPair, ctx *ExecuteCtx) ([]any, error) {
+	left, err := e.Left.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
-	right, err := e.Right.ExecuteBatch(chunk)
+	right, err := e.Right.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -545,7 +546,7 @@ func (e *BinaryOpExpr) execStringConcateBatch(chunk []KVPair) ([]any, error) {
 	return left, nil
 }
 
-func (e *FunctionCallExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
+func (e *FunctionCallExpr) ExecuteBatch(chunk []KVPair, ctx *ExecuteCtx) ([]any, error) {
 	var (
 		ret = make([]any, len(chunk))
 	)
@@ -563,12 +564,12 @@ func (e *FunctionCallExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
 	if !funcObj.VarArgs && len(e.Args) != funcObj.NumArgs {
 		return nil, NewExecuteError(e.GetPos(), "Function %s require %d arguments but got %d", funcObj.Name, funcObj.NumArgs, len(e.Args))
 	}
-	return e.executeFuncBatch(funcObj, chunk)
+	return e.executeFuncBatch(funcObj, chunk, ctx)
 }
 
-func (e *FunctionCallExpr) executeFuncBatch(funcObj *Function, chunk []KVPair) ([]any, error) {
+func (e *FunctionCallExpr) executeFuncBatch(funcObj *Function, chunk []KVPair, ctx *ExecuteCtx) ([]any, error) {
 	if funcObj.BodyVec != nil {
-		return funcObj.BodyVec(chunk, e.Args)
+		return funcObj.BodyVec(chunk, e.Args, ctx)
 	}
 
 	var (
@@ -576,7 +577,7 @@ func (e *FunctionCallExpr) executeFuncBatch(funcObj *Function, chunk []KVPair) (
 		err error
 	)
 	for i := 0; i < len(chunk); i++ {
-		ret[i], err = funcObj.Body(chunk[i], e.Args)
+		ret[i], err = funcObj.Body(chunk[i], e.Args, ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -584,8 +585,8 @@ func (e *FunctionCallExpr) executeFuncBatch(funcObj *Function, chunk []KVPair) (
 	return ret, nil
 }
 
-func (e *FieldAccessExpr) ExecuteBatch(chunk []KVPair) ([]any, error) {
-	left, err := e.Left.ExecuteBatch(chunk)
+func (e *FieldAccessExpr) ExecuteBatch(chunk []KVPair, ctx *ExecuteCtx) ([]any, error) {
+	left, err := e.Left.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -674,4 +675,30 @@ func (e *FieldAccessExpr) execListAccessBatch(idx int, left []any) ([]any, error
 		}
 	}
 	return left, nil
+}
+
+func (e *FieldReferenceExpr) ExecuteBatch(chunk []KVPair, ctx *ExecuteCtx) ([]any, error) {
+	fmt.Println(e.Name.Data, chunk[0].Key)
+	if ctx != nil {
+		cval, have := ctx.GetChunkFieldResult(e.Name.Data, chunk[0].Key)
+		if have {
+			// Copy cached data
+			retCopy := make([]any, len(cval))
+			copy(retCopy, cval)
+			ctx.UpdateHit()
+			return retCopy, nil
+		}
+	}
+	ret, err := e.FieldExpr.ExecuteBatch(chunk, ctx)
+	fmt.Println(ret)
+	if err != nil {
+		return ret, err
+	}
+	if ctx != nil {
+		// We should copy result to refuse result overwrite by later execute functions
+		retCopy := make([]any, len(ret))
+		copy(retCopy, ret)
+		ctx.SetChunkFieldResult(e.Name.Data, chunk[0].Key, retCopy)
+	}
+	return ret, err
 }

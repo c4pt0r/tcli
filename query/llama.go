@@ -48,11 +48,11 @@ func init() {
 	}
 }
 
-func funcEmbedding(kv KVPair, args []Expression) (any, error) {
+func funcEmbedding(kv KVPair, args []Expression, ctx *ExecuteCtx) (any, error) {
 	if args[0].ReturnType() != TSTR {
 		return nil, NewExecuteError(args[0].GetPos(), "embedding function first parameter require string type")
 	}
-	rarg, err := args[0].Execute(kv)
+	rarg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}

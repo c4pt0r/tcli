@@ -114,11 +114,13 @@ func (c QueryCmd) getRows(plan query.FinalPlan) ([][]string, error) {
 	ret := [][]string{
 		plan.FieldNameList(),
 	}
+	ectx := query.NewExecuteCtx()
 	for {
-		cols, err := plan.Next()
+		cols, err := plan.Next(ectx)
 		if err != nil {
 			return nil, err
 		}
+		ectx.Clear()
 		if cols == nil {
 			break
 		}
@@ -136,14 +138,17 @@ func (c QueryCmd) getRowsBatch(plan query.FinalPlan) ([][]string, error) {
 	ret := [][]string{
 		plan.FieldNameList(),
 	}
+	ectx := query.NewExecuteCtx()
 	for {
-		rows, err := plan.Batch()
+		rows, err := plan.Batch(ectx)
 		if err != nil {
 			return nil, err
 		}
+		ectx.Clear()
 		if len(rows) == 0 {
 			break
 		}
+		fmt.Println("Exec Cache Hit", ectx.Hit)
 		for _, cols := range rows {
 			fields := make([]string, len(cols))
 			for i := 0; i < len(cols); i++ {

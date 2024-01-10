@@ -39,8 +39,8 @@ var (
 	}
 )
 
-type FunctionBody func(kv KVPair, args []Expression) (any, error)
-type VectorFunctionBody func(chunk []KVPair, args []Expression) ([]any, error)
+type FunctionBody func(kv KVPair, args []Expression, ctx *ExecuteCtx) (any, error)
+type VectorFunctionBody func(chunk []KVPair, args []Expression, ctx *ExecuteCtx) ([]any, error)
 
 type Function struct {
 	Name       string
@@ -62,7 +62,7 @@ type AggrFunc struct {
 type AggrFunctor func(args []Expression) (AggrFunction, error)
 
 type AggrFunction interface {
-	Update(kv KVPair, args []Expression) error
+	Update(kv KVPair, args []Expression, ctx *ExecuteCtx) error
 	Complete() (any, error)
 	Clone() AggrFunction
 }
@@ -72,7 +72,7 @@ func GetFuncNameFromExpr(expr Expression) (string, error) {
 	if !ok {
 		return "", NewSyntaxError(expr.GetPos(), "Not function call expression")
 	}
-	rfname, err := fc.Name.Execute(NewKVP(nil, nil))
+	rfname, err := fc.Name.Execute(NewKVP(nil, nil), nil)
 	if err != nil {
 		return "", err
 	}

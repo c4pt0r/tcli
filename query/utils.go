@@ -3,6 +3,7 @@ package query
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"reflect"
 )
 
@@ -118,7 +119,7 @@ func executeMathOp(left any, right any, op byte, rightExpr Expression) (any, err
 		lfval = lfloat
 		rfval = float64(rint)
 	} else {
-		return 0.0, errors.New("Invalid operator left or right parameter type")
+		return 0.0, fmt.Errorf("Invalid operator %v left or right parameter type", op)
 	}
 	switch op {
 	case '+':
@@ -140,6 +141,7 @@ func executeMathOp(left any, right any, op byte, rightExpr Expression) (any, err
 func execNumberCompare(left any, right any, op string) (bool, error) {
 	lint, liok := convertToInt(left)
 	rint, riok := convertToInt(right)
+	fmt.Println(lint, liok, rint, riok)
 	if liok && riok {
 		switch op {
 		case ">":
@@ -157,12 +159,15 @@ func execNumberCompare(left any, right any, op string) (bool, error) {
 
 	lfloat, lfok := convertToFloat(left)
 	rfloat, rfok := convertToFloat(right)
+	fmt.Println(lfloat, lfok, rfloat, rfok)
 	if liok && rfok {
-		rfloat = float64(rint)
-	} else if lfok && riok {
 		lfloat = float64(lint)
+	} else if lfok && riok {
+		rfloat = float64(rint)
+	} else if lfok && rfok {
+		// OK
 	} else {
-		return false, errors.New("Invalid operator left or right parameter type")
+		return false, fmt.Errorf("Invalid operator %v left or right parameter type", op)
 	}
 	switch op {
 	case ">":
@@ -200,7 +205,7 @@ func execStringCompare(left any, right any, op string) (bool, error) {
 		}
 	}
 
-	return false, errors.New("Invalid operator left or right parameter type")
+	return false, fmt.Errorf("Invalid operator %v left or right parameter type", op)
 }
 
 func unpackArray(s any) ([]any, bool) {

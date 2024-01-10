@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-func funcToLower(kv KVPair, args []Expression) (any, error) {
-	rarg, err := args[0].Execute(kv)
+func funcToLower(kv KVPair, args []Expression, ctx *ExecuteCtx) (any, error) {
+	rarg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -17,8 +17,8 @@ func funcToLower(kv KVPair, args []Expression) (any, error) {
 	return strings.ToLower(arg), nil
 }
 
-func funcToUpper(kv KVPair, args []Expression) (any, error) {
-	rarg, err := args[0].Execute(kv)
+func funcToUpper(kv KVPair, args []Expression, ctx *ExecuteCtx) (any, error) {
+	rarg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +26,8 @@ func funcToUpper(kv KVPair, args []Expression) (any, error) {
 	return strings.ToUpper(arg), nil
 }
 
-func funcToInt(kv KVPair, args []Expression) (any, error) {
-	rarg, err := args[0].Execute(kv)
+func funcToInt(kv KVPair, args []Expression, ctx *ExecuteCtx) (any, error) {
+	rarg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -35,8 +35,8 @@ func funcToInt(kv KVPair, args []Expression) (any, error) {
 	return ret, nil
 }
 
-func funcToFloat(kv KVPair, args []Expression) (any, error) {
-	rarg, err := args[0].Execute(kv)
+func funcToFloat(kv KVPair, args []Expression, ctx *ExecuteCtx) (any, error) {
+	rarg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -44,8 +44,8 @@ func funcToFloat(kv KVPair, args []Expression) (any, error) {
 	return ret, nil
 }
 
-func funcToString(kv KVPair, args []Expression) (any, error) {
-	rarg, err := args[0].Execute(kv)
+func funcToString(kv KVPair, args []Expression, ctx *ExecuteCtx) (any, error) {
+	rarg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -53,8 +53,8 @@ func funcToString(kv KVPair, args []Expression) (any, error) {
 	return ret, nil
 }
 
-func funcIsInt(kv KVPair, args []Expression) (any, error) {
-	rarg, err := args[0].Execute(kv)
+func funcIsInt(kv KVPair, args []Expression, ctx *ExecuteCtx) (any, error) {
+	rarg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -73,8 +73,8 @@ func funcIsInt(kv KVPair, args []Expression) (any, error) {
 	return false, nil
 }
 
-func funcIsFloat(kv KVPair, args []Expression) (any, error) {
-	rarg, err := args[0].Execute(kv)
+func funcIsFloat(kv KVPair, args []Expression, ctx *ExecuteCtx) (any, error) {
+	rarg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -93,8 +93,8 @@ func funcIsFloat(kv KVPair, args []Expression) (any, error) {
 	return false, nil
 }
 
-func funcSubStr(kv KVPair, args []Expression) (any, error) {
-	rarg, err := args[0].Execute(kv)
+func funcSubStr(kv KVPair, args []Expression, ctx *ExecuteCtx) (any, error) {
+	rarg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -105,12 +105,12 @@ func funcSubStr(kv KVPair, args []Expression) (any, error) {
 	if args[2].ReturnType() != TNUMBER {
 		return nil, NewExecuteError(args[2].GetPos(), "substr function third parameter require number type")
 	}
-	rarg, err = args[1].Execute(kv)
+	rarg, err = args[1].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
 	start := int(toInt(rarg, 0))
-	rarg, err = args[2].Execute(kv)
+	rarg, err = args[2].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -132,8 +132,8 @@ func min(a, b int) int {
 
 type JSON map[string]any
 
-func funcJson(kv KVPair, args []Expression) (any, error) {
-	rarg, err := args[0].Execute(kv)
+func funcJson(kv KVPair, args []Expression, ctx *ExecuteCtx) (any, error) {
+	rarg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -146,15 +146,15 @@ func funcJson(kv KVPair, args []Expression) (any, error) {
 	return ret, nil
 }
 
-func funcSplit(kv KVPair, args []Expression) (any, error) {
-	rarg, err := args[0].Execute(kv)
+func funcSplit(kv KVPair, args []Expression, ctx *ExecuteCtx) (any, error) {
+	rarg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
 	if args[1].ReturnType() != TSTR {
 		return nil, NewExecuteError(args[1].GetPos(), "split function second parameter require string type")
 	}
-	rspliter, err := args[1].Execute(kv)
+	rspliter, err := args[1].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -164,12 +164,12 @@ func funcSplit(kv KVPair, args []Expression) (any, error) {
 	return ret, nil
 }
 
-func funcCosineDistance(kv KVPair, args []Expression) (any, error) {
-	larg, err := args[0].Execute(kv)
+func funcCosineDistance(kv KVPair, args []Expression, ctx *ExecuteCtx) (any, error) {
+	larg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
-	rarg, err := args[1].Execute(kv)
+	rarg, err := args[1].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -203,12 +203,12 @@ func cosineDistance(left, right []float64) (float64, error) {
 	return 1 - t1/(math.Sqrt(t2)*math.Sqrt(t3)), nil
 }
 
-func funcL2Distance(kv KVPair, args []Expression) (any, error) {
-	larg, err := args[0].Execute(kv)
+func funcL2Distance(kv KVPair, args []Expression, ctx *ExecuteCtx) (any, error) {
+	larg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
-	rarg, err := args[1].Execute(kv)
+	rarg, err := args[1].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -239,10 +239,10 @@ func l2Distance(left, right []float64) (float64, error) {
 	return math.Sqrt(total), nil
 }
 
-func funcFloatList(kv KVPair, args []Expression) (any, error) {
+func funcFloatList(kv KVPair, args []Expression, ctx *ExecuteCtx) (any, error) {
 	ret := make([]float64, len(args))
 	for i := 0; i < len(args); i++ {
-		val, err := args[i].Execute(kv)
+		val, err := args[i].Execute(kv, ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -251,10 +251,10 @@ func funcFloatList(kv KVPair, args []Expression) (any, error) {
 	return ret, nil
 }
 
-func funcIntList(kv KVPair, args []Expression) (any, error) {
+func funcIntList(kv KVPair, args []Expression, ctx *ExecuteCtx) (any, error) {
 	ret := make([]int64, len(args))
 	for i := 0; i < len(args); i++ {
-		val, err := args[i].Execute(kv)
+		val, err := args[i].Execute(kv, ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -263,12 +263,12 @@ func funcIntList(kv KVPair, args []Expression) (any, error) {
 	return ret, nil
 }
 
-func funcToList(kv KVPair, args []Expression) (any, error) {
+func funcToList(kv KVPair, args []Expression, ctx *ExecuteCtx) (any, error) {
 	if len(args) == 0 {
 		return []int64{}, nil
 	}
 
-	first, err := args[0].Execute(kv)
+	first, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -292,13 +292,13 @@ func funcToList(kv KVPair, args []Expression) (any, error) {
 		useInt = false
 	}
 	if useInt {
-		return funcIntList(kv, args)
+		return funcIntList(kv, args, ctx)
 	}
-	return funcFloatList(kv, args)
+	return funcFloatList(kv, args, ctx)
 }
 
-func funcLen(kv KVPair, args []Expression) (any, error) {
-	rarg, err := args[0].Execute(kv)
+func funcLen(kv KVPair, args []Expression, ctx *ExecuteCtx) (any, error) {
+	rarg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}

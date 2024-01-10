@@ -6,20 +6,21 @@ import (
 )
 
 func TestExec1(t *testing.T) {
+	ctx := NewExecuteCtx()
 	query := "where key = 'test' & value = 'x'"
 	_, exec, err := BuildExecutor(query)
 	if err != nil {
 		t.Fatal(err)
 	}
 	kv := NewKVPStr("test", "x")
-	ok, err := exec.Filter(kv)
+	ok, err := exec.Filter(kv, ctx)
 	if err != nil || !ok {
 		t.Fatal(err)
 	}
 	fmt.Println(ok)
-
+	ctx.Clear()
 	kv = NewKVPStr("test", "z")
-	ok, err = exec.Filter(kv)
+	ok, err = exec.Filter(kv, ctx)
 	if err != nil || ok {
 		t.Fatal(err)
 	}
@@ -27,6 +28,7 @@ func TestExec1(t *testing.T) {
 }
 
 func TestExec2(t *testing.T) {
+	ctx := NewExecuteCtx()
 	query := "where key ^= 'test' & value ^= 'z'"
 	kvs := []KVPair{
 		NewKVPStr("test1", "z1"),
@@ -38,7 +40,7 @@ func TestExec2(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ret, err := exec.FilterBatch(kvs)
+	ret, err := exec.FilterBatch(kvs, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,6 +51,7 @@ func TestExec2(t *testing.T) {
 }
 
 func TestExec3(t *testing.T) {
+	ctx := NewExecuteCtx()
 	query := "where (key = 'test1' | key = 'test4') & value ^= 'z'"
 	kvs := []KVPair{
 		NewKVPStr("test1", "z1"),
@@ -60,7 +63,7 @@ func TestExec3(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ret, err := exec.FilterBatch(kvs)
+	ret, err := exec.FilterBatch(kvs, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,6 +74,7 @@ func TestExec3(t *testing.T) {
 }
 
 func TestExec4(t *testing.T) {
+	ctx := NewExecuteCtx()
 	query := "where key != 'test1' & value ^= 'z'"
 	kvs := []KVPair{
 		NewKVPStr("test1", "z1"),
@@ -82,7 +86,7 @@ func TestExec4(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ret, err := exec.FilterBatch(kvs)
+	ret, err := exec.FilterBatch(kvs, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,6 +97,7 @@ func TestExec4(t *testing.T) {
 }
 
 func TestExec5(t *testing.T) {
+	ctx := NewExecuteCtx()
 	query := "where key in ('test1', 'test2')"
 	kvs := []KVPair{
 		NewKVPStr("test1", "z1"),
@@ -104,7 +109,7 @@ func TestExec5(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ret, err := exec.FilterBatch(kvs)
+	ret, err := exec.FilterBatch(kvs, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}

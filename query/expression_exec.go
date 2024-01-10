@@ -13,21 +13,21 @@ func (e *FilterExec) Explain() string {
 	return e.Ast.Expr.String()
 }
 
-func (e *FilterExec) Filter(kvp KVPair) (bool, error) {
-	ret, err := e.filterBatch([]KVPair{kvp})
+func (e *FilterExec) Filter(kvp KVPair, ctx *ExecuteCtx) (bool, error) {
+	ret, err := e.filterBatch([]KVPair{kvp}, ctx)
 	if err != nil {
 		return false, err
 	}
 	return ret[0], nil
 }
 
-func (e *FilterExec) FilterBatch(chunk []KVPair) ([]bool, error) {
+func (e *FilterExec) FilterBatch(chunk []KVPair, ctx *ExecuteCtx) ([]bool, error) {
 	// return e.filterBatch(chunk)
-	return e.filterChunk(chunk)
+	return e.filterChunk(chunk, ctx)
 }
 
-func (e *FilterExec) filterChunk(chunk []KVPair) ([]bool, error) {
-	result, err := e.Ast.Expr.ExecuteBatch(chunk)
+func (e *FilterExec) filterChunk(chunk []KVPair, ctx *ExecuteCtx) ([]bool, error) {
+	result, err := e.Ast.Expr.ExecuteBatch(chunk, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -44,10 +44,10 @@ func (e *FilterExec) filterChunk(chunk []KVPair) ([]bool, error) {
 	return ret, nil
 }
 
-func (e *FilterExec) filterBatch(kvps []KVPair) ([]bool, error) {
+func (e *FilterExec) filterBatch(kvps []KVPair, ctx *ExecuteCtx) ([]bool, error) {
 	ret := make([]bool, len(kvps))
 	for idx, kvp := range kvps {
-		result, err := e.Ast.Expr.Execute(kvp)
+		result, err := e.Ast.Expr.Execute(kvp, ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -60,11 +60,11 @@ func (e *FilterExec) filterBatch(kvps []KVPair) ([]bool, error) {
 	return ret, nil
 }
 
-func (e *StringExpr) Execute(kv KVPair) (any, error) {
+func (e *StringExpr) Execute(kv KVPair, ctx *ExecuteCtx) (any, error) {
 	return []byte(e.Data), nil
 }
 
-func (e *FieldExpr) Execute(kv KVPair) (any, error) {
+func (e *FieldExpr) Execute(kv KVPair, ctx *ExecuteCtx) (any, error) {
 	switch e.Field {
 	case KeyKW:
 		return kv.Key, nil
@@ -74,84 +74,84 @@ func (e *FieldExpr) Execute(kv KVPair) (any, error) {
 	return nil, NewExecuteError(e.GetPos(), "Invalid field name %v", e.Field)
 }
 
-func (e *BinaryOpExpr) Execute(kv KVPair) (any, error) {
+func (e *BinaryOpExpr) Execute(kv KVPair, ctx *ExecuteCtx) (any, error) {
 	leftTp := e.Left.ReturnType()
 	switch e.Op {
 	case Eq:
-		return e.execEqual(kv)
+		return e.execEqual(kv, ctx)
 	case NotEq:
-		return e.execNotEqual(kv)
+		return e.execNotEqual(kv, ctx)
 	case PrefixMatch:
-		return e.execPrefixMatch(kv)
+		return e.execPrefixMatch(kv, ctx)
 	case RegExpMatch:
-		return e.execRegexpMatch(kv)
+		return e.execRegexpMatch(kv, ctx)
 	case And:
-		return e.execAnd(kv)
+		return e.execAnd(kv, ctx)
 	case Or:
-		return e.execOr(kv)
+		return e.execOr(kv, ctx)
 	case Add:
 		if e.Left.ReturnType() == TSTR {
-			return e.execStringConcate(kv)
+			return e.execStringConcate(kv, ctx)
 		}
-		return e.execMath(kv, '+')
+		return e.execMath(kv, '+', ctx)
 	case Sub:
-		return e.execMath(kv, '-')
+		return e.execMath(kv, '-', ctx)
 	case Mul:
-		return e.execMath(kv, '*')
+		return e.execMath(kv, '*', ctx)
 	case Div:
-		return e.execMath(kv, '/')
+		return e.execMath(kv, '/', ctx)
 	case Gt:
 		switch leftTp {
 		case TSTR:
-			return e.execStringCompare(kv, ">")
+			return e.execStringCompare(kv, ">", ctx)
 		default:
-			return e.execNumberCompare(kv, ">")
+			return e.execNumberCompare(kv, ">", ctx)
 		}
 	case Gte:
 		switch leftTp {
 		case TSTR:
-			return e.execStringCompare(kv, ">=")
+			return e.execStringCompare(kv, ">=", ctx)
 		default:
-			return e.execNumberCompare(kv, ">=")
+			return e.execNumberCompare(kv, ">=", ctx)
 		}
 	case Lt:
 		switch leftTp {
 		case TSTR:
-			return e.execStringCompare(kv, "<")
+			return e.execStringCompare(kv, "<", ctx)
 		default:
-			return e.execNumberCompare(kv, "<")
+			return e.execNumberCompare(kv, "<", ctx)
 		}
 	case Lte:
 		switch leftTp {
 		case TSTR:
-			return e.execStringCompare(kv, "<=")
+			return e.execStringCompare(kv, "<=", ctx)
 		default:
-			return e.execNumberCompare(kv, "<=")
+			return e.execNumberCompare(kv, "<=", ctx)
 		}
 	case In:
 		switch leftTp {
 		case TSTR:
-			return e.execStringIn(kv)
+			return e.execStringIn(kv, ctx)
 		default:
-			return e.execNumberIn(kv)
+			return e.execNumberIn(kv, ctx)
 		}
 	case Between:
 		switch leftTp {
 		case TSTR:
-			return e.execStringBetween(kv)
+			return e.execStringBetween(kv, ctx)
 		default:
-			return e.execNumberBetween(kv)
+			return e.execNumberBetween(kv, ctx)
 		}
 	}
 	return nil, NewExecuteError(e.GetPos(), "Unknown operator %v", e.Op)
 }
 
-func (e *BinaryOpExpr) execEqual(kv KVPair) (bool, error) {
-	rleft, err := e.Left.Execute(kv)
+func (e *BinaryOpExpr) execEqual(kv KVPair, ctx *ExecuteCtx) (bool, error) {
+	rleft, err := e.Left.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
-	rright, err := e.Right.Execute(kv)
+	rright, err := e.Right.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
@@ -178,20 +178,20 @@ func (e *BinaryOpExpr) execEqual(kv KVPair) (bool, error) {
 	return false, NewExecuteError(e.GetPos(), "= operator left or right expression has wrong type")
 }
 
-func (e *BinaryOpExpr) execNotEqual(kv KVPair) (bool, error) {
-	ret, err := e.execEqual(kv)
+func (e *BinaryOpExpr) execNotEqual(kv KVPair, ctx *ExecuteCtx) (bool, error) {
+	ret, err := e.execEqual(kv, ctx)
 	if err != nil {
 		return false, err
 	}
 	return !ret, nil
 }
 
-func (e *BinaryOpExpr) execPrefixMatch(kv KVPair) (bool, error) {
-	rleft, err := e.Left.Execute(kv)
+func (e *BinaryOpExpr) execPrefixMatch(kv KVPair, ctx *ExecuteCtx) (bool, error) {
+	rleft, err := e.Left.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
-	rright, err := e.Right.Execute(kv)
+	rright, err := e.Right.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
@@ -203,12 +203,12 @@ func (e *BinaryOpExpr) execPrefixMatch(kv KVPair) (bool, error) {
 	return bytes.HasPrefix(left, right), nil
 }
 
-func (e *BinaryOpExpr) execRegexpMatch(kv KVPair) (bool, error) {
-	rleft, err := e.Left.Execute(kv)
+func (e *BinaryOpExpr) execRegexpMatch(kv KVPair, ctx *ExecuteCtx) (bool, error) {
+	rleft, err := e.Left.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
-	rright, err := e.Right.Execute(kv)
+	rright, err := e.Right.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
@@ -224,8 +224,8 @@ func (e *BinaryOpExpr) execRegexpMatch(kv KVPair) (bool, error) {
 	return re.Match(left), nil
 }
 
-func (e *BinaryOpExpr) execAnd(kv KVPair) (bool, error) {
-	rleft, err := e.Left.Execute(kv)
+func (e *BinaryOpExpr) execAnd(kv KVPair, ctx *ExecuteCtx) (bool, error) {
+	rleft, err := e.Left.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
@@ -236,7 +236,7 @@ func (e *BinaryOpExpr) execAnd(kv KVPair) (bool, error) {
 	if !left {
 		return false, nil
 	}
-	rright, err := e.Right.Execute(kv)
+	rright, err := e.Right.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
@@ -247,8 +247,8 @@ func (e *BinaryOpExpr) execAnd(kv KVPair) (bool, error) {
 	return left && right, nil
 }
 
-func (e *BinaryOpExpr) execOr(kv KVPair) (bool, error) {
-	rleft, err := e.Left.Execute(kv)
+func (e *BinaryOpExpr) execOr(kv KVPair, ctx *ExecuteCtx) (bool, error) {
+	rleft, err := e.Left.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
@@ -259,7 +259,7 @@ func (e *BinaryOpExpr) execOr(kv KVPair) (bool, error) {
 	if left {
 		return true, nil
 	}
-	rright, err := e.Right.Execute(kv)
+	rright, err := e.Right.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
@@ -270,44 +270,44 @@ func (e *BinaryOpExpr) execOr(kv KVPair) (bool, error) {
 	return left || right, nil
 }
 
-func (e *BinaryOpExpr) execMath(kv KVPair, op byte) (any, error) {
-	left, err := e.Left.Execute(kv)
+func (e *BinaryOpExpr) execMath(kv KVPair, op byte, ctx *ExecuteCtx) (any, error) {
+	left, err := e.Left.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
-	right, err := e.Right.Execute(kv)
+	right, err := e.Right.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
 	return executeMathOp(left, right, op, e.Right)
 }
 
-func (e *BinaryOpExpr) execNumberCompare(kv KVPair, op string) (any, error) {
-	left, err := e.Left.Execute(kv)
+func (e *BinaryOpExpr) execNumberCompare(kv KVPair, op string, ctx *ExecuteCtx) (any, error) {
+	left, err := e.Left.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
-	right, err := e.Right.Execute(kv)
+	right, err := e.Right.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
 	return execNumberCompare(left, right, op)
 }
 
-func (e *BinaryOpExpr) execStringCompare(kv KVPair, op string) (any, error) {
-	left, err := e.Left.Execute(kv)
+func (e *BinaryOpExpr) execStringCompare(kv KVPair, op string, ctx *ExecuteCtx) (any, error) {
+	left, err := e.Left.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
-	right, err := e.Right.Execute(kv)
+	right, err := e.Right.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
 	return execStringCompare(left, right, op)
 }
 
-func (e *BinaryOpExpr) execStringIn(kv KVPair) (any, error) {
-	left, err := e.Left.Execute(kv)
+func (e *BinaryOpExpr) execStringIn(kv KVPair, ctx *ExecuteCtx) (any, error) {
+	left, err := e.Left.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
@@ -317,7 +317,7 @@ func (e *BinaryOpExpr) execStringIn(kv KVPair) (any, error) {
 			if expr.ReturnType() != TSTR {
 				return false, NewExecuteError(expr.GetPos(), "in operator right expression element has wrong type")
 			}
-			lvalue, err := expr.Execute(kv)
+			lvalue, err := expr.Execute(kv, ctx)
 			if err != nil {
 				return false, err
 			}
@@ -334,7 +334,7 @@ func (e *BinaryOpExpr) execStringIn(kv KVPair) (any, error) {
 		if rlist.ReturnType() != TLIST {
 			return false, NewExecuteError(rlist.GetPos(), "in operator right expression has wrong type, not list 1")
 		}
-		fret, err := rlist.Execute(kv)
+		fret, err := rlist.Execute(kv, ctx)
 		if err != nil {
 			return false, err
 		}
@@ -356,8 +356,8 @@ func (e *BinaryOpExpr) execStringIn(kv KVPair) (any, error) {
 	return false, NewExecuteError(e.GetPos(), "in operator right expression has wrong type, not list 3")
 }
 
-func (e *BinaryOpExpr) execNumberIn(kv KVPair) (any, error) {
-	left, err := e.Left.Execute(kv)
+func (e *BinaryOpExpr) execNumberIn(kv KVPair, ctx *ExecuteCtx) (any, error) {
+	left, err := e.Left.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
@@ -367,7 +367,7 @@ func (e *BinaryOpExpr) execNumberIn(kv KVPair) (any, error) {
 			if expr.ReturnType() != TNUMBER {
 				return false, NewExecuteError(expr.GetPos(), "in operator right expression has wrong type, not number")
 			}
-			lvalue, err := expr.Execute(kv)
+			lvalue, err := expr.Execute(kv, ctx)
 			if err != nil {
 				return false, err
 			}
@@ -384,7 +384,7 @@ func (e *BinaryOpExpr) execNumberIn(kv KVPair) (any, error) {
 		if rlist.ReturnType() != TLIST {
 			return false, NewExecuteError(rlist.GetPos(), "in operator right expression has wrong type, not list")
 		}
-		fret, err := rlist.Execute(kv)
+		fret, err := rlist.Execute(kv, ctx)
 		if err != nil {
 			return false, err
 		}
@@ -406,8 +406,8 @@ func (e *BinaryOpExpr) execNumberIn(kv KVPair) (any, error) {
 	return false, NewExecuteError(e.Right.GetPos(), "in operator right expression has wrong type, not list")
 }
 
-func (e *BinaryOpExpr) execStringBetween(kv KVPair) (any, error) {
-	left, err := e.Left.Execute(kv)
+func (e *BinaryOpExpr) execStringBetween(kv KVPair, ctx *ExecuteCtx) (any, error) {
+	left, err := e.Left.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
@@ -423,11 +423,11 @@ func (e *BinaryOpExpr) execStringBetween(kv KVPair) (any, error) {
 	if uexpr.ReturnType() != TSTR {
 		return false, NewExecuteError(uexpr.GetPos(), "between operator upper boundary expression has wrong type, not string")
 	}
-	lval, err := lexpr.Execute(kv)
+	lval, err := lexpr.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
-	uval, err := uexpr.Execute(kv)
+	uval, err := uexpr.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
@@ -454,8 +454,8 @@ func (e *BinaryOpExpr) execStringBetween(kv KVPair) (any, error) {
 	return ucmp, nil
 }
 
-func (e *BinaryOpExpr) execNumberBetween(kv KVPair) (any, error) {
-	left, err := e.Left.Execute(kv)
+func (e *BinaryOpExpr) execNumberBetween(kv KVPair, ctx *ExecuteCtx) (any, error) {
+	left, err := e.Left.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
@@ -471,11 +471,11 @@ func (e *BinaryOpExpr) execNumberBetween(kv KVPair) (any, error) {
 	if uexpr.ReturnType() != TNUMBER {
 		return false, NewExecuteError(uexpr.GetPos(), "between operator upper boundary expression has wrong type, not number")
 	}
-	lval, err := lexpr.Execute(kv)
+	lval, err := lexpr.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
-	uval, err := uexpr.Execute(kv)
+	uval, err := uexpr.Execute(kv, ctx)
 	if err != nil {
 		return false, err
 	}
@@ -502,12 +502,12 @@ func (e *BinaryOpExpr) execNumberBetween(kv KVPair) (any, error) {
 	return ucmp, nil
 }
 
-func (e *BinaryOpExpr) execStringConcate(kv KVPair) (any, error) {
-	lval, err := e.Left.Execute(kv)
+func (e *BinaryOpExpr) execStringConcate(kv KVPair, ctx *ExecuteCtx) (any, error) {
+	lval, err := e.Left.Execute(kv, ctx)
 	if err != nil {
 		return "", err
 	}
-	rval, err := e.Right.Execute(kv)
+	rval, err := e.Right.Execute(kv, ctx)
 	if err != nil {
 		return "", err
 	}
@@ -516,8 +516,8 @@ func (e *BinaryOpExpr) execStringConcate(kv KVPair) (any, error) {
 	return lstr + rstr, nil
 }
 
-func (e *NotExpr) Execute(kv KVPair) (any, error) {
-	rright, err := e.Right.Execute(kv)
+func (e *NotExpr) Execute(kv KVPair, ctx *ExecuteCtx) (any, error) {
+	rright, err := e.Right.Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -528,7 +528,7 @@ func (e *NotExpr) Execute(kv KVPair) (any, error) {
 	return !right, nil
 }
 
-func (e *FunctionCallExpr) Execute(kv KVPair) (any, error) {
+func (e *FunctionCallExpr) Execute(kv KVPair, ctx *ExecuteCtx) (any, error) {
 	if e.Result != nil {
 		return e.Result, nil
 	}
@@ -536,39 +536,39 @@ func (e *FunctionCallExpr) Execute(kv KVPair) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return e.executeFunc(kv, funcObj)
+	return e.executeFunc(kv, funcObj, ctx)
 }
 
-func (e *FunctionCallExpr) executeFunc(kv KVPair, funcObj *Function) (any, error) {
+func (e *FunctionCallExpr) executeFunc(kv KVPair, funcObj *Function, ctx *ExecuteCtx) (any, error) {
 	// Check arguments
 	if !funcObj.VarArgs && len(e.Args) != funcObj.NumArgs {
 		return nil, NewExecuteError(e.GetPos(), "Function %s require %d arguments but got %d", funcObj.Name, funcObj.NumArgs, len(e.Args))
 	}
-	return funcObj.Body(kv, e.Args)
+	return funcObj.Body(kv, e.Args, ctx)
 }
 
-func (e *NameExpr) Execute(kv KVPair) (any, error) {
+func (e *NameExpr) Execute(kv KVPair, ctx *ExecuteCtx) (any, error) {
 	return e.Data, nil
 }
 
-func (e *NumberExpr) Execute(kv KVPair) (any, error) {
+func (e *NumberExpr) Execute(kv KVPair, ctx *ExecuteCtx) (any, error) {
 	return e.Int, nil
 }
 
-func (e *FloatExpr) Execute(kv KVPair) (any, error) {
+func (e *FloatExpr) Execute(kv KVPair, ctx *ExecuteCtx) (any, error) {
 	return e.Float, nil
 }
 
-func (e *BoolExpr) Execute(kv KVPair) (any, error) {
+func (e *BoolExpr) Execute(kv KVPair, ctx *ExecuteCtx) (any, error) {
 	return e.Bool, nil
 }
 
-func (e *ListExpr) Execute(kv KVPair) (any, error) {
+func (e *ListExpr) Execute(kv KVPair, ctx *ExecuteCtx) (any, error) {
 	return e.List, nil
 }
 
-func (e *FieldAccessExpr) Execute(kv KVPair) (any, error) {
-	left, err := e.Left.Execute(kv)
+func (e *FieldAccessExpr) Execute(kv KVPair, ctx *ExecuteCtx) (any, error) {
+	left, err := e.Left.Execute(kv, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -632,4 +632,22 @@ func (e *FieldAccessExpr) execListAccess(idx int, left any) (any, error) {
 		return "", nil
 	}
 	return fval, nil
+}
+
+func (e *FieldReferenceExpr) Execute(kv KVPair, ctx *ExecuteCtx) (any, error) {
+	if ctx != nil {
+		cval, have := ctx.GetFieldResult(e.Name.Data)
+		if have {
+			ctx.UpdateHit()
+			return cval, nil
+		}
+	}
+	ret, err := e.FieldExpr.Execute(kv, ctx)
+	if err != nil {
+		return ret, err
+	}
+	if ctx != nil {
+		ctx.SetFieldResult(e.Name.Data, ret)
+	}
+	return ret, err
 }

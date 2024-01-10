@@ -82,12 +82,14 @@ func BenchmarkExpressionEvalVec(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
+	ctx := NewExecuteCtx()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		_, err = exec.filterChunk(chunk)
+		_, err = exec.filterChunk(chunk, ctx)
 		if err != nil {
 			b.Fatal(err)
 		}
+		ctx.Clear()
 	}
 }
 
@@ -98,13 +100,15 @@ func BenchmarkExpressionEval(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
+	ctx := NewExecuteCtx()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		for i := 0; i < len(chunk); i++ {
-			_, err = exec.Filter(chunk[i])
+			_, err = exec.Filter(chunk[i], ctx)
 			if err != nil {
 				b.Fatal(err)
 			}
+			ctx.Clear()
 		}
 	}
 }
@@ -116,12 +120,14 @@ func BenchmarkExpressionEvalHalfVec(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
+	ctx := NewExecuteCtx()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		_, err = exec.filterBatch(chunk)
+		_, err = exec.filterBatch(chunk, ctx)
 		if err != nil {
 			b.Fatal(err)
 		}
+		ctx.Clear()
 	}
 }
 
@@ -202,27 +208,31 @@ func BenchmarkQuerySimpleBatch(b *testing.B) {
 }
 
 func getRows(plan FinalPlan) error {
+	ctx := NewExecuteCtx()
 	for {
-		cols, err := plan.Next()
+		cols, err := plan.Next(ctx)
 		if err != nil {
 			return err
 		}
 		if cols == nil {
 			break
 		}
+		ctx.Clear()
 	}
 	return nil
 }
 
 func getRowsBatch(plan FinalPlan) error {
+	ctx := NewExecuteCtx()
 	for {
-		rows, err := plan.Batch()
+		rows, err := plan.Batch(ctx)
 		if err != nil {
 			return err
 		}
 		if len(rows) == 0 {
 			break
 		}
+		ctx.Clear()
 	}
 	return nil
 }
