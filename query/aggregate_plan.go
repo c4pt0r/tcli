@@ -170,45 +170,45 @@ func (a *AggregatePlan) Explain() []string {
 	return ret
 }
 
-func (a *AggregatePlan) prepare() error {
+func (a *AggregatePlan) prepare(ctx *ExecuteCtx) error {
 	for {
-		k, v, err := a.ChildPlan.Next()
+		k, v, err := a.ChildPlan.Next(nil)
 		if err != nil {
 			return err
 		}
 		if k == nil && v == nil && err == nil {
 			break
 		}
-		aggrKey, err := a.getAggrKey(k, v)
+		aggrKey, err := a.getAggrKey(k, v, ctx)
 		if err != nil {
 			return err
 		}
 		kvp := NewKVP(k, v)
 		row, have := a.aggrMap[aggrKey]
 		if !have {
-			row, err = a.createAggrRow(kvp)
+			row, err = a.createAggrRow(kvp, ctx)
 			if err != nil {
 				return err
 			}
 			a.aggrMap[aggrKey] = row
 			a.aggrRows = append(a.aggrRows, row)
 		}
-		err = a.updateRowAggrFunc(row, kvp)
+		err = a.updateRowAggrFunc(row, kvp, ctx)
 	}
 	a.prepared = true
 	return nil
 }
 
-func (a *AggregatePlan) prepareBatch() error {
+func (a *AggregatePlan) prepareBatch(ctx *ExecuteCtx) error {
 	for {
-		kvps, err := a.ChildPlan.Batch()
+		kvps, err := a.ChildPlan.Batch(ctx)
 		if err != nil {
 			return err
 		}
 		if len(kvps) == 0 {
 			break
 		}
-		aggrKeys, err := a.batchGetAggrKeys(kvps)
+		aggrKeys, err := a.batchGetAggrKeys(kvps, ctx)
 		if err != nil {
 			return err
 		}
@@ -216,14 +216,14 @@ func (a *AggregatePlan) prepareBatch() error {
 		for i, aggrKey := range aggrKeys {
 			row, have := a.aggrMap[aggrKey]
 			if !have {
-				row, err = a.createAggrRow(kvps[i])
+				row, err = a.createAggrRow(kvps[i], ctx)
 				if err != nil {
 					return err
 				}
 				a.aggrMap[aggrKey] = row
 				a.aggrRows = append(a.aggrRows, row)
 			}
-			err = a.updateRowAggrFunc(row, kvps[i])
+			err = a.updateRowAggrFunc(row, kvps[i], ctx)
 			if err != nil {
 				return err
 			}
@@ -233,7 +233,7 @@ func (a *AggregatePlan) prepareBatch() error {
 	return nil
 }
 
-func (a *AggregatePlan) batchGetAggrKeys(chunk []KVPair) ([]string, error) {
+func (a *AggregatePlan) batchGetAggrKeys(chunk []KVPair, ctx *ExecuteCtx) ([]string, error) {
 	ret := make([]string, len(chunk))
 	if a.AggrAll {
 		for i := 0; i < len(chunk); i++ {
@@ -247,7 +247,7 @@ func (a *AggregatePlan) batchGetAggrKeys(chunk []KVPair) ([]string, error) {
 		err    error
 	)
 	for i, f := range a.GroupByFields {
-		fields[i], err = f.Expr.ExecuteBatch(chunk)
+		fields[i], err = f.Expr.ExecuteBatch(chunk, ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -266,7 +266,7 @@ func (a *AggregatePlan) batchGetAggrKeys(chunk []KVPair) ([]string, error) {
 	return ret, nil
 }
 
-func (a *AggregatePlan) updateRowAggrFunc(row []*AggrPlanField, kvp KVPair) error {
+func (a *AggregatePlan) updateRowAggrFunc(row []*AggrPlanField, kvp KVPair, ctx *ExecuteCtx) error {
 	for _, col := range row {
 		if col.IsKey {
 			continue
@@ -276,7 +276,7 @@ func (a *AggregatePlan) updateRowAggrFunc(row []*AggrPlanField, kvp KVPair) erro
 			return NewExecuteError(0, "Cannot cast expression to function call expression")
 		}
 		for i, fcexpr := range fcexprs {
-			err := col.Funcs[i].Update(kvp, fcexpr.Args)
+			err := col.Funcs[i].Update(kvp, fcexpr.Args, ctx)
 			if err != nil {
 				return err
 			}
@@ -285,7 +285,7 @@ func (a *AggregatePlan) updateRowAggrFunc(row []*AggrPlanField, kvp KVPair) erro
 	return nil
 }
 
-func (a *AggregatePlan) createAggrRow(kvp KVPair) ([]*AggrPlanField, error) {
+func (a *AggregatePlan) createAggrRow(kvp KVPair, ctx *ExecuteCtx) ([]*AggrPlanField, error) {
 	row := make([]*AggrPlanField, len(a.aggrFields))
 	for i, r := range a.aggrFields {
 		col := &AggrPlanField{
@@ -302,7 +302,7 @@ func (a *AggregatePlan) createAggrRow(kvp KVPair) ([]*AggrPlanField, error) {
 			}
 		}
 		if col.IsKey {
-			exprResult, err := a.execExpr(kvp, col.Expr)
+			exprResult, err := a.execExpr(kvp, col.Expr, ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -313,15 +313,15 @@ func (a *AggregatePlan) createAggrRow(kvp KVPair) ([]*AggrPlanField, error) {
 	return row, nil
 }
 
-func (a *AggregatePlan) Batch() ([][]Column, error) {
+func (a *AggregatePlan) Batch(ctx *ExecuteCtx) ([][]Column, error) {
 	if !a.prepared {
-		err := a.prepareBatch()
+		err := a.prepareBatch(nil)
 		if err != nil {
 			return nil, err
 		}
 	}
 	if a.Limit < 0 {
-		return a.batch()
+		return a.batch(nil)
 	}
 	var (
 		rows   [][]Column
@@ -332,7 +332,7 @@ func (a *AggregatePlan) Batch() ([][]Column, error) {
 	)
 	for a.skips < a.Start {
 		restSkips := a.Start - a.skips
-		rows, err = a.batch()
+		rows, err = a.batch(nil)
 		if err != nil {
 			return nil, err
 		}
@@ -363,7 +363,7 @@ func (a *AggregatePlan) Batch() ([][]Column, error) {
 		return ret, nil
 	}
 	for !finish {
-		rows, err = a.batch()
+		rows, err = a.batch(nil)
 		if err != nil {
 			return nil, err
 		}
@@ -388,7 +388,7 @@ func (a *AggregatePlan) Batch() ([][]Column, error) {
 	return ret, nil
 }
 
-func (a *AggregatePlan) batch() ([][]Column, error) {
+func (a *AggregatePlan) batch(ctx *ExecuteCtx) ([][]Column, error) {
 	var (
 		err   error
 		ret   = make([][]Column, 0, PlanBatchSize)
@@ -412,7 +412,7 @@ func (a *AggregatePlan) batch() ([][]Column, error) {
 					}
 					col.FuncExprs[i].Result = val
 				}
-				row[i], err = col.Expr.Execute(NewKVP(nil, nil))
+				row[i], err = col.Expr.Execute(NewKVP(nil, nil), ctx)
 				if err != nil {
 					return nil, err
 				}
@@ -427,18 +427,18 @@ func (a *AggregatePlan) batch() ([][]Column, error) {
 	return ret, nil
 }
 
-func (a *AggregatePlan) Next() ([]Column, error) {
+func (a *AggregatePlan) Next(ctx *ExecuteCtx) ([]Column, error) {
 	if !a.prepared {
-		err := a.prepare()
+		err := a.prepare(ctx)
 		if err != nil {
 			return nil, err
 		}
 	}
 	if a.Limit < 0 {
-		return a.next()
+		return a.next(ctx)
 	}
 	for a.skips < a.Start {
-		row, err := a.next()
+		row, err := a.next(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -450,7 +450,7 @@ func (a *AggregatePlan) Next() ([]Column, error) {
 	if a.current >= a.Limit {
 		return nil, nil
 	}
-	row, err := a.next()
+	row, err := a.next(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -461,7 +461,7 @@ func (a *AggregatePlan) Next() ([]Column, error) {
 	return row, nil
 }
 
-func (a *AggregatePlan) next() ([]Column, error) {
+func (a *AggregatePlan) next(ctx *ExecuteCtx) ([]Column, error) {
 	var err error
 	if a.pos >= len(a.aggrRows) {
 		return nil, nil
@@ -480,7 +480,7 @@ func (a *AggregatePlan) next() ([]Column, error) {
 				}
 				col.FuncExprs[i].Result = val
 			}
-			row[i], err = col.Expr.Execute(NewKVP(nil, nil))
+			row[i], err = col.Expr.Execute(NewKVP(nil, nil), ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -489,14 +489,14 @@ func (a *AggregatePlan) next() ([]Column, error) {
 	return row, nil
 }
 
-func (a *AggregatePlan) getAggrKey(key []byte, val []byte) (string, error) {
+func (a *AggregatePlan) getAggrKey(key []byte, val []byte, ctx *ExecuteCtx) (string, error) {
 	if a.AggrAll {
 		return defaultAggrKey, nil
 	}
 	gkey := ""
 	kvp := NewKVP(key, val)
 	for _, f := range a.GroupByFields {
-		eval, err := f.Expr.Execute(kvp)
+		eval, err := f.Expr.Execute(kvp, ctx)
 		if err != nil {
 			return "", err
 		}
@@ -509,8 +509,8 @@ func (a *AggregatePlan) getAggrKey(key []byte, val []byte) (string, error) {
 	return gkey, nil
 }
 
-func (a *AggregatePlan) execExpr(kvp KVPair, expr Expression) ([]byte, error) {
-	result, err := expr.Execute(kvp)
+func (a *AggregatePlan) execExpr(kvp KVPair, expr Expression, ctx *ExecuteCtx) ([]byte, error) {
+	result, err := expr.Execute(kvp, ctx)
 	if err != nil {
 		return nil, err
 	}

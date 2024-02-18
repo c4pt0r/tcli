@@ -77,7 +77,7 @@ func newAggrCountFunc(args []Expression) (AggrFunction, error) {
 	return &aggrCountFunc{counter: 0}, nil
 }
 
-func (f *aggrCountFunc) Update(kv KVPair, args []Expression) error {
+func (f *aggrCountFunc) Update(kv KVPair, args []Expression, ctx *ExecuteCtx) error {
 	f.counter++
 	return nil
 }
@@ -108,8 +108,8 @@ func newAggrSumFunc(args []Expression) (AggrFunction, error) {
 	}, nil
 }
 
-func (f *aggrSumFunc) Update(kv KVPair, args []Expression) error {
-	rarg, err := args[0].Execute(kv)
+func (f *aggrSumFunc) Update(kv KVPair, args []Expression, ctx *ExecuteCtx) error {
+	rarg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return err
 	}
@@ -153,8 +153,8 @@ func newAggrAvgFunc(args []Expression) (AggrFunction, error) {
 	}, nil
 }
 
-func (f *aggrAvgFunc) Update(kv KVPair, args []Expression) error {
-	rarg, err := args[0].Execute(kv)
+func (f *aggrAvgFunc) Update(kv KVPair, args []Expression, ctx *ExecuteCtx) error {
+	rarg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return err
 	}
@@ -199,8 +199,8 @@ func newAggrMinFunc(args []Expression) (AggrFunction, error) {
 	}, nil
 }
 
-func (f *aggrMinFunc) Update(kv KVPair, args []Expression) error {
-	rarg, err := args[0].Execute(kv)
+func (f *aggrMinFunc) Update(kv KVPair, args []Expression, ctx *ExecuteCtx) error {
+	rarg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return err
 	}
@@ -259,8 +259,8 @@ func newAggrMaxFunc(args []Expression) (AggrFunction, error) {
 	}, nil
 }
 
-func (f *aggrMaxFunc) Update(kv KVPair, args []Expression) error {
-	rarg, err := args[0].Execute(kv)
+func (f *aggrMaxFunc) Update(kv KVPair, args []Expression, ctx *ExecuteCtx) error {
+	rarg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return err
 	}
@@ -312,7 +312,7 @@ func newAggrQuantileFunc(args []Expression) (AggrFunction, error) {
 		return nil, NewSyntaxError(args[1].GetPos(), "quantile function second parameter require number type")
 	}
 
-	pvar, err := args[1].Execute(NewKVP(nil, nil))
+	pvar, err := args[1].Execute(NewKVP(nil, nil), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -332,8 +332,8 @@ func newAggrQuantileFunc(args []Expression) (AggrFunction, error) {
 	}, nil
 }
 
-func (f *aggrQuantileFunc) Update(kv KVPair, args []Expression) error {
-	rarg, err := args[0].Execute(kv)
+func (f *aggrQuantileFunc) Update(kv KVPair, args []Expression, ctx *ExecuteCtx) error {
+	rarg, err := args[0].Execute(kv, ctx)
 	if err != nil {
 		return err
 	}

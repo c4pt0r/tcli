@@ -39,7 +39,8 @@ UnaryExpression ::= KeyValueField | String | Number | Boolean | FunctionCall
 
 BinaryExpression ::= Expression Operator Expression |
                      Expression "BETWEEN" Expression "AND" Expression |
-                     Expression "IN" "(" Expression (, Expression)* ")"
+                     Expression "IN" "(" Expression (, Expression)* ")" |
+                     Expression "IN" FunctionCall
 
 Operator ::= MathOperator | CompareOperator | AndOrOperator
 
@@ -73,7 +74,7 @@ Features:
 5. Support hash aggregate plan
 6. Support JSON and field access expression
 
-Examples:
+## Examples:
 
 ```
 # Simple query
@@ -88,4 +89,32 @@ q select count(1), sum(int(value)) as sum, substr(key, 0, 2) as kprefix where ke
 # JSON access
 q select key, json(value)['x']['y'] where key ^= 'k' & int(json(value)['test']) >= 1
 q select key, json(value)['list'][1] where key ^= 'k'
+
+# Vector query
+q select key, value, cosine_distance(list(1,2,3,4), split(value, ',')) as cosine_dis where key ^= 'embedding' order by cosine_dis desc
+q select key, value, l2_distance(list(1,2,3,4), split(value, ',')) as l2_dis where key ^= 'embedding' order by l2_dis
+q select key, value, l2_distance(list(1,2,3,4), json(value) as l2_dis where key ^= 'embedding_json' order by l2_dis
+
+# Filter by field name defined in select statement
+q select key, int(value) as f1 where f1 > 10
+q select key, split(value) as f1 where 'a' in f1
+q select key, value, l2_distance(list(1,2,3,4), json(value)) as l2_dis where key ^= 'embedding_json' & l2_dis > 0.6 order by l2_dis desc limit 5
+```
+
+## Build With LLama
+
+```
+make build-with-llama
+```
+
+Then you can use `embedding` function to calculate string's embeddings
+
+```
+q select key, l2_distance(embedding("This is a test"), embedding(value)) where key ^= 'e_'
+```
+
+You can use environment variables to tell tcli where is llama's model:
+
+```
+LLAMA_PATH=/data/models/llama-2-7b.ggmlv3.q4_0.bin bin/tcli
 ```

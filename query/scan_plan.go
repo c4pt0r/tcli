@@ -36,7 +36,7 @@ func (p *FullScanPlan) Init() (err error) {
 	return p.iter.Seek([]byte{})
 }
 
-func (p *FullScanPlan) Next() ([]byte, []byte, error) {
+func (p *FullScanPlan) Next(ctx *ExecuteCtx) ([]byte, []byte, error) {
 	for {
 		key, val, err := p.iter.Next()
 		if err != nil {
@@ -45,7 +45,7 @@ func (p *FullScanPlan) Next() ([]byte, []byte, error) {
 		if key == nil {
 			break
 		}
-		ok, err := p.Filter.Filter(NewKVP(key, val))
+		ok, err := p.Filter.Filter(NewKVP(key, val), ctx)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -56,12 +56,14 @@ func (p *FullScanPlan) Next() ([]byte, []byte, error) {
 	return nil, nil, nil
 }
 
-func (p *FullScanPlan) Batch() ([]KVPair, error) {
+func (p *FullScanPlan) Batch(ctx *ExecuteCtx) ([]KVPair, error) {
 	var (
 		ret         = make([]KVPair, 0, PlanBatchSize)
 		filterBatch = make([]KVPair, 0, PlanBatchSize)
 		count       = 0
 		finish      = false
+		chooseIdxes = make([]int, 0, 2*PlanBatchSize)
+		bidx        = 0
 	)
 	for !finish {
 		filterBatch = filterBatch[:0]
@@ -77,21 +79,24 @@ func (p *FullScanPlan) Batch() ([]KVPair, error) {
 			filterBatch = append(filterBatch, NewKVP(key, val))
 		}
 		if len(filterBatch) > 0 {
-			matchs, err := p.Filter.FilterBatch(filterBatch)
+			matchs, err := p.Filter.FilterBatch(filterBatch, ctx)
 			if err != nil {
 				return nil, err
 			}
 			for i, m := range matchs {
 				if m {
 					ret = append(ret, filterBatch[i])
+					chooseIdxes = append(chooseIdxes, bidx)
 					count += 1
 				}
+				bidx += 1
 			}
 			if count >= PlanBatchSize {
 				finish = true
 			}
 		}
 	}
+	ctx.AdjustChunkCache(chooseIdxes)
 	return ret, nil
 }
 
@@ -118,7 +123,7 @@ func (p *PrefixScanPlan) Init() (err error) {
 	return p.iter.Seek([]byte(p.Prefix))
 }
 
-func (p *PrefixScanPlan) Next() ([]byte, []byte, error) {
+func (p *PrefixScanPlan) Next(ctx *ExecuteCtx) ([]byte, []byte, error) {
 	pb := []byte(p.Prefix)
 	for {
 		key, val, err := p.iter.Next()
@@ -135,7 +140,7 @@ func (p *PrefixScanPlan) Next() ([]byte, []byte, error) {
 		}
 
 		// Filter with the expression
-		ok, err := p.Filter.Filter(NewKVP(key, val))
+		ok, err := p.Filter.Filter(NewKVP(key, val), ctx)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -146,13 +151,15 @@ func (p *PrefixScanPlan) Next() ([]byte, []byte, error) {
 	return nil, nil, nil
 }
 
-func (p *PrefixScanPlan) Batch() ([]KVPair, error) {
+func (p *PrefixScanPlan) Batch(ctx *ExecuteCtx) ([]KVPair, error) {
 	var (
 		ret         = make([]KVPair, 0, PlanBatchSize)
 		filterBatch = make([]KVPair, 0, PlanBatchSize)
 		count       = 0
 		finish      = false
 		pb          = []byte(p.Prefix)
+		chooseIdxes = make([]int, 0, 2*PlanBatchSize)
+		bidx        = 0
 	)
 	for !finish {
 		filterBatch = filterBatch[:0]
@@ -173,21 +180,24 @@ func (p *PrefixScanPlan) Batch() ([]KVPair, error) {
 			filterBatch = append(filterBatch, NewKVP(key, val))
 		}
 		if len(filterBatch) > 0 {
-			matchs, err := p.Filter.FilterBatch(filterBatch)
+			matchs, err := p.Filter.FilterBatch(filterBatch, ctx)
 			if err != nil {
 				return nil, err
 			}
 			for i, m := range matchs {
 				if m {
 					ret = append(ret, filterBatch[i])
+					chooseIdxes = append(chooseIdxes, bidx)
 					count += 1
 				}
+				bidx += 1
 			}
 			if count >= PlanBatchSize {
 				finish = true
 			}
 		}
 	}
+	ctx.AdjustChunkCache(chooseIdxes)
 	return ret, nil
 }
 
@@ -230,7 +240,7 @@ func (p *RangeScanPlan) Init() (err error) {
 	return nil
 }
 
-func (p *RangeScanPlan) Next() ([]byte, []byte, error) {
+func (p *RangeScanPlan) Next(ctx *ExecuteCtx) ([]byte, []byte, error) {
 	for {
 		key, val, err := p.iter.Next()
 		if err != nil {
@@ -246,7 +256,7 @@ func (p *RangeScanPlan) Next() ([]byte, []byte, error) {
 		}
 
 		// Filter with the expression
-		ok, err := p.Filter.Filter(NewKVP(key, val))
+		ok, err := p.Filter.Filter(NewKVP(key, val), ctx)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -257,12 +267,14 @@ func (p *RangeScanPlan) Next() ([]byte, []byte, error) {
 	return nil, nil, nil
 }
 
-func (p *RangeScanPlan) Batch() ([]KVPair, error) {
+func (p *RangeScanPlan) Batch(ctx *ExecuteCtx) ([]KVPair, error) {
 	var (
 		ret         = make([]KVPair, 0, PlanBatchSize)
 		filterBatch = make([]KVPair, 0, PlanBatchSize)
 		count       = 0
 		finish      = false
+		chooseIdxes = make([]int, 0, 2*PlanBatchSize)
+		bidx        = 0
 	)
 	for !finish {
 		filterBatch = filterBatch[:0]
@@ -284,21 +296,24 @@ func (p *RangeScanPlan) Batch() ([]KVPair, error) {
 		}
 
 		if len(filterBatch) > 0 {
-			matchs, err := p.Filter.FilterBatch(filterBatch)
+			matchs, err := p.Filter.FilterBatch(filterBatch, ctx)
 			if err != nil {
 				return nil, err
 			}
 			for i, m := range matchs {
 				if m {
 					ret = append(ret, filterBatch[i])
+					chooseIdxes = append(chooseIdxes, bidx)
 					count += 1
 				}
+				bidx += 1
 			}
 			if count >= PlanBatchSize {
 				finish = true
 			}
 		}
 	}
+	ctx.AdjustChunkCache(chooseIdxes)
 	return ret, nil
 }
 
@@ -341,7 +356,7 @@ func (p *MultiGetPlan) Init() error {
 	return nil
 }
 
-func (p *MultiGetPlan) Next() ([]byte, []byte, error) {
+func (p *MultiGetPlan) Next(ctx *ExecuteCtx) ([]byte, []byte, error) {
 	for {
 		if p.idx >= p.numKeys {
 			break
@@ -356,7 +371,7 @@ func (p *MultiGetPlan) Next() ([]byte, []byte, error) {
 			// No Value
 			continue
 		}
-		ok, err := p.Filter.Filter(NewKVP(key, val))
+		ok, err := p.Filter.Filter(NewKVP(key, val), ctx)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -367,12 +382,14 @@ func (p *MultiGetPlan) Next() ([]byte, []byte, error) {
 	return nil, nil, nil
 }
 
-func (p *MultiGetPlan) Batch() ([]KVPair, error) {
+func (p *MultiGetPlan) Batch(ctx *ExecuteCtx) ([]KVPair, error) {
 	var (
 		ret         = make([]KVPair, 0, PlanBatchSize)
 		filterBatch = make([]KVPair, 0, PlanBatchSize)
 		count       = 0
 		finish      = false
+		chooseIdxes = make([]int, 0, 2*PlanBatchSize)
+		bidx        = 0
 	)
 	for !finish {
 		filterBatch = filterBatch[:0]
@@ -394,13 +411,14 @@ func (p *MultiGetPlan) Batch() ([]KVPair, error) {
 			filterBatch = append(filterBatch, NewKVP(key, val))
 		}
 		if len(filterBatch) > 0 {
-			matchs, err := p.Filter.FilterBatch(filterBatch)
+			matchs, err := p.Filter.FilterBatch(filterBatch, ctx)
 			if err != nil {
 				return nil, err
 			}
 			for i, m := range matchs {
 				if m {
 					ret = append(ret, filterBatch[i])
+					chooseIdxes = append(chooseIdxes, bidx)
 					count += 1
 				}
 			}
@@ -409,6 +427,7 @@ func (p *MultiGetPlan) Batch() ([]KVPair, error) {
 			finish = true
 		}
 	}
+	ctx.AdjustChunkCache(chooseIdxes)
 	return ret, nil
 }
 

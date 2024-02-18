@@ -77,9 +77,9 @@ func (p *FinalOrderPlan) Explain() []string {
 	return ret
 }
 
-func (p *FinalOrderPlan) Next() ([]Column, error) {
+func (p *FinalOrderPlan) Next(ctx *ExecuteCtx) ([]Column, error) {
 	if p.total == 0 {
-		if err := p.prepare(); err != nil {
+		if err := p.prepare(ctx); err != nil {
 			return nil, err
 		}
 	}
@@ -92,9 +92,9 @@ func (p *FinalOrderPlan) Next() ([]Column, error) {
 	return nil, nil
 }
 
-func (p *FinalOrderPlan) Batch() ([][]Column, error) {
+func (p *FinalOrderPlan) Batch(ctx *ExecuteCtx) ([][]Column, error) {
 	if p.total == 0 {
-		if err := p.prepareBatch(); err != nil {
+		if err := p.prepareBatch(ctx); err != nil {
 			return nil, err
 		}
 	}
@@ -115,9 +115,9 @@ func (p *FinalOrderPlan) Batch() ([][]Column, error) {
 	return ret, nil
 }
 
-func (p *FinalOrderPlan) prepare() error {
+func (p *FinalOrderPlan) prepare(ctx *ExecuteCtx) error {
 	for {
-		col, err := p.ChildPlan.Next()
+		col, err := p.ChildPlan.Next(ctx)
 		if err != nil {
 			return err
 		}
@@ -136,9 +136,9 @@ func (p *FinalOrderPlan) prepare() error {
 	return nil
 }
 
-func (p *FinalOrderPlan) prepareBatch() error {
+func (p *FinalOrderPlan) prepareBatch(ctx *ExecuteCtx) error {
 	for {
-		rows, err := p.ChildPlan.Batch()
+		rows, err := p.ChildPlan.Batch(ctx)
 		if err != nil {
 			return err
 		}

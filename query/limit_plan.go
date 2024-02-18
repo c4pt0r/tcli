@@ -19,9 +19,9 @@ func (p *FinalLimitPlan) Init() error {
 	return p.ChildPlan.Init()
 }
 
-func (p *FinalLimitPlan) Next() ([]Column, error) {
+func (p *FinalLimitPlan) Next(ctx *ExecuteCtx) ([]Column, error) {
 	for p.skips < p.Start {
-		cols, err := p.ChildPlan.Next()
+		cols, err := p.ChildPlan.Next(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -33,7 +33,7 @@ func (p *FinalLimitPlan) Next() ([]Column, error) {
 	if p.current >= p.Count {
 		return nil, nil
 	}
-	cols, err := p.ChildPlan.Next()
+	cols, err := p.ChildPlan.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (p *FinalLimitPlan) Next() ([]Column, error) {
 
 }
 
-func (p *FinalLimitPlan) Batch() ([][]Column, error) {
+func (p *FinalLimitPlan) Batch(ctx *ExecuteCtx) ([][]Column, error) {
 	var (
 		rows   [][]Column
 		err    error
@@ -56,7 +56,7 @@ func (p *FinalLimitPlan) Batch() ([][]Column, error) {
 	)
 	for p.skips < p.Start {
 		restSkips := p.Start - p.skips
-		rows, err = p.ChildPlan.Batch()
+		rows, err = p.ChildPlan.Batch(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +87,7 @@ func (p *FinalLimitPlan) Batch() ([][]Column, error) {
 		return ret, nil
 	}
 	for !finish {
-		rows, err = p.ChildPlan.Batch()
+		rows, err = p.ChildPlan.Batch(ctx)
 		if err != nil {
 			return nil, err
 		}

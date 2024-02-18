@@ -127,7 +127,7 @@ func (o *ExpressionOptimizer) tryOptimizeBinaryOpExecute(e *BinaryOpExpr) (Expre
 	leftPos := e.Left.GetPos()
 	switch e.Op {
 	case Add, Sub, Mul, Div:
-		ret, err := e.Execute(NewKVP(nil, nil))
+		ret, err := e.Execute(NewKVP(nil, nil), nil)
 		if err == nil {
 			switch e.Left.(type) {
 			case *StringExpr:
@@ -149,12 +149,12 @@ func (o *ExpressionOptimizer) tryOptimizeBinaryOpExecute(e *BinaryOpExpr) (Expre
 			}
 		}
 	case And, Or:
-		ret, err := e.Execute(NewKVP(nil, nil))
+		ret, err := e.Execute(NewKVP(nil, nil), nil)
 		if err == nil {
 			return &BoolExpr{Pos: leftPos, Data: fmt.Sprintf("%v", ret), Bool: ret.(bool)}, true
 		}
 	case Eq, NotEq, Gt, Gte, Lt, Lte:
-		ret, err := e.Execute(NewKVP(nil, nil))
+		ret, err := e.Execute(NewKVP(nil, nil), nil)
 		if err == nil {
 			return &BoolExpr{Pos: leftPos, Data: fmt.Sprintf("%v", ret), Bool: ret.(bool)}, true
 		}
@@ -271,7 +271,7 @@ func (o *ExpressionOptimizer) tryOptimizeFunctionCall(e *FunctionCallExpr) (Expr
 	case TJSON:
 		return e, false
 	}
-	ret, err := e.Execute(NewKVP(nil, nil))
+	ret, err := e.Execute(NewKVP(nil, nil), nil)
 	if err == nil {
 		switch retTp {
 		case TSTR:
