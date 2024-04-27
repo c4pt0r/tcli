@@ -3,6 +3,8 @@ package query
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	"reflect"
 )
 
 func BuildExecutor(query string) (*SelectStmt, *FilterExec, error) {
@@ -117,7 +119,7 @@ func executeMathOp(left any, right any, op byte, rightExpr Expression) (any, err
 		lfval = lfloat
 		rfval = float64(rint)
 	} else {
-		return 0.0, errors.New("Invalid operator left or right parameter type")
+		return 0.0, fmt.Errorf("Invalid operator %v left or right parameter type", op)
 	}
 	switch op {
 	case '+':
@@ -157,11 +159,13 @@ func execNumberCompare(left any, right any, op string) (bool, error) {
 	lfloat, lfok := convertToFloat(left)
 	rfloat, rfok := convertToFloat(right)
 	if liok && rfok {
-		rfloat = float64(rint)
-	} else if lfok && riok {
 		lfloat = float64(lint)
+	} else if lfok && riok {
+		rfloat = float64(rint)
+	} else if lfok && rfok {
+		// OK
 	} else {
-		return false, errors.New("Invalid operator left or right parameter type")
+		return false, fmt.Errorf("Invalid operator %v left or right parameter type", op)
 	}
 	switch op {
 	case ">":
@@ -199,5 +203,94 @@ func execStringCompare(left any, right any, op string) (bool, error) {
 		}
 	}
 
-	return false, errors.New("Invalid operator left or right parameter type")
+	return false, fmt.Errorf("Invalid operator %v left or right parameter type", op)
+}
+
+func unpackArray(s any) ([]any, bool) {
+	var ret []any
+	switch val := s.(type) {
+	case []string:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []int16:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []uint16:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []int:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []uint:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []int32:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []uint32:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []int64:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []uint64:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []float32:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case []float64:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	case [][]byte:
+		ret = make([]any, len(val))
+		for i, item := range val {
+			ret[i] = item
+		}
+		return ret, true
+	default:
+		return nil, false
+	}
+}
+
+func unpackArrayR(s any) []any {
+	v := reflect.ValueOf(s)
+	r := make([]any, v.Len())
+	for i := 0; i < v.Len(); i++ {
+		r[i] = v.Index(i).Interface()
+	}
+	return r
 }

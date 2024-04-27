@@ -44,17 +44,17 @@ type LimitStmt struct {
 	Count int
 }
 
-func (s *SelectStmt) ValidateFields() error {
+func (s *SelectStmt) ValidateFields(ctx *CheckCtx) error {
 	for _, f := range s.Fields {
-		if err := s.validateField(f); err != nil {
+		if err := s.validateField(f, ctx); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (s *SelectStmt) validateField(f Expression) error {
-	if err := f.Check(); err != nil {
+func (s *SelectStmt) validateField(f Expression, ctx *CheckCtx) error {
+	if err := f.Check(ctx); err != nil {
 		return err
 	}
 

@@ -1,32 +1,54 @@
 package query
 
-func (e *BinaryOpExpr) Check() error {
-	if err := e.Left.Check(); err != nil {
+func (e *BinaryOpExpr) Check(ctx *CheckCtx) error {
+	if err := e.Left.Check(ctx); err != nil {
 		return err
 	}
-	if err := e.Right.Check(); err != nil {
+	if err := e.Right.Check(ctx); err != nil {
 		return err
 	}
+	e.tryRewriteExpr(ctx)
 	switch e.Op {
 	case And, Or:
-		return e.checkWithAndOr()
+		return e.checkWithAndOr(ctx)
 	case Not:
 		return NewSyntaxError(e.GetPos(), "Invalid operator !")
 	case Add, Sub, Mul, Div:
-		return e.checkWithMath()
+		return e.checkWithMath(ctx)
 	case In:
-		return e.checkWithIn()
+		return e.checkWithIn(ctx)
 	case Between:
-		return e.checkWithBetween()
+		return e.checkWithBetween(ctx)
 	default:
-		return e.checkWithCompares()
+		return e.checkWithCompares(ctx)
 	}
 }
 
-func (e *BinaryOpExpr) checkWithAndOr() error {
+func (e *BinaryOpExpr) tryRewriteExpr(ctx *CheckCtx) {
+	switch lexp := e.Left.(type) {
+	case *NameExpr:
+		if nexpr, have := ctx.GetNamedExpr(lexp.Data); have {
+			e.Left = &FieldReferenceExpr{
+				Name:      lexp,
+				FieldExpr: nexpr,
+			}
+		}
+	}
+	switch rexp := e.Right.(type) {
+	case *NameExpr:
+		if nexpr, have := ctx.GetNamedExpr(rexp.Data); have {
+			e.Right = &FieldReferenceExpr{
+				Name:      rexp,
+				FieldExpr: nexpr,
+			}
+		}
+	}
+}
+
+func (e *BinaryOpExpr) checkWithAndOr(ctx *CheckCtx) error {
 	op := OperatorToString[e.Op]
 	switch exp := e.Left.(type) {
-	case *BinaryOpExpr, *FunctionCallExpr, *NotExpr:
+	case *BinaryOpExpr, *FunctionCallExpr, *NotExpr, *FieldReferenceExpr:
 		if e.Left.ReturnType() != TBOOL {
 			return NewSyntaxError(e.Left.GetPos(), "%s operator has wrong type of left expression %s", op, exp)
 		}
@@ -35,7 +57,7 @@ func (e *BinaryOpExpr) checkWithAndOr() error {
 	}
 
 	switch exp := e.Right.(type) {
-	case *BinaryOpExpr, *FunctionCallExpr, *NotExpr:
+	case *BinaryOpExpr, *FunctionCallExpr, *NotExpr, *FieldReferenceExpr:
 		if exp.ReturnType() != TBOOL {
 			return NewSyntaxError(e.Right.GetPos(), "%s operator has wrong type of right expression %s", op, exp)
 		}
@@ -45,12 +67,12 @@ func (e *BinaryOpExpr) checkWithAndOr() error {
 	return nil
 }
 
-func (e *BinaryOpExpr) checkWithMath() error {
+func (e *BinaryOpExpr) checkWithMath(ctx *CheckCtx) error {
 	op := OperatorToString[e.Op]
 	lstring := false
 	rstring := false
 	switch exp := e.Left.(type) {
-	case *BinaryOpExpr, *FunctionCallExpr, *NumberExpr, *FloatExpr:
+	case *BinaryOpExpr, *FunctionCallExpr, *NumberExpr, *FloatExpr, *FieldReferenceExpr:
 		if e.Left.ReturnType() != TNUMBER {
 			if e.Left.ReturnType() == TSTR {
 				lstring = true
@@ -65,7 +87,7 @@ func (e *BinaryOpExpr) checkWithMath() error {
 	}
 
 	switch exp := e.Right.(type) {
-	case *BinaryOpExpr, *FunctionCallExpr, *NumberExpr, *FloatExpr:
+	case *BinaryOpExpr, *FunctionCallExpr, *NumberExpr, *FloatExpr, *FieldReferenceExpr:
 		if e.Right.ReturnType() != TNUMBER {
 			if e.Right.ReturnType() == TSTR {
 				rstring = true
@@ -103,7 +125,7 @@ func (e *BinaryOpExpr) checkWithMath() error {
 	return nil
 }
 
-func (e *BinaryOpExpr) checkWithCompares() error {
+func (e *BinaryOpExpr) checkWithCompares(ctx *CheckCtx) error {
 	var (
 		numKeyFieldExpr   = 0
 		numValueFieldExpr = 0
@@ -119,7 +141,7 @@ func (e *BinaryOpExpr) checkWithCompares() error {
 		case ValueKW:
 			numValueFieldExpr++
 		}
-	case *FunctionCallExpr:
+	case *FunctionCallExpr, *FieldReferenceExpr:
 		numCallExpr++
 	case *StringExpr, *BoolExpr, *NumberExpr, *FloatExpr, *BinaryOpExpr, *FieldAccessExpr:
 	default:
@@ -134,7 +156,7 @@ func (e *BinaryOpExpr) checkWithCompares() error {
 		case ValueKW:
 			numValueFieldExpr++
 		}
-	case *FunctionCallExpr:
+	case *FunctionCallExpr, *FieldReferenceExpr:
 		numCallExpr++
 	case *StringExpr, *BoolExpr, *NumberExpr, *FloatExpr, *BinaryOpExpr, *FieldAccessExpr:
 	default:
@@ -163,7 +185,7 @@ func (e *BinaryOpExpr) checkWithCompares() error {
 	return nil
 }
 
-func (e *BinaryOpExpr) checkWithIn() error {
+func (e *BinaryOpExpr) checkWithIn(ctx *CheckCtx) error {
 	ltype := e.Left.ReturnType()
 	switch r := e.Right.(type) {
 	case *ListExpr:
@@ -172,13 +194,17 @@ func (e *BinaryOpExpr) checkWithIn() error {
 				return NewSyntaxError(expr.GetPos(), "in operator element has wrong type")
 			}
 		}
+	case *FunctionCallExpr, *FieldReferenceExpr:
+		if r.ReturnType() != TLIST {
+			return NewSyntaxError(r.GetPos(), "in operator element has wrong type")
+		}
 	default:
 		return NewSyntaxError(e.Right.GetPos(), "in operator right expression must be list expression")
 	}
 	return nil
 }
 
-func (e *BinaryOpExpr) checkWithBetween() error {
+func (e *BinaryOpExpr) checkWithBetween(ctx *CheckCtx) error {
 	ltype := e.Left.ReturnType()
 	rlist, ok := e.Right.(*ListExpr)
 	if !ok || len(rlist.List) != 2 {
@@ -199,29 +225,29 @@ func (e *BinaryOpExpr) checkWithBetween() error {
 	return nil
 }
 
-func (e *FieldExpr) Check() error {
+func (e *FieldExpr) Check(ctx *CheckCtx) error {
 	return nil
 }
 
-func (e *StringExpr) Check() error {
+func (e *StringExpr) Check(ctx *CheckCtx) error {
 	return nil
 }
 
-func (e *NotExpr) Check() error {
+func (e *NotExpr) Check(ctx *CheckCtx) error {
 	if e.Right.ReturnType() != TBOOL {
 		return NewSyntaxError(e.Right.GetPos(), "! operator right expression has wrong type")
 	}
 	return nil
 }
 
-func (e *FunctionCallExpr) Check() error {
+func (e *FunctionCallExpr) Check(ctx *CheckCtx) error {
 	_, ok := e.Name.(*NameExpr)
 	if !ok {
 		return NewSyntaxError(e.Name.GetPos(), "Invalid function name")
 	}
 	if len(e.Args) > 0 {
 		for _, a := range e.Args {
-			if err := a.Check(); err != nil {
+			if err := a.Check(ctx); err != nil {
 				return err
 			}
 		}
@@ -229,23 +255,23 @@ func (e *FunctionCallExpr) Check() error {
 	return nil
 }
 
-func (e *NameExpr) Check() error {
+func (e *NameExpr) Check(ctx *CheckCtx) error {
 	return nil
 }
 
-func (e *FloatExpr) Check() error {
+func (e *FloatExpr) Check(ctx *CheckCtx) error {
 	return nil
 }
 
-func (e *NumberExpr) Check() error {
+func (e *NumberExpr) Check(ctx *CheckCtx) error {
 	return nil
 }
 
-func (e *BoolExpr) Check() error {
+func (e *BoolExpr) Check(ctx *CheckCtx) error {
 	return nil
 }
 
-func (e *ListExpr) Check() error {
+func (e *ListExpr) Check(ctx *CheckCtx) error {
 	if len(e.List) == 0 {
 		return NewSyntaxError(e.GetPos(), "Empty list")
 	}
@@ -260,7 +286,7 @@ func (e *ListExpr) Check() error {
 	return nil
 }
 
-func (e *FieldAccessExpr) Check() error {
+func (e *FieldAccessExpr) Check(ctx *CheckCtx) error {
 	_, leftIsFAE := e.Left.(*FieldAccessExpr)
 	lrType := e.Left.ReturnType()
 	switch lrType {
@@ -292,4 +318,8 @@ func (e *FieldAccessExpr) Check() error {
 		}
 	}
 	return NewSyntaxError(e.FieldName.GetPos(), "Invalid field name")
+}
+
+func (e *FieldReferenceExpr) Check(ctx *CheckCtx) error {
+	return nil
 }

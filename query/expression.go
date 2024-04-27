@@ -127,6 +127,7 @@ WhereStmt {
 var (
 	_ Expression = (*BinaryOpExpr)(nil)
 	_ Expression = (*FieldExpr)(nil)
+	_ Expression = (*FieldReferenceExpr)(nil)
 	_ Expression = (*StringExpr)(nil)
 	_ Expression = (*NotExpr)(nil)
 	_ Expression = (*FunctionCallExpr)(nil)
@@ -138,11 +139,28 @@ var (
 	_ Expression = (*FieldAccessExpr)(nil)
 )
 
+type CheckCtx struct {
+	Fields     []Expression
+	FieldNames []string
+	FieldTypes []Type
+}
+
+func (c *CheckCtx) GetNamedExpr(name string) (Expression, bool) {
+	for i, fname := range c.FieldNames {
+		if fname == name {
+			if len(c.Fields) > i {
+				return c.Fields[i], true
+			}
+		}
+	}
+	return nil, false
+}
+
 type Expression interface {
-	Check() error
+	Check(ctx *CheckCtx) error
 	String() string
-	Execute(kv KVPair) (any, error)
-	ExecuteBatch(chunk []KVPair) ([]any, error)
+	Execute(kv KVPair, ctx *ExecuteCtx) (any, error)
+	ExecuteBatch(chunk []KVPair, ctx *ExecuteCtx) ([]any, error)
 	ReturnType() Type
 	GetPos() int
 }
@@ -287,6 +305,23 @@ func (e *NameExpr) String() string {
 
 func (e *NameExpr) ReturnType() Type {
 	return TIDENT
+}
+
+type FieldReferenceExpr struct {
+	Name      *NameExpr
+	FieldExpr Expression
+}
+
+func (e *FieldReferenceExpr) GetPos() int {
+	return e.Name.Pos
+}
+
+func (e *FieldReferenceExpr) String() string {
+	return fmt.Sprintf("`%s`", e.Name.Data)
+}
+
+func (e *FieldReferenceExpr) ReturnType() Type {
+	return e.FieldExpr.ReturnType()
 }
 
 type NumberExpr struct {
