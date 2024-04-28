@@ -57,6 +57,7 @@ If using function it support functions shows below:
 | l2_distance(left: list, right: list): float | calculate l2 distance of two list |
 | cosine_distance(left: list, right: list): float | calculate cosine distance of two list |
 | json(value: str): json | parse string value into json type |
+| join(seperator: str, val1: any, val2: any...): str | join values by seperator |
 
 You can use any of the functions above in field expression, such as:
 
@@ -221,3 +222,43 @@ select count(1), substr(key, 3, 4) as pk where key ^= "k_" group by pk
 
 select count(1), sum(int(value)) as sum, substr(key, 0, 2) as kprefix where key between 'k' and 'l' group by kprefix order by sum desc
 ```
+
+### Put statement
+
+If you want to insert some data into TiKV, you can use `put` statement.
+
+```
+PutStmt := "PUT" KeyValuePair (, KeyValuePair)*
+
+KeyValuePair := "(" Expression "," Expression ")"
+```
+
+For example:
+
+```
+put ("k1", "v1"), ("k2", "v2")
+
+# Use function call to generate value
+put ("k3", upper("value3")), ("k4", join(",", 1, 2, 3, 4))
+
+# use key keyword to generate value
+put ("k4", upper("val_" + key))
+```
+
+Notice: In put statement you can only use `key` keyword to generate the value. If `value` keyword in statement it will report an syntax error.
+
+### Remove statement
+
+If you want to delete some data from TiKV, you ca use `remove` statement.
+
+```
+RemoveStmt := "REMOVE" Expression (, Expression)*
+```
+
+For example:
+
+```
+remove "k1", "k2"
+```
+
+Notice: In remove statement you cannot use `key` and `value` keyword.
