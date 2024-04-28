@@ -36,6 +36,14 @@ func (t *queryTxn) Get(key []byte) ([]byte, error) {
 	return kv.V, nil
 }
 
+func (t *queryTxn) Put(key []byte, value []byte) error {
+	return t.client.Put(context.TODO(), client.KV{K: key, V: value})
+}
+
+func (t *queryTxn) Delete(key []byte) error {
+	return t.client.Delete(context.TODO(), key)
+}
+
 func (t *queryTxn) Cursor() (Cursor, error) {
 	return &queryCursor{
 		txn:     t,
