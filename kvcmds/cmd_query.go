@@ -9,6 +9,7 @@ import (
 	"github.com/abiosoft/ishell"
 	"github.com/c4pt0r/tcli"
 	"github.com/c4pt0r/tcli/client"
+	"github.com/c4pt0r/kvql"
 	"github.com/c4pt0r/tcli/query"
 	"github.com/c4pt0r/tcli/utils"
 )
@@ -43,7 +44,7 @@ func getQueryString(ic *ishell.Context) string {
 	return strings.Join(ret, " ")
 }
 
-func convertColumnToString(c query.Column) string {
+func convertColumnToString(c kvql.Column) string {
 	switch v := c.(type) {
 	case int, int8, int16, int32, int64,
 		uint, uint8, uint16, uint32, uint64:
@@ -59,7 +60,7 @@ func convertColumnToString(c query.Column) string {
 			return "true"
 		}
 		return "false"
-	case map[string]any, query.JSON, []any, []string, []int64, []float32, []float64:
+	case map[string]any, kvql.JSON, []any, []string, []int64, []float32, []float64:
 		return fmt.Sprintf("%v", v)
 	default:
 		if v == nil {
@@ -79,7 +80,7 @@ func (c QueryCmd) Handler() func(ctx context.Context) {
 			}
 			sql := getQueryString(ic)
 			qtxn := query.NewQueryTxn(client.GetTiKVClient())
-			opt := query.NewOptimizer(sql)
+			opt := kvql.NewOptimizer(sql)
 			plan, err := opt.BuildPlan(qtxn)
 			if err != nil {
 				return bindQueryToError(sql, err)
@@ -102,7 +103,7 @@ func (c QueryCmd) Handler() func(ctx context.Context) {
 
 func bindQueryToError(sql string, err error) error {
 	switch val := err.(type) {
-	case query.QueryBinder:
+	case kvql.QueryBinder:
 		val.BindQuery(sql)
 		return err
 	default:
@@ -110,11 +111,11 @@ func bindQueryToError(sql string, err error) error {
 	}
 }
 
-func (c QueryCmd) getRows(plan query.FinalPlan) ([][]string, error) {
+func (c QueryCmd) getRows(plan kvql.FinalPlan) ([][]string, error) {
 	ret := [][]string{
 		plan.FieldNameList(),
 	}
-	ectx := query.NewExecuteCtx()
+	ectx := kvql.NewExecuteCtx()
 	for {
 		cols, err := plan.Next(ectx)
 		if err != nil {
@@ -134,11 +135,11 @@ func (c QueryCmd) getRows(plan query.FinalPlan) ([][]string, error) {
 	return ret, nil
 }
 
-func (c QueryCmd) getRowsBatch(plan query.FinalPlan) ([][]string, error) {
+func (c QueryCmd) getRowsBatch(plan kvql.FinalPlan) ([][]string, error) {
 	ret := [][]string{
 		plan.FieldNameList(),
 	}
-	ectx := query.NewExecuteCtx()
+	ectx := kvql.NewExecuteCtx()
 	for {
 		rows, err := plan.Batch(ectx)
 		if err != nil {

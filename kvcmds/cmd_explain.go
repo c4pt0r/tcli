@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/c4pt0r/tcli"
+	"github.com/c4pt0r/kvql"
 	"github.com/c4pt0r/tcli/client"
 	"github.com/c4pt0r/tcli/query"
 	"github.com/c4pt0r/tcli/utils"
@@ -41,7 +42,7 @@ func (c ExplainCmd) Handler() func(ctx context.Context) {
 			}
 			sql := getQueryString(ic)
 			qtxn := query.NewQueryTxn(client.GetTiKVClient())
-			opt := query.NewOptimizer(sql)
+			opt := kvql.NewOptimizer(sql)
 			plan, err := opt.BuildPlan(qtxn)
 			if err != nil {
 				return bindQueryToError(sql, err)

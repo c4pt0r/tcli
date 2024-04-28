@@ -5,21 +5,22 @@ import (
 	"context"
 
 	"github.com/c4pt0r/tcli"
+	"github.com/c4pt0r/kvql"
 	"github.com/c4pt0r/tcli/client"
 	"github.com/c4pt0r/tcli/utils"
 	"github.com/magiconair/properties"
 )
 
 var (
-	_ Txn    = (*queryTxn)(nil)
-	_ Cursor = (*queryCursor)(nil)
+	_ kvql.Txn    = (*queryTxn)(nil)
+	_ kvql.Cursor = (*queryCursor)(nil)
 )
 
 type queryTxn struct {
 	client client.Client
 }
 
-func NewQueryTxn(client client.Client) Txn {
+func NewQueryTxn(client client.Client) kvql.Txn {
 	return &queryTxn{
 		client: client,
 	}
@@ -44,7 +45,7 @@ func (t *queryTxn) Delete(key []byte) error {
 	return t.client.Delete(context.TODO(), key)
 }
 
-func (t *queryTxn) Cursor() (Cursor, error) {
+func (t *queryTxn) Cursor() (kvql.Cursor, error) {
 	return &queryCursor{
 		txn:     t,
 		batch:   nil,

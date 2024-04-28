@@ -1,6 +1,6 @@
 module github.com/c4pt0r/tcli
 
-go 1.21
+go 1.21.1
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.16
@@ -8,7 +8,6 @@ require (
 	github.com/beorn7/perks v1.0.1
 	github.com/c4pt0r/log v0.0.0-20211004143616-aa6380016a47
 	github.com/fatih/color v1.12.0
-	github.com/go-skynet/go-llama.cpp v0.0.0-20231009155254-aeba71ee8428
 	github.com/magiconair/properties v1.8.0
 	github.com/manifoldco/promptui v0.8.0
 	github.com/olekukonko/tablewriter v0.0.5
@@ -22,6 +21,7 @@ require (
 
 require (
 	github.com/abiosoft/readline v0.0.0-20180607040430-155bce2042db // indirect
+	github.com/c4pt0r/kvql v0.0.0-20240428025121-0619eade54de // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
@@ -67,5 +67,3 @@ require (
 	google.golang.org/grpc v1.27.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 )
-
-replace github.com/go-skynet/go-llama.cpp => ./thirdparty/go-llama.cpp
