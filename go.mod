@@ -5,7 +5,7 @@ go 1.21.1
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.16
 	github.com/abiosoft/ishell v2.0.0+incompatible
-	github.com/c4pt0r/kvql v0.0.0-20240428090402-ef0041a20bda
+	github.com/c4pt0r/kvql v0.0.0-20240430050956-22d1fe9a9707
 	github.com/c4pt0r/log v0.0.0-20211004143616-aa6380016a47
 	github.com/fatih/color v1.12.0
 	github.com/magiconair/properties v1.8.0

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/c4pt0r/tcli"
 	"github.com/c4pt0r/kvql"
+	"github.com/c4pt0r/tcli"
 	"github.com/c4pt0r/tcli/client"
 	"github.com/c4pt0r/tcli/utils"
 	"github.com/magiconair/properties"
@@ -41,8 +41,24 @@ func (t *queryTxn) Put(key []byte, value []byte) error {
 	return t.client.Put(context.TODO(), client.KV{K: key, V: value})
 }
 
+func (t *queryTxn) BatchPut(kvs []kvql.KVPair) error {
+	var kvs2 []client.KV
+	for _, kv := range kvs {
+		kvs2 = append(kvs2, client.KV{K: kv.Key, V: kv.Value})
+	}
+	return t.client.BatchPut(context.TODO(), kvs2)
+}
+
 func (t *queryTxn) Delete(key []byte) error {
 	return t.client.Delete(context.TODO(), key)
+}
+
+func (t *queryTxn) BatchDelete(keys [][]byte) error {
+	var kvs []client.KV
+	for _, k := range keys {
+		kvs = append(kvs, client.KV{K: k})
+	}
+	return t.client.BatchDelete(context.TODO(), kvs)
 }
 
 func (t *queryTxn) Cursor() (kvql.Cursor, error) {
