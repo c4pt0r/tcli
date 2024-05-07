@@ -12,22 +12,22 @@ import (
 )
 
 var (
-	_ kvql.Txn    = (*queryTxn)(nil)
-	_ kvql.Cursor = (*queryCursor)(nil)
+	_ kvql.Storage = (*queryStorage)(nil)
+	_ kvql.Cursor  = (*queryCursor)(nil)
 )
 
-type queryTxn struct {
+type queryStorage struct {
 	client client.Client
 }
 
-func NewQueryTxn(client client.Client) kvql.Txn {
-	return &queryTxn{
+func NewQueryStorage(client client.Client) kvql.Storage {
+	return &queryStorage{
 		client: client,
 	}
 }
 
-func (t *queryTxn) Get(key []byte) ([]byte, error) {
-	kv, err := t.client.Get(context.TODO(), client.Key(key))
+func (s *queryStorage) Get(key []byte) ([]byte, error) {
+	kv, err := s.client.Get(context.TODO(), client.Key(key))
 	if err != nil {
 		if err.Error() == "not exist" {
 			return nil, nil
@@ -37,33 +37,33 @@ func (t *queryTxn) Get(key []byte) ([]byte, error) {
 	return kv.V, nil
 }
 
-func (t *queryTxn) Put(key []byte, value []byte) error {
-	return t.client.Put(context.TODO(), client.KV{K: key, V: value})
+func (s *queryStorage) Put(key []byte, value []byte) error {
+	return s.client.Put(context.TODO(), client.KV{K: key, V: value})
 }
 
-func (t *queryTxn) BatchPut(kvs []kvql.KVPair) error {
+func (s *queryStorage) BatchPut(kvs []kvql.KVPair) error {
 	tkvs := make([]client.KV, len(kvs))
 	for i, kv := range kvs {
 		tkvs[i] = client.KV{K: kv.Key, V: kv.Value}
 	}
-	return t.client.BatchPut(context.TODO(), tkvs)
+	return s.client.BatchPut(context.TODO(), tkvs)
 }
 
-func (t *queryTxn) Delete(key []byte) error {
-	return t.client.Delete(context.TODO(), key)
+func (s *queryStorage) Delete(key []byte) error {
+	return s.client.Delete(context.TODO(), key)
 }
 
-func (t *queryTxn) BatchDelete(keys [][]byte) error {
+func (s *queryStorage) BatchDelete(keys [][]byte) error {
 	tkvs := make([]client.KV, len(keys))
 	for i, key := range keys {
 		tkvs[i] = client.KV{K: key}
 	}
-	return t.client.BatchDelete(context.TODO(), tkvs)
+	return s.client.BatchDelete(context.TODO(), tkvs)
 }
 
-func (t *queryTxn) Cursor() (kvql.Cursor, error) {
+func (s *queryStorage) Cursor() (kvql.Cursor, error) {
 	return &queryCursor{
-		txn:     t,
+		storage: s,
 		batch:   nil,
 		prefix:  []byte{},
 		iterPos: 0,
@@ -71,7 +71,7 @@ func (t *queryTxn) Cursor() (kvql.Cursor, error) {
 }
 
 type queryCursor struct {
-	txn         *queryTxn
+	storage     *queryStorage
 	batch       client.KVS
 	batchSize   int
 	prefix      []byte
@@ -86,7 +86,7 @@ func (c *queryCursor) loadBatch() error {
 	scanOpt.Set(tcli.ScanOptCountOnly, "false")
 	scanOpt.Set(tcli.ScanOptStrictPrefix, "false")
 	qctx := utils.ContextWithProp(context.TODO(), scanOpt)
-	kvs, n, err := c.txn.client.Scan(qctx, c.prefix)
+	kvs, n, err := c.storage.client.Scan(qctx, c.prefix)
 	if err != nil {
 		return err
 	}
