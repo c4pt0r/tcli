@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/abiosoft/ishell"
+	"github.com/c4pt0r/kvql"
 	"github.com/c4pt0r/tcli"
 	"github.com/c4pt0r/tcli/client"
-	"github.com/c4pt0r/kvql"
 	"github.com/c4pt0r/tcli/query"
 	"github.com/c4pt0r/tcli/utils"
 )
@@ -79,7 +79,7 @@ func (c QueryCmd) Handler() func(ctx context.Context) {
 				return nil
 			}
 			sql := getQueryString(ic)
-			qtxn := query.NewQueryTxn(client.GetTiKVClient())
+			qtxn := query.NewQueryStorage(client.GetTiKVClient())
 			opt := kvql.NewOptimizer(sql)
 			plan, err := opt.BuildPlan(qtxn)
 			if err != nil {
